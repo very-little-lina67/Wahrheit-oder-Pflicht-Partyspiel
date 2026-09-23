@@ -216,13 +216,21 @@
         let currentRotation = 0;
 
         const wheelSectors = [
-            { title: "🍻 500ml EX!", desc: "Jeder Spieler muss jetzt sofort einen halben Liter (oder das Glas voll) trinken!" },
-            { title: "🚫 3 Runden Klo-Verbot!", desc: "Ab jetzt darf für die nächsten 3 Runden niemand auf Toilette! Wer leakt, verliert sofort." },
-            { title: "💧 Wasser-Sturzflug", desc: "Jeder muss ein volles Glas Leitungswasser in einem Zug austrinken!" },
-            { title: "🤫 Schweige-Pflicht", desc: "In den nächsten 2 Runden darf niemand sprechen. Wer lacht oder redet, trinkt 3 Schlucke." },
-            { title: "🔄 Doppel-Schluck", desc: "Jeder verteilt 2 Schlucke an eine Person seiner Wahl und trinkt selbst 2." },
-            { title: "⚡ Der Blasen-Tanz", desc: "Alle müssen sofort aufstehen und 30 Sekunden lang auf der Stelle hüpfen, ohne dass etwas passiert!" }
-        ];
+    // Bestehende Sektoren
+    { title: "🍻 500ml EX!", desc: "Jeder Spieler muss jetzt sofort einen halben Liter (oder das Glas voll) trinken!" },
+    { title: "🚫 3 Runden Klo-Verbot!", desc: "Ab jetzt darf für die nächsten 3 Runden niemand auf Toilette! Wer leakt, verliert sofort." },
+    { title: "💧 Wasser-Sturzflug", desc: "Jeder muss ein volles Glas Leitungswasser in einem Zug austrinken!" },
+    { title: "🤫 Schweige-Pflicht", desc: "In den nächsten 2 Runden darf niemand sprechen. Wer lacht oder redet, trinkt 3 Schlucke." },
+    { title: "🔄 Doppel-Schluck", desc: "Jeder verteilt 2 Schlucke an eine Person seiner Wahl und trinkt selbst 2." },
+    { title: "⚡ Der Blasen-Tanz", desc: "Alle müssen sofort aufstehen und 30 Sekunden lang auf der Stelle hüpfen, ohne dass etwas passiert!" },
+    
+    // Die neuen, perfekt angepassten Sektoren
+    { title: "🍻 Alle trinken!", desc: "Jeder Spieler am PC muss jetzt sofort einen großen Schluck aus seinem aktuellen Glas nehmen!" },
+    { title: "🚫 3 Runden Chat-Verbot", desc: "Ab jetzt darf für die nächsten 3 Runden niemand in den Chat schreiben! Wer tippt, trinkt 3 Schlucke." },
+    { title: "💧 Wasser-Pflicht", desc: "Wer gerade kein Bier oder Longdrink dasteht hat, muss stattdessen Wasser in einem Zug austrinken!" },
+    { title: "🤫 Mute-Pflicht", desc: "In den nächsten 2 Runden darf niemand etwas sagen. Wer redet oder Geräusche macht, trinkt 3 Schlucke." },
+];
+
 
         function hostGame() {
             myName = document.getElementById("player-input").value.trim();
