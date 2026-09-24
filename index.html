@@ -537,7 +537,6 @@
             const choice = pendingChoice;
             const resultText = `Antwort: "${answer}"`;
 
-            // Direkt lokal anzeigen und an alle senden
             showFeedbackScreen(targetPlayer, choice, currentTaskText, resultText);
             sendData({ type: 'SHOW_RESULT', targetPlayer: targetPlayer, choice: choice, taskText: currentTaskText, resultText: resultText });
         }
@@ -547,7 +546,6 @@
             const choice = pendingChoice;
             const resultText = `Pflicht erfolgreich erfüllt! ✅`;
 
-            // Direkt lokal anzeigen und an alle senden
             showFeedbackScreen(targetPlayer, choice, currentTaskText, resultText);
             sendData({ type: 'SHOW_RESULT', targetPlayer: targetPlayer, choice: choice, taskText: currentTaskText, resultText: resultText });
         }
@@ -565,7 +563,13 @@
 
             const typeStr = choice === "truth" ? "Wahrheit" : "Pflicht";
             document.getElementById("feedback-player-name").innerText = `${targetPlayer} hat die ${typeStr} beantwortet/erfüllt!`;
-            document.getElementById("feedback-task-info").innerText = `Aufgabe/Frage: "${taskText}"`;
+            
+            if (choice === "truth") {
+                document.getElementById("feedback-task-info").innerText = `Frage: "${taskText}"`;
+            } else {
+                document.getElementById("feedback-task-info").innerText = `Aufgabe: "${taskText}"`;
+            }
+
             document.getElementById("feedback-result-box").innerText = resultText;
         }
 
@@ -708,6 +712,7 @@
             const text = input.value.trim();
             if(!text) return;
 
+            // Nachricht direkt an alle (inklusive Host-Selbstausführung über sendData) versenden
             sendData({ type: 'CHAT_MSG', sender: myName, text: text });
             input.value = "";
         }
