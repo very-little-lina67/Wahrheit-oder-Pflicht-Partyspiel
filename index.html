@@ -92,7 +92,6 @@
             text-align: left;
         }
 
-        /* CHAT BOX STYLING */
         #chat-box-container {
             margin-top: 25px;
             background: rgba(0, 0, 0, 0.4);
@@ -145,7 +144,6 @@
         <div id="woP-phase" class="hidden">
             <h2 id="wop-turn-title">Am Zug: </h2>
             
-            <!-- Schritt 1: Spieler am Zug wählt Wahrheit oder Pflicht -->
             <div class="box-section" id="wop-choice-area">
                 <label>Was wählst du?</label>
                 <select id="wop-choice">
@@ -155,7 +153,6 @@
                 <button onclick="submitWopChoice()">Auswählen 🎲</button>
             </div>
 
-            <!-- Schritt 2: Der vom System ausgewählte Fragesteller/Aufgabengeber tippt die Frage/Aufgabe ein -->
             <div class="box-section hidden" id="creator-input-area" style="border-left-color: #ffcc00;">
                 <h3 id="creator-instruction-title" style="color: #ffcc00;"></h3>
                 <p id="creator-target-info" style="font-size: 14px; color: #ccc;"></p>
@@ -163,26 +160,22 @@
                 <button class="btn-blue" onclick="sendCustomTask()">An Spieler senden 🚀</button>
             </div>
 
-            <!-- Schritt 3: Der Spieler am Zug muss antworten oder Pflicht bestätigen -->
             <div class="box-section hidden" id="active-task-area" style="border-left-color: #00bfff;">
                 <h3 id="task-title-text" style="color: #00bfff;"></h3>
                 <p style="font-size: 13px; color: #ffcc00;" id="task-assigner-info"></p>
                 <p id="task-content-desc" style="font-size: 18px; font-weight: bold; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 6px;"></p>
                 
-                <!-- Nur bei Wahrheit: Eingabefeld für Antwort -->
                 <div id="answer-box" class="hidden" style="margin-top: 10px;">
                     <label>Deine Antwort:</label>
                     <textarea id="player-answer-input" rows="2" placeholder="Tippe hier deine Antwort ein..."></textarea>
                     <button class="btn-green" onclick="submitAnswer()" style="margin-top: 10px;">✅ Antwort abschicken</button>
                 </div>
 
-                <!-- Nur bei Pflicht: Bestätigungs-Button -->
                 <div id="dare-box" class="hidden" style="margin-top: 10px;">
                     <button class="btn-green" onclick="submitDareDone()">✅ Pflicht erfüllt & bestätigen!</button>
                 </div>
             </div>
 
-            <!-- Schritt 4: Ergebnis-/Feedback-Ansicht für alle nach Abschluss (Jeder klickt Weiter) -->
             <div class="box-section hidden" id="result-feedback-area" style="border-left-color: #28a745; text-align: center;">
                 <h3 style="color: #28a745;">🎉 Erledigt!</h3>
                 <p id="feedback-player-name" style="font-weight: bold; font-size: 16px; color: #ffcc00;"></p>
@@ -193,7 +186,6 @@
                 <p id="waiting-next-msg" style="color: #00bfff; font-size: 14px; margin-top: 8px;">Warten auf andere Spieler... (<span id="next-votes-count">0</span>/<span id="next-votes-total">0</span>)</p>
             </div>
 
-            <!-- Schritt 5: Alle anderen warten -->
             <div class="box-section hidden" id="waiting-for-player-box" style="border-left-color: #666;">
                 <p id="waiting-info-text" style="color: #ccc; font-weight: bold;"></p>
             </div>
@@ -220,7 +212,7 @@
             </div>
         </div>
 
-        <!-- LIVE CHAT BEREICH (Im Spiel sichtbar) -->
+        <!-- LIVE CHAT BEREICH -->
         <div id="chat-box-container" class="hidden">
             <div id="chat-messages"></div>
             <div style="display: flex; gap: 5px;">
@@ -238,19 +230,17 @@
 
     <script>
         let peer = null;
-        let conn = null;
-        let connections = []; 
+        let hostConnection = null; // Für Clients die Verbindung zum Host
+        let clientConnections = []; // Für den Host alle Verbindungen zu Clients
         let isHost = false;
         let myName = "";
         let players = [];
         let currentPlayerIndex = 0;
-        let currentCreatorName = "";
         let pendingChoice = "";
         let currentTaskText = "";
         let isSpinning = false;
         let currentRotation = 0;
 
-        // Votings für Weiter-Klicks
         let nextTurnVotedPlayers = [];
         let nextRoundVotedPlayers = [];
 
@@ -286,7 +276,7 @@
             });
 
             peer.on('connection', (incomingConn) => {
-                connections.push(incomingConn);
+                clientConnections.push(incomingConn);
                 setupHostConnectionEvents(incomingConn);
             });
 
@@ -307,11 +297,11 @@
             });
 
             peer.on('open', () => {
-                conn = peer.connect(code, { reliable: true });
+                hostConnection = peer.connect(code, { reliable: true });
                 
-                conn.on('open', () => {
-                    setupClientConnectionEvents(conn);
-                    conn.send({ type: 'JOIN', name: myName });
+                hostConnection.on('open', () => {
+                    setupClientConnectionEvents(hostConnection);
+                    hostConnection.send({ type: 'JOIN', name: myName });
                     
                     document.getElementById("setup").classList.add("hidden");
                     document.getElementById("lobby-wait-box").classList.remove("hidden");
@@ -323,96 +313,93 @@
             peer.on('error', (err) => { alert("Lobby konnte mit dem Code nicht gefunden werden."); });
         }
 
+        // Einheitliche Sende-Funktion für alle (egal ob Host oder Client)
+        function sendData(data) {
+            if (isHost) {
+                // Host verarbeitet es selbst und schickt es an alle Clients
+                handleIncomingData(data);
+                clientConnections.forEach(c => { if(c && c.open) c.send(data); });
+            } else {
+                // Client schickt es an den Host
+                if(hostConnection && hostConnection.open) hostConnection.send(data);
+            }
+        }
+
         function setupHostConnectionEvents(c) {
             c.on('data', (data) => {
                 if (data.type === 'JOIN') {
                     if (!players.some(p => p.name === data.name)) {
                         players.push({ name: data.name, eliminated: false });
-                        broadcast({ type: 'UPDATE_PLAYERS', players: players });
+                        // Broadcast an alle
+                        let updateMsg = { type: 'UPDATE_PLAYERS', players: players };
                         updatePlayerList();
+                        clientConnections.forEach(conn => conn.send(updateMsg));
                     }
-                } else if (data.type === 'SUBMIT_CHOICE') {
-                    pendingChoice = data.choice;
-                    assignTaskCreator(data.playerName, data.choice);
-                } else if (data.type === 'SUBMIT_CUSTOM_TASK') {
-                    currentTaskText = data.taskText;
-                    broadcast({ 
-                        type: 'SHOW_TASK', 
-                        targetPlayer: data.targetPlayer, 
-                        choice: data.choice, 
-                        taskText: data.taskText, 
-                        creator: data.creator 
+                } else {
+                    // Alle anderen Aktionen über zentralen Handler + Broadcast an andere
+                    handleIncomingData(data);
+                    clientConnections.forEach(conn => {
+                        if(conn !== c && conn.open) conn.send(data);
                     });
-                    displayTaskScreen(data.targetPlayer, data.choice, data.taskText, data.creator);
-                } else if (data.type === 'SUBMIT_COMPLETION') {
-                    broadcast({ 
-                        type: 'SHOW_RESULT', 
-                        targetPlayer: data.targetPlayer, 
-                        choice: data.choice, 
-                        taskText: data.taskText, 
-                        resultText: data.resultText 
-                    });
-                    showFeedbackScreen(data.targetPlayer, data.choice, data.taskText, data.resultText);
-                } else if (data.type === 'VOTE_NEXT_TURN') {
-                    handleNextTurnVote(data.playerName);
-                } else if (data.type === 'SPIN_WHEEL') {
-                    broadcast({ type: 'SPIN_WHEEL', sector: data.sector, rotation: data.rotation });
-                    runWheelAnimation(data.sector, data.rotation);
-                } else if (data.type === 'VOTE_NEXT_ROUND') {
-                    handleNextRoundVote(data.playerName);
-                } else if (data.type === 'ELIMINATE') {
-                    players = data.players;
-                    broadcast({ type: 'SYNC_PLAYERS', players: players });
-                    checkGameOver();
-                    updatePlayerList();
-                } else if (data.type === 'CHAT_MSG') {
-                    broadcast({ type: 'CHAT_MSG', sender: data.sender, text: data.text });
-                    appendChat(data.sender, data.text);
                 }
             });
         }
 
         function setupClientConnectionEvents(c) {
             c.on('data', (data) => {
-                if (data.type === 'UPDATE_PLAYERS' || data.type === 'SYNC_PLAYERS') {
-                    players = data.players;
-                    updatePlayerList();
-                } else if (data.type === 'START_GAME') {
-                    players = data.players;
-                    startGameUI();
-                } else if (data.type === 'ASSIGN_CREATOR') {
-                    pendingChoice = data.choice;
-                    setupCreatorUI(data.targetPlayer, data.choice, data.creatorName);
-                } else if (data.type === 'SHOW_TASK') {
-                    currentTaskText = data.taskText;
-                    displayTaskScreen(data.targetPlayer, data.choice, data.taskText, data.creator);
-                } else if (data.type === 'SHOW_RESULT') {
-                    showFeedbackScreen(data.targetPlayer, data.choice, data.taskText, data.resultText);
-                } else if (data.type === 'UPDATE_NEXT_VOTES') {
-                    nextTurnVotedPlayers = data.votedList;
-                    updateNextVoteUI();
-                } else if (data.type === 'EXECUTE_NEXT_TURN') {
-                    executeProceedToNextTurn();
-                } else if (data.type === 'START_WHEEL') {
-                    document.getElementById("woP-phase").classList.add("hidden");
-                    document.getElementById("wheel-phase").classList.remove("hidden");
-                } else if (data.type === 'SPIN_WHEEL') {
-                    runWheelAnimation(data.sector, data.rotation);
-                } else if (data.type === 'UPDATE_ROUND_VOTES') {
-                    nextRoundVotedPlayers = data.votedList;
-                    updateRoundVoteUI();
-                } else if (data.type === 'NEXT_ROUND') {
-                    nextRound();
-                } else if (data.type === 'CHAT_MSG') {
-                    appendChat(data.sender, data.text);
-                }
+                handleIncomingData(data);
             });
         }
 
-        function broadcast(msg) {
-            connections.forEach(c => {
-                if(c && c.open) c.send(msg);
-            });
+        // Zentraler Empfänger für alle Spieldaten
+        function handleIncomingData(data) {
+            if (data.type === 'UPDATE_PLAYERS' || data.type === 'SYNC_PLAYERS') {
+                players = data.players;
+                updatePlayerList();
+            } else if (data.type === 'START_GAME') {
+                players = data.players;
+                startGameUI();
+            } else if (data.type === 'SUBMIT_CHOICE') {
+                pendingChoice = data.choice;
+                assignTaskCreator(data.playerName, data.choice);
+            } else if (data.type === 'ASSIGN_CREATOR') {
+                setupCreatorUI(data.targetPlayer, data.choice, data.creatorName);
+            } else if (data.type === 'SUBMIT_CUSTOM_TASK') {
+                currentTaskText = data.taskText;
+                displayTaskScreen(data.targetPlayer, data.choice, data.taskText, data.creator);
+            } else if (data.type === 'SHOW_TASK') {
+                currentTaskText = data.taskText;
+                displayTaskScreen(data.targetPlayer, data.choice, data.taskText, data.creator);
+            } else if (data.type === 'SUBMIT_COMPLETION') {
+                showFeedbackScreen(data.targetPlayer, data.choice, data.taskText, data.resultText);
+            } else if (data.type === 'SHOW_RESULT') {
+                showFeedbackScreen(data.targetPlayer, data.choice, data.taskText, data.resultText);
+            } else if (data.type === 'VOTE_NEXT_TURN') {
+                handleNextTurnVote(data.playerName);
+            } else if (data.type === 'UPDATE_NEXT_VOTES') {
+                nextTurnVotedPlayers = data.votedList;
+                updateNextVoteUI();
+            } else if (data.type === 'EXECUTE_NEXT_TURN') {
+                executeProceedToNextTurn();
+            } else if (data.type === 'START_WHEEL') {
+                document.getElementById("woP-phase").classList.add("hidden");
+                document.getElementById("wheel-phase").classList.remove("hidden");
+            } else if (data.type === 'SPIN_WHEEL') {
+                runWheelAnimation(data.sector, data.rotation);
+            } else if (data.type === 'VOTE_NEXT_ROUND') {
+                handleNextRoundVote(data.playerName);
+            } else if (data.type === 'UPDATE_ROUND_VOTES') {
+                nextRoundVotedPlayers = data.votedList;
+                updateRoundVoteUI();
+            } else if (data.type === 'NEXT_ROUND') {
+                nextRound();
+            } else if (data.type === 'ELIMINATE') {
+                players = data.players;
+                checkGameOver();
+                updatePlayerList();
+            } else if (data.type === 'CHAT_MSG') {
+                appendChat(data.sender, data.text);
+            }
         }
 
         function updatePlayerList() {
@@ -430,7 +417,7 @@
 
         function startOnlineGame() {
             if (!isHost) return;
-            broadcast({ type: 'START_GAME', players: players });
+            sendData({ type: 'START_GAME', players: players });
             startGameUI();
         }
 
@@ -450,7 +437,7 @@
 
             if (currentPlayerIndex >= players.length) {
                 if (isHost) {
-                    broadcast({ type: 'START_WHEEL' });
+                    sendData({ type: 'START_WHEEL' });
                     document.getElementById("woP-phase").classList.add("hidden");
                     document.getElementById("wheel-phase").classList.remove("hidden");
                 }
@@ -478,11 +465,7 @@
         function submitWopChoice() {
             const choice = document.getElementById("wop-choice").value;
             pendingChoice = choice;
-            if (isHost) {
-                assignTaskCreator(myName, choice);
-            } else {
-                conn.send({ type: 'SUBMIT_CHOICE', playerName: myName, choice: choice });
-            }
+            sendData({ type: 'SUBMIT_CHOICE', playerName: myName, choice: choice });
         }
 
         function assignTaskCreator(targetPlayerName, choice) {
@@ -495,14 +478,10 @@
                 creatorName = targetPlayerName;
             }
 
-            if (isHost) {
-                broadcast({ type: 'ASSIGN_CREATOR', targetPlayer: targetPlayerName, choice: choice, creatorName: creatorName });
-                setupCreatorUI(targetPlayerName, choice, creatorName);
-            }
+            sendData({ type: 'ASSIGN_CREATOR', targetPlayer: targetPlayerName, choice: choice, creatorName: creatorName });
         }
 
         function setupCreatorUI(targetPlayer, choice, creatorName) {
-            currentCreatorName = creatorName;
             document.getElementById("wop-choice-area").classList.add("hidden");
             document.getElementById("waiting-for-player-box").classList.add("hidden");
 
@@ -523,15 +502,10 @@
             if (!taskText) { alert("Bitte eine Aufgabe eingeben!"); return; }
 
             const targetPlayer = players[currentPlayerIndex].name;
-            const choice = pendingChoice || document.getElementById("wop-choice").value;
+            const choice = pendingChoice;
             currentTaskText = taskText;
 
-            if (isHost) {
-                broadcast({ type: 'SHOW_TASK', targetPlayer: targetPlayer, choice: choice, taskText: taskText, creator: myName });
-                displayTaskScreen(targetPlayer, choice, taskText, myName);
-            } else {
-                conn.send({ type: 'SUBMIT_CUSTOM_TASK', targetPlayer: targetPlayer, choice: choice, taskText: taskText, creator: myName });
-            }
+            sendData({ type: 'SHOW_TASK', targetPlayer: targetPlayer, choice: choice, taskText: taskText, creator: myName });
         }
 
         function displayTaskScreen(targetPlayer, choice, taskText, creator) {
@@ -571,7 +545,7 @@
             const choice = pendingChoice;
             const resultText = `Antwort: "${answer}"`;
 
-            sendCompletionData(targetPlayer, choice, currentTaskText, resultText);
+            sendData({ type: 'SHOW_RESULT', targetPlayer: targetPlayer, choice: choice, taskText: currentTaskText, resultText: resultText });
         }
 
         function submitDareDone() {
@@ -579,22 +553,7 @@
             const choice = pendingChoice;
             const resultText = `Pflicht erfolgreich erfüllt! ✅`;
 
-            sendCompletionData(targetPlayer, choice, currentTaskText, resultText);
-        }
-
-        function sendCompletionData(targetPlayer, choice, taskText, resultText) {
-            if (isHost) {
-                broadcast({ type: 'SHOW_RESULT', targetPlayer: targetPlayer, choice: choice, taskText: taskText, resultText: resultText });
-                showFeedbackScreen(targetPlayer, choice, taskText, resultText);
-            } else {
-                conn.send({ 
-                    type: 'SUBMIT_COMPLETION', 
-                    targetPlayer: targetPlayer, 
-                    choice: choice, 
-                    taskText: taskText, 
-                    resultText: resultText 
-                });
-            }
+            sendData({ type: 'SHOW_RESULT', targetPlayer: targetPlayer, choice: choice, taskText: currentTaskText, resultText: resultText });
         }
 
         function showFeedbackScreen(targetPlayer, choice, taskText, resultText) {
@@ -602,7 +561,6 @@
             document.getElementById("waiting-for-player-box").classList.add("hidden");
             document.getElementById("result-feedback-area").classList.remove("hidden");
 
-            // Reset Votes für neuen Bildschirm
             nextTurnVotedPlayers = [];
             const btn = document.getElementById("next-turn-btn");
             btn.disabled = false;
@@ -620,11 +578,7 @@
             btn.disabled = true;
             btn.style.opacity = "0.5";
 
-            if (isHost) {
-                handleNextTurnVote(myName);
-            } else {
-                conn.send({ type: 'VOTE_NEXT_TURN', playerName: myName });
-            }
+            sendData({ type: 'VOTE_NEXT_TURN', playerName: myName });
         }
 
         function handleNextTurnVote(pName) {
@@ -633,15 +587,10 @@
             }
             
             const activePlayersCount = players.filter(p => !p.eliminated).length;
+            updateNextVoteUI();
 
-            if (isHost) {
-                broadcast({ type: 'UPDATE_NEXT_VOTES', votedList: nextTurnVotedPlayers });
-                updateNextVoteUI();
-
-                if (nextTurnVotedPlayers.length >= activePlayersCount) {
-                    broadcast({ type: 'EXECUTE_NEXT_TURN' });
-                    executeProceedToNextTurn();
-                }
+            if (isHost && nextTurnVotedPlayers.length >= activePlayersCount) {
+                sendData({ type: 'EXECUTE_NEXT_TURN' });
             }
         }
 
@@ -663,12 +612,7 @@
             const extraSpins = 360 * 5;
             currentRotation += extraSpins + (randomSectorIndex * degreesPerSector) + (degreesPerSector / 2);
 
-            if (isHost) {
-                broadcast({ type: 'SPIN_WHEEL', sector: randomSectorIndex, rotation: currentRotation });
-                runWheelAnimation(randomSectorIndex, currentRotation);
-            } else {
-                conn.send({ type: 'SPIN_WHEEL', sector: randomSectorIndex, rotation: currentRotation });
-            }
+            sendData({ type: 'SPIN_WHEEL', sector: randomSectorIndex, rotation: currentRotation });
         }
 
         function runWheelAnimation(sectorIndex, rotationVal) {
@@ -690,7 +634,6 @@
                 document.getElementById("wheel-action-desc").innerText = selected.desc;
                 document.getElementById("wheel-result-box").classList.remove("hidden");
                 
-                // Reset Votes für Rad
                 nextRoundVotedPlayers = [];
                 const nextBtn = document.getElementById("next-round-btn");
                 if(nextBtn) {
@@ -706,11 +649,7 @@
             btn.disabled = true;
             btn.style.opacity = "0.5";
 
-            if (isHost) {
-                handleNextRoundVote(myName);
-            } else {
-                conn.send({ type: 'VOTE_NEXT_ROUND', playerName: myName });
-            }
+            sendData({ type: 'VOTE_NEXT_ROUND', playerName: myName });
         }
 
         function handleNextRoundVote(pName) {
@@ -719,15 +658,10 @@
             }
 
             const activePlayersCount = players.filter(p => !p.eliminated).length;
+            updateRoundVoteUI();
 
-            if (isHost) {
-                broadcast({ type: 'UPDATE_ROUND_VOTES', votedList: nextRoundVotedPlayers });
-                updateRoundVoteUI();
-
-                if (nextRoundVotedPlayers.length >= activePlayersCount) {
-                    broadcast({ type: 'NEXT_ROUND' });
-                    nextRound();
-                }
+            if (isHost && nextRoundVotedPlayers.length >= activePlayersCount) {
+                sendData({ type: 'NEXT_ROUND' });
             }
         }
 
@@ -754,13 +688,7 @@
             let target = players.find(p => p.name.toLowerCase() === loserName.trim().toLowerCase());
             if (target) {
                 target.eliminated = true;
-                if (isHost) {
-                    broadcast({ type: 'ELIMINATE', players: players });
-                    checkGameOver();
-                    updatePlayerList();
-                } else {
-                    conn.send({ type: 'ELIMINATE', players: players });
-                }
+                sendData({ type: 'ELIMINATE', players: players });
                 alert(`❌ ${target.name} hat verloren!`);
             } else {
                 alert("Spieler nicht gefunden.");
@@ -785,12 +713,7 @@
             const text = input.value.trim();
             if(!text) return;
 
-            if(isHost) {
-                broadcast({ type: 'CHAT_MSG', sender: myName, text: text });
-                appendChat(myName, text);
-            } else {
-                conn.send({ type: 'CHAT_MSG', sender: myName, text: text });
-            }
+            sendData({ type: 'CHAT_MSG', sender: myName, text: text });
             input.value = "";
         }
 
