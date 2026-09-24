@@ -318,6 +318,10 @@
                 handleIncomingData(data);
                 clientConnections.forEach(c => { if(c && c.open) c.send(data); });
             } else {
+                // Falls es eine Chat-Nachricht ist, direkt bei sich selbst auch anzeigen
+                if (data.type === 'CHAT_MSG') {
+                    handleIncomingData(data);
+                }
                 if(hostConnection && hostConnection.open) hostConnection.send(data);
             }
         }
@@ -422,7 +426,7 @@
             updateWopTurn();
         }
 
-        function updateWopTurn() {
+     function updateWopTurn() {
             while (currentPlayerIndex < players.length && players[currentPlayerIndex].eliminated) {
                 currentPlayerIndex++;
             }
@@ -712,7 +716,7 @@
             const text = input.value.trim();
             if(!text) return;
 
-            // Nachricht direkt an alle (inklusive Host-Selbstausführung über sendData) versenden
+            // Nachricht per sendData an den Host (oder als Host an alle) schicken
             sendData({ type: 'CHAT_MSG', sender: myName, text: text });
             input.value = "";
         }
