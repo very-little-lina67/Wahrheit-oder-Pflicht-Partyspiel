@@ -172,7 +172,7 @@
                 </div>
 
                 <div id="dare-box" class="hidden" style="margin-top: 10px;">
-                    <button class="btn-green" onclick="submitDareDone()">✅ Pflicht erfüllt & bestätigen!</button>
+                    <button class="btn-green" onclick="submitDareDone()" style="margin-top: 10px;">✅ Pflicht erfüllt & bestätigen!</button>
                 </div>
             </div>
 
@@ -230,8 +230,8 @@
 
     <script>
         let peer = null;
-        let hostConnection = null; // Für Clients die Verbindung zum Host
-        let clientConnections = []; // Für den Host alle Verbindungen zu Clients
+        let hostConnection = null;
+        let clientConnections = [];
         let isHost = false;
         let myName = "";
         let players = [];
@@ -313,14 +313,11 @@
             peer.on('error', (err) => { alert("Lobby konnte mit dem Code nicht gefunden werden."); });
         }
 
-        // Einheitliche Sende-Funktion für alle (egal ob Host oder Client)
         function sendData(data) {
             if (isHost) {
-                // Host verarbeitet es selbst und schickt es an alle Clients
                 handleIncomingData(data);
                 clientConnections.forEach(c => { if(c && c.open) c.send(data); });
             } else {
-                // Client schickt es an den Host
                 if(hostConnection && hostConnection.open) hostConnection.send(data);
             }
         }
@@ -330,13 +327,11 @@
                 if (data.type === 'JOIN') {
                     if (!players.some(p => p.name === data.name)) {
                         players.push({ name: data.name, eliminated: false });
-                        // Broadcast an alle
                         let updateMsg = { type: 'UPDATE_PLAYERS', players: players };
                         updatePlayerList();
                         clientConnections.forEach(conn => conn.send(updateMsg));
                     }
                 } else {
-                    // Alle anderen Aktionen über zentralen Handler + Broadcast an andere
                     handleIncomingData(data);
                     clientConnections.forEach(conn => {
                         if(conn !== c && conn.open) conn.send(data);
@@ -351,7 +346,6 @@
             });
         }
 
-        // Zentraler Empfänger für alle Spieldaten
         function handleIncomingData(data) {
             if (data.type === 'UPDATE_PLAYERS' || data.type === 'SYNC_PLAYERS') {
                 players = data.players;
@@ -370,8 +364,6 @@
             } else if (data.type === 'SHOW_TASK') {
                 currentTaskText = data.taskText;
                 displayTaskScreen(data.targetPlayer, data.choice, data.taskText, data.creator);
-            } else if (data.type === 'SUBMIT_COMPLETION') {
-                showFeedbackScreen(data.targetPlayer, data.choice, data.taskText, data.resultText);
             } else if (data.type === 'SHOW_RESULT') {
                 showFeedbackScreen(data.targetPlayer, data.choice, data.taskText, data.resultText);
             } else if (data.type === 'VOTE_NEXT_TURN') {
@@ -545,6 +537,8 @@
             const choice = pendingChoice;
             const resultText = `Antwort: "${answer}"`;
 
+            // Direkt lokal anzeigen und an alle senden
+            showFeedbackScreen(targetPlayer, choice, currentTaskText, resultText);
             sendData({ type: 'SHOW_RESULT', targetPlayer: targetPlayer, choice: choice, taskText: currentTaskText, resultText: resultText });
         }
 
@@ -553,6 +547,8 @@
             const choice = pendingChoice;
             const resultText = `Pflicht erfolgreich erfüllt! ✅`;
 
+            // Direkt lokal anzeigen und an alle senden
+            showFeedbackScreen(targetPlayer, choice, currentTaskText, resultText);
             sendData({ type: 'SHOW_RESULT', targetPlayer: targetPlayer, choice: choice, taskText: currentTaskText, resultText: resultText });
         }
 
@@ -707,7 +703,6 @@
             }
         }
 
-        // CHAT FUNKTIONEN
         function sendChatMessage() {
             const input = document.getElementById("chat-input");
             const text = input.value.trim();
