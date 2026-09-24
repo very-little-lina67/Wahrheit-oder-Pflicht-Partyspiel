@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wahrheit, Pflicht & Blasen-Kollaps</title>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #111, #2b1055, #7597de);
+            color: #ffffff;
+            text-align: center;
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        h1 { color: #ff0055; text-shadow: 0 0 10px rgba(255,0,85,0.6); }
+        .container {
+            max-width: 650px;
+            margin: 0 auto;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 25px;
+            border-radius: 20px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        input, button, select, textarea {
+            padding: 12px;
+            font-size: 16px;
+            border-radius: 8px;
+            border: none;
+            margin: 8px 0;
+            width: 100%;
+            box-sizing: border-box;
+            font-family: inherit;
+        }
+        input, select, textarea { background: rgba(255,255,255,0.15); color: white; }
+        input::placeholder, textarea::placeholder { color: #ccc; }
+        button {
+            background-color: #ff0055;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 4px 15px rgba(255,0,85,0.4);
+        }
+        button:hover { background-color: #e6004c; transform: translateY(-2px); }
+        .btn-blue { background-color: #00bfff; color: #111; box-shadow: 0 4px 15px rgba(0,191,255,0.4); }
+        .btn-blue:hover { background-color: #009acd; }
+        .btn-green { background-color: #28a745; color: white; box-shadow: 0 4px 15px rgba(40,167,69,0.4); }
+        .btn-green:hover { background-color: #218838; }
+        .btn-danger { background-color: #ff3300; box-shadow: 0 4px 15px rgba(255,51,0,0.5); }
+        .hidden { display: none !important; }
+        
+        #wheel-container {
+            position: relative;
+            width: 260px;
+            height: 260px;
+            margin: 20px auto;
+            border-radius: 50%;
+            border: 8px solid #00bfff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #111;
+            font-weight: bold;
+            font-size: 16px;
+            padding: 15px;
+            box-shadow: 0 0 25px rgba(0, 191, 255, 0.6);
+            transition: transform 3s cubic-bezier(0.15, 0.9, 0.2, 1);
+            text-align: center;
+            box-sizing: border-box;
+        }
+        .pointer {
+            width: 0; height: 0; 
+            border-left: 15px solid transparent;
+            border-right: 15px solid transparent;
+            border-bottom: 30px solid #ffcc00;
+            margin: 0 auto;
+            position: relative;
+            top: 10px;
+            z-index: 10;
+        }
+        .box-section {
+            background: rgba(255,255,255,0.05);
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+            border-left: 5px solid #ff0055;
+            text-align: left;
+        }
+
+        #chat-box-container {
+            margin-top: 25px;
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 10px;
+            padding: 12px;
+            border: 1px solid rgba(255,255,255,0.1);
+            text-align: left;
+        }
+        #chat-messages {
+            height: 110px;
+            overflow-y: auto;
+            font-size: 13px;
+            margin-bottom: 8px;
+            background: rgba(0,0,0,0.3);
+            padding: 8px;
+            border-radius: 6px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .chat-msg { word-break: break-word; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Wahrheit, Pflicht & Blasen-Kollaps 🍻🚻</h1>
+        <p>Spielt nacheinander Wahrheit oder Pflicht. Nach jeder vollen Runde dreht sich das Rad für alle!</p>
+
+        <!-- SETUP -->
+        <div id="setup" class="box-section">
+            <h3>Online Lobby & Mitspieler:</h3>
+            <input type="text" id="player-input" placeholder="Dein Name...">
+            <button onclick="hostGame()">Lobby erstellen (Host) 🏠</button>
+            <hr style="border-color: rgba(255,255,255,0.1); margin: 15px 0;">
+            <input type="text" id="lobby-code-input" placeholder="Lobby-Code eingeben (z.B. BLASE1234)..." style="text-transform: uppercase;">
+            <button class="btn-blue" onclick="joinGame()">Lobby beitreten 🚀</button>
+        </div>
+
+        <!-- LOBBY WARTESAAL -->
+        <div id="lobby-wait-box" class="hidden box-section" style="text-align: center;">
+            <h3>Lobby-Code: <span id="display-code" style="color: #ffcc00; font-size: 22px;"></span></h3>
+            <p>Teile diesen Code mit deinen Mitspielern!</p>
+            <ul id="player-list" style="list-style: none; padding: 0; text-align: left;"></ul>
+            <button id="start-btn" class="hidden" onclick="startOnlineGame()">Spiel starten! 🔥</button>
+            <div id="client-wait-msg" class="hidden" style="color: #ffcc00;">Mit Lobby verbunden! Warte darauf, dass der Host startet...</div>
+        </div>
+
+        <!-- WAHRHEIT ODER PFLICHT PHASE -->
+        <div id="woP-phase" class="hidden">
+            <h2 id="wop-turn-title">Am Zug: </h2>
+            
+            <div class="box-section" id="wop-choice-area">
+                <label>Was wählst du?</label>
+                <select id="wop-choice">
+                    <option value="truth">Wahrheit</option>
+                    <option value="dare">Pflicht</option>
+                </select>
+                <button onclick="submitWopChoice()">Auswählen 🎲</button>
+            </div>
+
+            <div class="box-section hidden" id="creator-input-area" style="border-left-color: #ffcc00;">
+                <h3 id="creator-instruction-title" style="color: #ffcc00;"></h3>
+                <p id="creator-target-info" style="font-size: 14px; color: #ccc;"></p>
+                <input type="text" id="custom-task-input" placeholder="Tippe hier die Frage oder Aufgabe ein...">
+                <button class="btn-blue" onclick="sendCustomTask()">An Spieler senden 🚀</button>
+            </div>
+
+            <div class="box-section hidden" id="active-task-area" style="border-left-color: #00bfff;">
+                <h3 id="task-title-text" style="color: #00bfff;"></h3>
+                <p style="font-size: 13px; color: #ffcc00;" id="task-assigner-info"></p>
+                <p id="task-content-desc" style="font-size: 18px; font-weight: bold; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 6px;"></p>
+                
+                <div id="answer-box" class="hidden" style="margin-top: 10px;">
+                    <label>Deine Antwort:</label>
+                    <textarea id="player-answer-input" rows="2" placeholder="Tippe hier deine Antwort ein..."></textarea>
+                    <button class="btn-green" onclick="submitAnswer()" style="margin-top: 10px;">✅ Antwort abschicken</button>
+                </div>
+
+                <div id="dare-box" class="hidden" style="margin-top: 10px;">
+                    <button class="btn-green" onclick="submitDareDone()" style="margin-top: 10px;">✅ Pflicht erfüllt & bestätigen!</button>
+                </div>
+            </div>
+
+            <div class="box-section hidden" id="result-feedback-area" style="border-left-color: #28a745; text-align: center;">
+                <h3 style="color: #28a745;">🎉 Erledigt!</h3>
+                <p id="feedback-player-name" style="font-weight: bold; font-size: 16px; color: #ffcc00;"></p>
+                <p id="feedback-task-info" style="font-style: italic; color: #ccc;"></p>
+                <div id="feedback-result-box" style="background: rgba(0,0,0,0.4); padding: 12px; border-radius: 8px; font-size: 18px; margin: 10px 0;"></div>
+                
+                <button class="btn-blue" id="next-turn-btn" onclick="voteNextTurn()" style="margin-top: 10px;">➡️ Weiter</button>
+                <p id="waiting-next-msg" style="color: #00bfff; font-size: 14px; margin-top: 8px;">Warten auf andere Spieler... (<span id="next-votes-count">0</span>/<span id="next-votes-total">0</span>)</p>
+            </div>
+
+            <div class="box-section hidden" id="waiting-for-player-box" style="border-left-color: #666;">
+                <p id="waiting-info-text" style="color: #ccc; font-weight: bold;"></p>
+            </div>
+
+            <div id="wop-status-info" style="margin-top: 15px; font-size: 14px; color: #ffcc00;"></div>
+        </div>
+
+        <!-- GLÜCKSRAD -->
+        <div id="wheel-phase" class="hidden">
+            <h2 style="color: #00bfff;">🎡 RAD-MODUS: Alle müssen handeln!</h2>
+            <p>Jeder hat Wahrheit/Pflicht gespielt. Jetzt wird das Schicksals-Rad für alle gedreht!</p>
+            
+            <div class="pointer"></div>
+            <div id="wheel-container">Rad bereit!</div>
+            
+            <button onclick="spinWheel()" id="spin-btn" class="btn-blue">Glücksrad jetzt drehen 🎡</button>
+            
+            <div id="wheel-result-box" class="box-section hidden" style="border-left-color: #00bfff; text-align: center;">
+                <h3 id="wheel-action-title" style="color: #ffcc00;"></h3>
+                <p id="wheel-action-desc"></p>
+                
+                <button id="next-round-btn" onclick="voteNextRound()" class="btn-blue" style="margin-top: 10px;">➡️ Weiter zur nächsten Runde!</button>
+                <p id="waiting-round-msg" style="color: #00bfff; font-size: 14px; margin-top: 8px;">Warten auf andere Spieler... (<span id="round-votes-count">0</span>/<span id="round-votes-total">0</span>)</p>
+            </div>
+        </div>
+
+        <!-- LIVE CHAT BEREICH -->
+        <div id="chat-box-container" class="hidden">
+            <div id="chat-messages"></div>
+            <div style="display: flex; gap: 5px;">
+                <input type="text" id="chat-input" placeholder="Schreibe eine Nachricht..." style="margin:0;" onkeydown="if(event.key === 'Enter') sendChatMessage()">
+                <button class="btn-blue" style="width: 80px; margin:0; padding:8px;" onclick="sendChatMessage()">Senden</button>
+            </div>
+        </div>
+
+        <!-- NOTFALL BUTTON -->
+        <div id="emergency-box" class="hidden" style="margin-top: 30px; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 15px;">
+            <p style="font-size: 13px; color: #ff9999;">Wer einknickt oder leakt, hat sofort verloren!</p>
+            <button onclick="triggerLeak()" class="btn-danger">🚨 Ich habe geleakt / musste pinkeln (Verloren!)</button>
+        </div>
+    </div>
+
+    <script>
+        let peer = null;
+        let hostConnection = null;
+        let clientConnections = [];
+        let isHost = false;
+        let myName = "";
+        let players = [];
+        let currentPlayerIndex = 0;
+        let pendingChoice = "";
+        let currentTaskText = "";
+        let isSpinning = false;
+        let currentRotation = 0;
+
+        let nextTurnVotedPlayers = [];
+        let nextRoundVotedPlayers = [];
+
+        const wheelSectors = [
+            { title: "🍻 500ml EX!", desc: "Jeder Spieler muss jetzt sofort einen halben Liter (oder das Glas voll) trinken!" },
+            { title: "🚫 3 Runden Klo-Verbot!", desc: "Ab jetzt darf für die nächsten 3 Runden niemand auf Toilette! Wer leakt, verliert sofort." },
+            { title: "💧 Wasser-Sturzflug", desc: "Jeder muss ein volles Glas Leitungswasser in einem Zug austrinken!" },
+            { title: "🤫 Schweige-Pflicht", desc: "In den nächsten 2 Runden darf niemand sprechen. Wer lacht oder redet, trinkt 3 Schlucke." },
+            { title: "🔄 Doppel-Schluck", desc: "Jeder verteilt 2 Schlucke an eine Person seiner Wahl und trinkt selbst 2." },
+            { title: "⚡ Der Blasen-Tanz", desc: "Alle müssen sofort aufstehen und 30 Sekunden lang auf der Stelle hüpfen, ohne dass etwas passiert!" }
+        ];
+
+        function hostGame() {
+            myName = document.getElementById("player-input").value.trim();
+            if (!myName) { alert("Bitte deinen Namen eingeben!"); return; }
+            isHost = true;
+
+            const randomCode = "BLASE" + Math.floor(1000 + Math.random() * 9000);
+            
+            peer = new Peer(randomCode, {
+                host: '0.peerjs.com',
+                port: 443,
+                secure: true
+            });
+
+            peer.on('open', (id) => {
+                players = [{ name: myName, eliminated: false }];
+                document.getElementById("setup").classList.add("hidden");
+                document.getElementById("lobby-wait-box").classList.remove("hidden");
+                document.getElementById("display-code").innerText = id;
+                document.getElementById("start-btn").classList.remove("hidden");
+                updatePlayerList();
+            });
+
+            peer.on('connection', (incomingConn) => {
+                clientConnections.push(incomingConn);
+                setupHostConnectionEvents(incomingConn);
+            });
+
+            peer.on('error', (err) => { alert("Host-Fehler: " + err.type); });
+        }
+
+        function joinGame() {
+            myName = document.getElementById("player-input").value.trim();
+            const code = document.getElementById("lobby-code-input").value.trim().toUpperCase();
+            
+            if (!myName || !code) { alert("Bitte Name und Lobby-Code eingeben!"); return; }
+            isHost = false;
+
+            peer = new Peer({
+                host: '0.peerjs.com',
+                port: 443,
+                secure: true
+            });
+
+            peer.on('open', () => {
+                hostConnection = peer.connect(code, { reliable: true });
+                
+                hostConnection.on('open', () => {
+                    setupClientConnectionEvents(hostConnection);
+                    hostConnection.send({ type: 'JOIN', name: myName });
+                    
+                    document.getElementById("setup").classList.add("hidden");
+                    document.getElementById("lobby-wait-box").classList.remove("hidden");
+                    document.getElementById("display-code").innerText = code;
+                    document.getElementById("client-wait-msg").classList.remove("hidden");
+                });
+            });
+
+            peer.on('error', (err) => { alert("Lobby konnte mit dem Code nicht gefunden werden."); });
+        }
+
+        function sendData(data) {
+            if (isHost) {
+                handleIncomingData(data);
+                clientConnections.forEach(c => { if(c && c.open) c.send(data); });
+            } else {
+                if (data.type === 'CHAT_MSG') {
+                    handleIncomingData(data);
+                }
+                if(hostConnection && hostConnection.open) hostConnection.send(data);
+            }
+        }
+
+        function setupHostConnectionEvents(c) {
+            c.on('data', (data) => {
+                if (data.type === 'JOIN') {
+                    if (!players.some(p => p.name === data.name)) {
+                        players.push({ name: data.name, eliminated: false });
+                        let updateMsg = { type: 'UPDATE_PLAYERS', players: players };
+                        updatePlayerList();
+                        clientConnections.forEach(conn => conn.send(updateMsg));
+                    }
+                } else {
+                    handleIncomingData(data);
+                    clientConnections.forEach(conn => {
+                        if(conn !== c && conn.open) conn.send(data);
+                    });
+                }
+            });
+        }
+
+        function setupClientConnectionEvents(c) {
+            c.on('data', (data) => {
+                handleIncomingData(data);
+            });
+        }
+
+        function handleIncomingData(data) {
+            if (data.type === 'UPDATE_PLAYERS' || data.type === 'SYNC_PLAYERS') {
+                players = data.players;
+                updatePlayerList();
+            } else if (data.type === 'START_GAME') {
+                players = data.players;
+                startGameUI();
+            } else if (data.type === 'SUBMIT_CHOICE') {
+                pendingChoice = data.choice;
+                assignTaskCreator(data.playerName, data.choice);
+            } else if (data.type === 'ASSIGN_CREATOR') {
+                setupCreatorUI(data.targetPlayer, data.choice, data.creatorName);
+            } else if (data.type === 'SUBMIT_CUSTOM_TASK') {
+                currentTaskText = data.taskText;
+                displayTaskScreen(data.targetPlayer, data.choice, data.taskText, data.creator);
+            } else if (data.type === 'SHOW_TASK') {
+                currentTaskText = data.taskText;
+                displayTaskScreen(data.targetPlayer, data.choice, data.taskText, data.creator);
+            } else if (data.type === 'SHOW_RESULT') {
+                showFeedbackScreen(data.targetPlayer, data.choice, data.taskText, data.resultText);
+            } else if (data.type === 'VOTE_NEXT_TURN') {
+                handleNextTurnVote(data.playerName);
+            } else if (data.type === 'UPDATE_NEXT_VOTES') {
+                nextTurnVotedPlayers = data.votedList;
+                updateNextVoteUI();
+            } else if (data.type === 'EXECUTE_NEXT_TURN') {
+                executeProceedToNextTurn();
+            } else if (data.type === 'START_WHEEL') {
+                document.getElementById("woP-phase").classList.add("hidden");
+                document.getElementById("wheel-phase").classList.remove("hidden");
+            } else if (data.type === 'SPIN_WHEEL') {
+                runWheelAnimation(data.sector, data.rotation);
+            } else if (data.type === 'VOTE_NEXT_ROUND') {
+                handleNextRoundVote(data.playerName);
+            } else if (data.type === 'UPDATE_ROUND_VOTES') {
+                nextRoundVotedPlayers = data.votedList;
+                updateRoundVoteUI();
+            } else if (data.type === 'NEXT_ROUND') {
+                nextRound();
+            } else if (data.type === 'ELIMINATE') {
+                players = data.players;
+                checkGameOver();
+                updatePlayerList();
+            } else if (data.type === 'CHAT_MSG') {
+                appendChat(data.sender, data.text);
+            }
+        }
+
+        function updatePlayerList() {
+            const list = document.getElementById("player-list");
+            if (!list) return;
+            list.innerHTML = "";
+            players.forEach((p, index) => {
+                list.innerHTML += `<li><b>${index + 1}.</b> ${p.name} ${p.eliminated ? '❌ (Ausgeschieden)' : ''}</li>`;
+            });
+            if (isHost && players.length >= 1) {
+                const startBtn = document.getElementById("start-btn");
+                if(startBtn) startBtn.classList.remove("hidden");
+            }
+        }
+
+        function startOnlineGame() {
+            if (!isHost) return;
+            sendData({ type: 'START_GAME', players: players });
+            startGameUI();
+        }
+
+        function startGameUI() {
+            document.getElementById("setup").classList.add("hidden");
+            document.getElementById("lobby-wait-box").classList.add("hidden");
+            document.getElementById("woP-phase").classList.remove("hidden");
+            document.getElementById("emergency-box").classList.remove("hidden");
+            document.getElementById("chat-box-container").classList.remove("hidden");
+            updateWopTurn();
+        }
+
+        function updateWopTurn() {
+            while (currentPlayerIndex < players.length && players[currentPlayerIndex].eliminated) {
+                currentPlayerIndex++;
+            }
+
+            if (currentPlayerIndex >= players.length) {
+                if (isHost) {
+                    sendData({ type: 'START_WHEEL' });
+                    document.getElementById("woP-phase").classList.add("hidden");
+                    document.getElementById("wheel-phase").classList.remove("hidden");
+                }
+                return;
+            }
+
+            const currentP = players[currentPlayerIndex];
+            document.getElementById("wop-turn-title").innerHTML = `Am Zug: <span style="color: #ff0055;">${currentP.name}</span>`;
+            document.getElementById("wop-status-info").innerText = `Spieler ${currentPlayerIndex + 1} von ${players.length} in dieser Runde.`;
+
+            // Alle Unterbereiche für neuen Zug absolut sauber zurücksetzen und ausblenden
+            document.getElementById("wop-choice-area").classList.add("hidden");
+            document.getElementById("creator-input-area").classList.add("hidden");
+            document.getElementById("active-task-area").classList.add("hidden");
+            document.getElementById("result-feedback-area").classList.add("hidden");
+            document.getElementById("waiting-for-player-box").classList.add("hidden");
+
+            if (currentP.name === myName) {
+                document.getElementById("wop-choice-area").classList.remove("hidden");
+            } else {
+                document.getElementById("waiting-for-player-box").classList.remove("hidden");
+                document.getElementById("waiting-info-text").innerText = `Warte, bis ${currentP.name} Wahrheit oder Pflicht wählt...`;
+            }
+        }
+
+        function submitWopChoice() {
+            const choice = document.getElementById("wop-choice").value;
+            pendingChoice = choice;
+            sendData({ type: 'SUBMIT_CHOICE', playerName: myName, choice: choice });
+        }
+
+        function assignTaskCreator(targetPlayerName, choice) {
+            const activeOthers = players.filter(p => !p.eliminated && p.name !== targetPlayerName);
+            let creatorName = "";
+            if (activeOthers.length > 0) {
+                const randomCreator = activeOthers[Math.floor(Math.random() * activeOthers.length)];
+                creatorName = randomCreator.name;
+            } else {
+                creatorName = targetPlayerName;
+            }
+
+            sendData({ type: 'ASSIGN_CREATOR', targetPlayer: targetPlayerName, choice: choice, creatorName: creatorName });
+        }
+
+        function setupCreatorUI(targetPlayer, choice, creatorName) {
+            document.getElementById("wop-choice-area").classList.add("hidden");
+            document.getElementById("creator-input-area").classList.add("hidden");
+            document.getElementById("active-task-area").classList.add("hidden");
+            document.getElementById("result-feedback-area").classList.add("hidden");
+            document.getElementById("waiting-for-player-box").classList.add("hidden");
+
+            if (creatorName === myName) {
+                document.getElementById("creator-input-area").classList.remove("hidden");
+                const typeText = choice === "truth" ? "Wahrheits-Frage" : "Pflicht-Aufgabe";
+                document.getElementById("creator-instruction-title").innerText = `Du darfst die ${typeText} bestimmen!`;
+                document.getElementById("creator-target-info").innerText = `Erstelle eine Aufgabe für: ${targetPlayer}`;
+                document.getElementById("custom-task-input").value = "";
+            } else {
+                document.getElementById("waiting-for-player-box").classList.remove("hidden");
+                document.getElementById("waiting-info-text").innerText = `Das System hat ${creatorName} ausgewählt, um die ${choice === "truth" ? "Frage" : "Aufgabe"} für ${targetPlayer} zu erstellen...`;
+            }
+        }
+
+        function sendCustomTask() {
+            const taskText = document.getElementById("custom-task-input").value.trim();
+            if (!taskText) { alert("Bitte eine Aufgabe eingeben!"); return; }
+
+            const targetPlayer = players[currentPlayerIndex].name;
+            const choice = pendingChoice;
+            currentTaskText = taskText;
+
+            sendData({ type: 'SHOW_TASK', targetPlayer: targetPlayer, choice: choice, taskText: taskText, creator: myName });
+        }
+
+        function displayTaskScreen(targetPlayer, choice, taskText, creator) {
+            document.getElementById("wop-choice-area").classList.add("hidden");
+            document.getElementById("creator-input-area").classList.add("hidden");
+            document.getElementById("active-task-area").classList.add("hidden");
+            document.getElementById("result-feedback-area").classList.add("hidden");
+            document.getElementById("waiting-for-player-box").classList.add("hidden");
+
+            if (targetPlayer === myName) {
+                document.getElementById("active-task-area").classList.remove("hidden");
+
+                const typeLabel = choice === "truth" ? "💡 WAHRHEIT-FRAGE" : "🔥 PFLICHT-AUFGABE";
+                document.getElementById("task-title-text").innerText = typeLabel;
+                document.getElementById("task-assigner-info").innerText = `Erstellt von: ${creator}`;
+                document.getElementById("task-content-desc").innerText = taskText;
+
+                const answerBox = document.getElementById("answer-box");
+                const dareBox = document.getElementById("dare-box");
+
+                if (choice === "truth") {
+                    answerBox.classList.remove("hidden");
+                    dareBox.classList.add("hidden");
+                    document.getElementById("player-answer-input").value = "";
+                } else {
+                    answerBox.classList.add("hidden");
+                    dareBox.classList.remove("hidden");
+                }
+            } else {
+                document.getElementById("waiting-for-player-box").classList.remove("hidden");
+                document.getElementById("waiting-info-text").innerText = `${targetPlayer} bearbeitet gerade die ${choice === "truth" ? "Wahrheit" : "Pflicht"} von ${creator}...`;
+            }
+        }
+
+        function submitAnswer() {
+            const answer = document.getElementById("player-answer-input").value.trim();
+            if (!answer) { alert("Bitte antworte auf die Frage!"); return; }
+
+            const targetPlayer = players[currentPlayerIndex].name;
+            const choice = pendingChoice;
+            const resultText = `Antwort: "${answer}"`;
+
+            showFeedbackScreen(targetPlayer, choice, currentTaskText, resultText);
+            sendData({ type: 'SHOW_RESULT', targetPlayer: targetPlayer, choice: choice, taskText: currentTaskText, resultText: resultText });
+        }
+
+        function submitDareDone() {
+            const targetPlayer = players[currentPlayerIndex].name;
+            const choice = pendingChoice;
+            const resultText = `Pflicht erfolgreich erfüllt! ✅`;
+
+            showFeedbackScreen(targetPlayer, choice, currentTaskText, resultText);
+            sendData({ type: 'SHOW_RESULT', targetPlayer: targetPlayer, choice: choice, taskText: currentTaskText, resultText: resultText });
+        }
+
+        function showFeedbackScreen(targetPlayer, choice, taskText, resultText) {
+            document.getElementById("wop-choice-area").classList.add("hidden");
+            document.getElementById("creator-input-area").classList.add("hidden");
+            document.getElementById("active-task-area").classList.add("hidden");
+            document.getElementById("waiting-for-player-box").classList.add("hidden");
+            document.getElementById("result-feedback-area").classList.remove("hidden");
+
+            nextTurnVotedPlayers = [];
+            const btn = document.getElementById("next-turn-btn");
+            btn.disabled = false;
+            btn.style.opacity = "1";
+            updateNextVoteUI();
+
+            const typeStr = choice === "truth" ? "Wahrheit" : "Pflicht";
+            document.getElementById("feedback-player-name").innerText = `${targetPlayer} hat die ${typeStr} beantwortet/erfüllt!`;
+            
+            if (choice === "truth") {
+                document.getElementById("feedback-task-info").innerText = `Frage: "${taskText}"`;
+            } else {
+                document.getElementById("feedback-task-info").innerText = `Aufgabe: "${taskText}"`;
+            }
+
+            document.getElementById("feedback-result-box").innerText = resultText;
+        }
+
+        function voteNextTurn() {
+            const btn = document.getElementById("next-turn-btn");
+            btn.disabled = true;
+            btn.style.opacity = "0.5";
+
+            sendData({ type: 'VOTE_NEXT_TURN', playerName: myName });
+        }
+
+        function handleNextTurnVote(pName) {
+            if (!nextTurnVotedPlayers.includes(pName)) {
+                nextTurnVotedPlayers.push(pName);
+            }
+            
+            const activePlayersCount = players.filter(p => !p.eliminated).length;
+            updateNextVoteUI();
+
+            if (isHost && nextTurnVotedPlayers.length >= activePlayersCount) {
+                sendData({ type: 'EXECUTE_NEXT_TURN' });
+            }
+        }
+
+        function updateNextVoteUI() {
+            const activePlayersCount = players.filter(p => !p.eliminated).length;
+            document.getElementById("next-votes-count").innerText = nextTurnVotedPlayers.length;
+            document.getElementById("next-votes-total").innerText = activePlayersCount;
+        }
+
+        function executeProceedToNextTurn() {
+            document.getElementById("result-feedback-area").classList.add("hidden");
+            currentPlayerIndex++;
+            updateWopTurn();
+        }
+
+        function spinWheel() {
+            const randomSectorIndex = Math.floor(Math.random() * wheelSectors.length);
+            const degreesPerSector = 360 / wheelSectors.length;
+            const extraSpins = 360 * 5;
+            currentRotation += extraSpins + (randomSectorIndex * degreesPerSector) + (degreesPerSector / 2);
+
+            sendData({ type: 'SPIN_WHEEL', sector: randomSectorIndex, rotation: currentRotation });
+        }
+
+        function runWheelAnimation(sectorIndex, rotationVal) {
+            if (isSpinning) return;
+            isSpinning = true;
+            const spinBtn = document.getElementById("spin-btn");
+            if(spinBtn) spinBtn.disabled = true;
+
+            const wheel = document.getElementById("wheel-container");
+            wheel.style.transform = `rotate(-${rotationVal}deg)`;
+
+            setTimeout(() => {
+                isSpinning = false;
+                if(spinBtn) spinBtn.disabled = false;
+                
+                const selected = wheelSectors[sectorIndex];
+                document.getElementById("wheel-container").innerText = "ERGEBNIS!";
+                document.getElementById("wheel-action-title").innerText = selected.title;
+                document.getElementById("wheel-action-desc").innerText = selected.desc;
+                document.getElementById("wheel-result-box").classList.remove("hidden");
+                
+                nextRoundVotedPlayers = [];
+                const nextBtn = document.getElementById("next-round-btn");
+                if(nextBtn) {
+                    nextBtn.disabled = false;
+                    nextBtn.style.opacity = "1";
+                }
+                updateRoundVoteUI();
+            }, 3000);
+        }
+
+        function voteNextRound() {
+            const btn = document.getElementById("next-round-btn");
+            btn.disabled = true;
+            btn.style.opacity = "0.5";
+
+            sendData({ type: 'VOTE_NEXT_ROUND', playerName: myName });
+        }
+
+        function handleNextRoundVote(pName) {
+            if (!nextRoundVotedPlayers.includes(pName)) {
+                nextRoundVotedPlayers.push(pName);
+            }
+
+            const activePlayersCount = players.filter(p => !p.eliminated).length;
+            updateRoundVoteUI();
+
+            if (isHost && nextRoundVotedPlayers.length >= activePlayersCount) {
+                sendData({ type: 'NEXT_ROUND' });
+            }
+        }
+
+        function updateRoundVoteUI() {
+            const activePlayersCount = players.filter(p => !p.eliminated).length;
+            document.getElementById("round-votes-count").innerText = nextRoundVotedPlayers.length;
+            document.getElementById("round-votes-total").innerText = activePlayersCount;
+        }
+
+        function nextRound() {
+            currentPlayerIndex = 0;
+            document.getElementById("wheel-result-box").classList.add("hidden");
+            document.getElementById("wheel-phase").classList.add("hidden");
+            document.getElementById("woP-phase").classList.remove("hidden");
+            document.getElementById("wheel-container").innerText = "Rad bereit!";
+            updateWopTurn();
+        }
+
+        function triggerLeak() {
+            let activeNames = players.filter(p => !p.eliminated).map(p => p.name).join(", ");
+            let loserName = prompt(`Wer hat einkassiert / geleakt / pinkeln müssen?\n(Aktive Spieler: ${activeNames})`);
+            if (!loserName) return;
+
+            let target = players.find(p => p.name.toLowerCase() === loserName.trim().toLowerCase());
+            if (target) {
+                target.eliminated = true;
+                sendData({ type: 'ELIMINATE', players: players });
+                alert(`❌ ${target.name} hat verloren!`);
+            } else {
+                alert("Spieler nicht gefunden.");
+            }
+        }
+
+        function checkGameOver() {
+            let remaining = players.filter(p => !p.eliminated);
+            if (remaining.length <= 1) {
+                if (remaining.length === 1) {
+                    alert(`🏆 SPIELENDE! Gewinner ist ${remaining[0].name}!`);
+                } else {
+                    alert(`💀 Alle Spieler haben verloren!`);
+                }
+                location.reload();
+            }
+        }
+
+        function sendChatMessage() {
+            const input = document.getElementById("chat-input");
+            const text = input.value.trim();
+            if(!text) return;
+
+            sendData({ type: 'CHAT_MSG', sender: myName, text: text });
+            input.value = "";
+        }
+
+        function appendChat(sender, text) {
+            const box = document.getElementById("chat-messages");
+            if(!box) return;
+            box.innerHTML += `<div class="chat-msg"><b>${sender}:</b> ${text}</div>`;
+            box.scrollTop = box.scrollHeight;
+        }
+    </script>
+</body>
+</html>
