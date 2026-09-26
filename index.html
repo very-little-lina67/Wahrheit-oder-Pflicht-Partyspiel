@@ -301,7 +301,7 @@
                     { title: "🔄 Doppel-Schluck", desc: "Jeder verteilt 2 Schlucke an eine Person seiner Wahl und trinkt selbst 2." },
                     { title: "⚡ Der Blasen-Tanz", desc: "Alle müssen sofort aufstehen und 30 Sekunden lang auf der Stelle hüpfen, ohne dass etwas passiert!" },
                     { title: "🍻 Alle trinken!", desc: "Jeder Spieler am PC muss jetzt sofort einen großen Schluck aus seinem aktuellen Glas nehmen!" },
-                    { title: "🚫 3 Runden Chat-Verbot", desc: "Ab jetzt darf für die nächsten 3 Runden niemand in den Chat schreiben! Wer tippt, trinkt 3 Schlucke." },
+                    { title: "🚫 3 Runden Chat-Verbot", desc: "Ab jetzt darf für the nächsten 3 Runden niemand in den Chat schreiben! Wer tippt, trinkt 3 Schlucke." },
                     { title: "💧 Wasser-Pflicht", desc: "Wer gerade kein Bier oder Longdrink dasteht hat, muss stattdessen Wasser in einem Zug austrinken!" },
                     { title: "🤫 Mute-Pflicht", desc: "In den nächsten 2 Runden darf niemand etwas sagen. Wer redet oder Geräusche macht, trinkt 3 Schlucke." },
                     { title: "🔄 Doppel-Schluck (Online)", desc: "Jeder verteilt 2 Schlucke an eine Person seiner Wahl im Sprachchat und trinkt selbst 2." },
@@ -442,7 +442,6 @@
             if (!myName) { alert(t.alertName); return; }
             isHost = true;
 
-            // Generiere einen sauberen Host-ID Code (Zahlen + Kleinbuchstaben um Konflikte zu vermeiden)
             activeLobbyCode = "blase" + Math.floor(1000 + Math.random() * 9000);
             
             peer = new Peer(activeLobbyCode, {
@@ -473,7 +472,6 @@
         function joinGame() {
             const t = translations[currentLang];
             myName = document.getElementById("player-input").value.trim();
-            // Code wird genau so übernommen, wie er eingegeben wurde, aber für die Peer-Verbindung kleingeschrieben (da IDs oft case-sensitive sind)
             const rawCode = document.getElementById("lobby-code-input").value.trim();
             const code = rawCode.toLowerCase();
             
@@ -580,7 +578,14 @@
             } else if (data.type === 'START_WHEEL') {
                 document.getElementById("woP-phase").classList.add("hidden");
                 document.getElementById("wheel-phase").classList.remove("hidden");
+                // Stelle sicher, dass die UI fürs Rad sauber zurückgesetzt ist
+                document.getElementById("wheel-result-box").classList.add("hidden");
+                const spinBtn = document.getElementById("spin-btn");
+                if(spinBtn) spinBtn.disabled = false;
             } else if (data.type === 'SPIN_WHEEL') {
+                // UI zwingend für alle auf Rad-Modus schalten
+                document.getElementById("woP-phase").classList.add("hidden");
+                document.getElementById("wheel-phase").classList.remove("hidden");
                 runWheelAnimation(data.sector, data.rotation);
             } else if (data.type === 'VOTE_NEXT_ROUND') {
                 handleNextRoundVote(data.playerName);
@@ -638,6 +643,9 @@
                     sendData({ type: 'START_WHEEL' });
                     document.getElementById("woP-phase").classList.add("hidden");
                     document.getElementById("wheel-phase").classList.remove("hidden");
+                    document.getElementById("wheel-result-box").classList.add("hidden");
+                    const spinBtn = document.getElementById("spin-btn");
+                    if(spinBtn) spinBtn.disabled = false;
                 }
                 return;
             }
