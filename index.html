@@ -805,7 +805,7 @@
             }
         }
 
-        function ensureMasterAccountExists() {
+         function ensureMasterAccountExists() {
             let users = getGlobalUsers();
             if (!users["master@vibe.party"]) {
                 users["master@vibe.party"] = { name: "MasterAdmin", pass: "master1234", role: "master" };
@@ -815,6 +815,7 @@
                 saveGlobalUsers(users);
             }
         }
+
 
         function loadUserData() {
             if (!myEmail) return;
