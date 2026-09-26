@@ -796,7 +796,7 @@
             players = state.players;
             gameState = state.gameState;
             currentTurnIndex = state.currentTurnIndex;
-            currentChooser = state.currentChooser;
+            currentChooser= state.currentChooser;
             currentTarget = state.currentTarget;
             currentChoiceType = state.currentChoiceType;
             activeTaskText = state.activeTaskText;
@@ -849,20 +849,21 @@
                     let creatorName = "";
 
                     if (currentChoiceType === 'truth') {
-                        isCreator = (activePlayer.name === myName);
-                        creatorName = activePlayer.name;
-                    } else {
-                        isCreator = (currentTarget === myName && activePlayer.name !== myName);
+                        isCreator = (currentTarget === myName);
                         creatorName = currentTarget;
+                    } else {
+                        isCreator = (activePlayer.name !== myName && players.some(p => p.name === myName));
+                        creatorName = activePlayer.name;
                     }
 
                     if (isCreator) {
                         creatorArea.classList.remove("hidden");
-                        document.getElementById("creator-instruction-title").innerText = currentChoiceType === 'truth' ? (currentLang === 'de' ? `Stelle ${currentTarget} eine Wahrheits-Frage!` : `Ask ${currentTarget} a truth question!`) : (currentLang === 'de' ? `Erfinde eine Pflicht für ${activePlayer.name}!` : `Create a dare for ${activePlayer.name}!`);
-                        document.getElementById("creator-target-info").innerText = currentLang === 'de' ? `Zielperson: ${currentChoiceType === 'truth' ? currentTarget : activePlayer.name}` : `Target: ${currentChoiceType === 'truth' ? currentTarget : activePlayer.name}`;
+                        document.getElementById("creator-instruction-title").innerText = currentChoiceType === 'truth' ? (currentLang === 'de' ? `Stelle ${activePlayer.name} eine Wahrheits-Frage!` : `Ask ${activePlayer.name} a truth question!`) : (currentLang === 'de' ? `Erfinde eine Pflicht für ${activePlayer.name}!` : `Create a dare for ${activePlayer.name}!`);
+                        document.getElementById("creator-target-info").innerText = currentLang === 'de' ? `Zielperson: ${activePlayer.name}` : `Target: ${activePlayer.name}`;
                     } else {
                         waitingPlayerBox.classList.remove("hidden");
-                        document.getElementById("waiting-info-text").innerText = currentLang === 'de' ? `Warte, bis ${creatorName} die Aufgabe/Frage eingibt...` : `Waiting for ${creatorName} to enter task/question...`;
+                        let waitingForWho = currentChoiceType === 'truth' ? currentTarget : "ein anderer Spieler";
+                        document.getElementById("waiting-info-text").innerText = currentLang === 'de' ? `Warte, bis ${waitingForWho} die Aufgabe/Frage eingibt...` : `Waiting for task input...`;
                     }
                 } else if (activeTaskText && !activeTaskText.startsWith("Antwort:") && activeTaskText !== "Pflicht erfolgreich absolviert!" && activeTaskText !== "Dare successfully completed!") {
                     let isTaskTarget = (currentChoiceType === 'truth' ? currentTarget === myName : activePlayer.name === myName);
@@ -870,7 +871,7 @@
                     if (isTaskTarget) {
                         activeTaskArea.classList.remove("hidden");
                         document.getElementById("task-title-text").innerText = currentChoiceType === 'truth' ? (currentLang === 'de' ? "💡 Deine Wahrheits-Frage:" : "💡 Your Truth Question:") : (currentLang === 'de' ? "🔥 Deine Pflicht-Aufgabe:" : "🔥 Your Dare Task:");
-                        document.getElementById("task-assigner-info").innerText = currentLang === 'de' ? `Von: ${activePlayer.name}` : `From: ${activePlayer.name}`;
+                        document.getElementById("task-assigner-info").innerText = currentLang === 'de' ? `Von: ${currentChoiceType === 'truth' ? currentTarget : activePlayer.name}` : `From: ${activePlayer.name}`;
                         document.getElementById("task-content-desc").innerText = activeTaskText;
 
                         if (currentChoiceType === 'truth') {
