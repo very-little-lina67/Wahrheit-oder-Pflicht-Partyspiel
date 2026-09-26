@@ -249,8 +249,8 @@
             <input type="password" id="auth-password" placeholder="Your secure password">
             
             <div style="display: flex; gap: 10px; margin-top: 15px;">
-                <button id="register-btn" onclick="registerUser()">Register</button>
-                <button id="login-btn" onclick="loginUser()">Log In</button>
+                <button id="ui-btn-register" onclick="registerUser()">Register</button>
+                <button id="ui-btn-login" onclick="loginUser()">Log In</button>
             </div>
         </div>
     </div>
@@ -982,6 +982,7 @@
         });
 
         function registerUser() {
+                function registerUser() {
             const email = document.getElementById("auth-email").value.trim().toLowerCase();
             const username = document.getElementById("auth-username").value.trim();
             const password = document.getElementById("auth-password").value.trim();
@@ -994,9 +995,28 @@
             let users = getGlobalUsers();
 
             if (users[email]) {
-                alert("Ein Account mit dieser E-Mail existiert bereits. Bitte einloggen!");
+                alert(translations[currentLang].alertAccountExists || "Ein Account mit dieser E-Mail existiert bereits. Bitte einloggen!");
                 return;
             }
+
+            users[email] = { name: username, pass: password, role: "user" };
+            saveGlobalUsers(users);
+
+            myEmail = email;
+            myName = username;
+            myRole = "user";
+
+            localStorage.setItem("wop_user_email_v6", myEmail);
+            localStorage.setItem("wop_user_name_v6", myName);
+
+            if (!isHost && hostConnection && hostConnection.open) {
+                hostConnection.send({ type: 'REGISTER_USER', email: email, name: username, pass: password, role: "user" });
+            }
+            
+            loadUserData();
+            alert(translations[currentLang].alertRegistered);
+            showLoggedInState();
+        }
 
             // Neuen User speichern
             users[email] = { name: username, pass: password, role: "user" };
@@ -1579,10 +1599,13 @@
             let target = players.find(p => p.name.toLowerCase() === targetName?.trim().toLowerCase());
             if (target) {
                 target.eliminated = true;
-                userStreak = 0; saveUserData(); updateHUD();
+                userStreak = 0; 
+                saveUserData(); 
+                updateHUD();
                 sendData({ type: 'ELIMINATE', players: players });
-                input.value = "";
+            }
         }
+
 
         function appendChat(sender, text) {
             let box = document.getElementById("chat-messages");
