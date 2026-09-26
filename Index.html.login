@@ -413,9 +413,8 @@
                     <option value="truth" id="ui-opt-truth">Truth (+XP / +10 Coins)</option>
                     <option value="dare" id="ui-opt-dare">Dare (+XP / +20 Coins)</option>
                 </select>
-                <div style="display: flex; gap: 10px;">
-                    <button onclick="submitWopChoice()" id="ui-select-btn" style="flex:2;">Select 🎲</button>
-                    <button class="btn-blue" onclick="useJoker()" id="ui-joker-btn" style="flex:1; background:#9c27b0; color:white;">🃏 Joker (-30 Coins)</button>
+                <div>
+                    <button onclick="submitWopChoice()" id="ui-select-btn" style="width: 100%;">Select 🎲</button>
                 </div>
             </div>
 
@@ -534,11 +533,10 @@
                 startBtn: "Spiel starten! 🔥",
                 clientWaitMsg: "Mit Lobby verbunden! Warte darauf, dass der Host startet...",
                 turnTitle: "Am Zug: ",
-                choiceLabel: "Was wählst du?",
+                choiceLabel: "What do you choose?",
                 optTruth: "Wahrheit (+XP / +10 Coins)",
                 optDare: "Pflicht (+XP / +20 Coins)",
                 selectBtn: "Auswählen 🎲",
-                jokerBtn: "🃏 Joker (-30 Coins)",
                 sendTaskBtn: "An Spieler senden 🚀",
                 taskInputPlaceholder: "Tippe hier die Frage oder Aufgabe ein...",
                 answerLabel: "Deine Antwort:",
@@ -629,7 +627,6 @@
                 optTruth: "Truth (+XP / +10 Coins)",
                 optDare: "Dare (+XP / +20 Coins)",
                 selectBtn: "Select 🎲",
-                jokerBtn: "🃏 Joker (-30 Coins)",
                 sendTaskBtn: "Send to player 🚀",
                 taskInputPlaceholder: "Type your question or dare here...",
                 answerLabel: "Your Answer:",
@@ -745,7 +742,6 @@
             document.getElementById("ui-opt-truth").innerText = t.optTruth;
             document.getElementById("ui-opt-dare").innerText = t.optDare;
             document.getElementById("ui-select-btn").innerText = t.selectBtn;
-            document.getElementById("ui-joker-btn").innerText = t.jokerBtn;
             document.getElementById("ui-send-task-btn").innerText = t.sendTaskBtn;
             document.getElementById("custom-task-input").placeholder = t.taskInputPlaceholder;
             document.getElementById("ui-answer-label").innerText = t.answerLabel;
@@ -806,7 +802,7 @@
             }
         }
 
-         function ensureMasterAccountExists() {
+        function ensureMasterAccountExists() {
             let users = getGlobalUsers();
             if (!users["master@vibe.party"]) {
                 users["master@vibe.party"] = { name: "MasterAdmin", pass: "master1234", role: "master" };
@@ -816,7 +812,6 @@
                 saveGlobalUsers(users);
             }
         }
-
 
         function loadUserData() {
             if (!myEmail) return;
@@ -994,7 +989,7 @@
             let users = getGlobalUsers();
 
             if (users[email]) {
-                alert("Ein Account mit dieser E-Mail existiert bereits. Bitte einloggen!");
+                alert(translations[currentLang]?.alertAccountExists || "Ein Account mit dieser E-Mail existiert bereits. Bitte einloggen!");
                 return;
             }
 
@@ -1018,37 +1013,15 @@
             alert(translations[currentLang]?.alertRegistered || "Erfolgreich registriert!");
             showLoggedInState();
         }
-            
-            // Neuen User speichern
-            users[email] = { name: username, pass: password, role: "user" };
-            saveGlobalUsers(users);
 
-            myEmail = email;
-            myName = username;
-            myRole = "user";
-
-            localStorage.setItem("wop_user_email_v6", myEmail);
-            localStorage.setItem("wop_user_name_v6", myName);
-            
-            loadUserData();
-            showLoggedInState();
-        }
-
-            // Falls Client, an Host melden
-            if (!isHost && hostConnection && hostConnection.open) {
-                hostConnection.send({ type: 'REGISTER_USER', email: email, name: username, pass: password, role: assignedRole });
-            }
-
-            loadUserData();
-            alert(translations[currentLang].alertRegistered);
-            showLoggedInState();
-        }
-
-         function loginUser() {
+        function loginUser() {
             const email = document.getElementById("auth-email").value.trim().toLowerCase();
-            const username = document.getElementById("auth-username").value.trim();
             const password = document.getElementById("auth-password").value.trim();
-            if (!email || !username || !password) { alert(translations[currentLang].alertEmailNamePass); return; }
+            
+            if (!email || !password) { 
+                alert(translations[currentLang]?.alertEmailNamePass || "Bitte E-Mail und Passwort eingeben!"); 
+                return; 
+            }
 
             ensureMasterAccountExists();
             let users = getGlobalUsers();
@@ -1057,17 +1030,16 @@
                 myEmail = email;
                 myName = users[email].name; 
                 myRole = users[email].role || "user";
-                if(email === "master@vibe.party") myRole = "master";
+                if (email === "master@vibe.party") myRole = "master";
 
                 localStorage.setItem("wop_user_email_v6", myEmail);
                 localStorage.setItem("wop_user_name_v6", myName);
                 loadUserData();
                 showLoggedInState();
             } else {
-                alert(translations[currentLang].alertNoAccount);
+                alert(translations[currentLang]?.alertNoAccount || "Falsche Anmeldedaten oder Konto nicht gefunden!");
             }
         }
-
 
         function logoutUser() {
             localStorage.removeItem("wop_user_email_v6");
@@ -1216,24 +1188,11 @@
             }
         }
 
-        function deletFeedback(idx) {
+        function deleteFeedback(idx) {
             let fbList = getGlobalFeedback();
             fbList.splice(idx, 1);
             saveGlobalFeedback(fbList);
             renderAdminFeedbackList();
-        }
-
-        function useJoker() {
-            if (userCoins >= 30) {
-                userCoins -= 30;
-                saveUserData();
-                updateHUD();
-                alert(currentLang === 'de' ? "🃏 Joker eingesetzt! Du hast diese Aufgabe übersprungen und darfst weiter mitspielen." : "🃏 Joker used! You skipped this task and can keep playing.");
-                currentPlayerIndex++;
-                updateWopTurn();
-            } else {
-                alert(currentLang === 'de' ? "Nicht genug Coins für einen Joker (Kosten: 30 Coins)!" : "Not enough coins for a joker (Cost: 30 coins)!");
-            }
         }
 
         // --- NETZWERK & PEERJS SPIEL-LOGIK ---
@@ -1606,11 +1565,18 @@
             }
         }
 
-
         function appendChat(sender, text) {
             let box = document.getElementById("chat-messages");
             box.innerHTML += `<div class="chat-msg"><b>${sender}:</b> ${text}</div>`;
             box.scrollTop = box.scrollHeight;
+        }
+
+        function sendChatMessage() {
+            let input = document.getElementById("chat-input");
+            let text = input.value.trim();
+            if(!text) return;
+            sendData({ type: 'CHAT_MSG', sender: myName, text: text });
+            input.value = "";
         }
     </script>
 </body>
