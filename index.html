@@ -1010,7 +1010,7 @@
             showLoggedInState();
         }
 
-        function loginUser() {
+         function loginUser() {
             const email = document.getElementById("auth-email").value.trim().toLowerCase();
             const username = document.getElementById("auth-username").value.trim();
             const password = document.getElementById("auth-password").value.trim();
@@ -1019,9 +1019,9 @@
             ensureMasterAccountExists();
             let users = getGlobalUsers();
 
-            if (users[email] && users[email].name.toLowerCase() === username.toLowerCase() && users[email].pass === password) {
+            if (users[email] && users[email].pass === password) {
                 myEmail = email;
-                myName = users[email].name;
+                myName = users[email].name; 
                 myRole = users[email].role || "user";
                 if(email === "master@vibe.party") myRole = "master";
 
@@ -1033,6 +1033,7 @@
                 alert(translations[currentLang].alertNoAccount);
             }
         }
+
 
         function logoutUser() {
             localStorage.removeItem("wop_user_email_v6");
