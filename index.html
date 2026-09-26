@@ -1197,4 +1197,399 @@
             }
         }
 
-        function delet
+        function deletFeedback(idx) {
+            let fbList = getGlobalFeedback();
+            fbList.splice(idx, 1);
+            saveGlobalFeedback(fbList);
+            renderAdminFeedbackList();
+        }
+
+        function useJoker() {
+            if (userCoins >= 30) {
+                userCoins -= 30;
+                saveUserData();
+                updateHUD();
+                alert(currentLang === 'de' ? "🃏 Joker eingesetzt! Du hast diese Aufgabe übersprungen und darfst weiter mitspielen." : "🃏 Joker used! You skipped this task and can keep playing.");
+                currentPlayerIndex++;
+                updateWopTurn();
+            } else {
+                alert(currentLang === 'de' ? "Nicht genug Coins für einen Joker (Kosten: 30 Coins)!" : "Not enough coins for a joker (Cost: 30 coins)!");
+            }
+        }
+
+        // --- NETZWERK & PEERJS SPIEL-LOGIK ---
+        let peer = null;
+        let hostConnection = null;
+        let clientConnections = [];
+        let isHost = false;
+        let players = [];
+        let currentPlayerIndex = 0;
+        let pendingChoice = "";
+        let currentTaskText = "";
+        let currentRotation = 0;
+        let nextTurnVotedPlayers = [];
+        let nextRoundVotedPlayers = [];
+        let activeLobbyCode = "";
+
+        function hostGame() {
+            isHost = true;
+            activeLobbyCode = "vibe" + Math.floor(1000 + Math.random() * 9000);
+            
+            peer = new Peer(activeLobbyCode, { host: '0.peerjs.com', port: 443, secure: true });
+
+            peer.on('open', (id) => {
+                players = [{ name: myName, accessory: equippedAccessory, eliminated: false }];
+                document.getElementById("setup").classList.add("hidden");
+                document.getElementById("lobby-wait-box").classList.remove("hidden");
+                document.getElementById("display-code").innerText = activeLobbyCode.toUpperCase();
+                document.getElementById("start-btn").classList.remove("hidden");
+                updatePlayerList();
+            });
+
+            peer.on('connection', (incomingConn) => {
+                clientConnections.push(incomingConn);
+                setupHostConnectionEvents(incomingConn);
+                incomingConn.on('open', () => {
+                    incomingConn.send({ type: 'SYNC_USERS', users: getGlobalUsers() });
+                    incomingConn.send({ type: 'SYNC_FEEDBACK', feedback: getGlobalFeedback() });
+                });
+            });
+        }
+
+        function joinGame() {
+            const rawCode = document.getElementById("lobby-code-input").value.trim();
+            const code = rawCode.toLowerCase();
+            if (!rawCode) { alert(translations[currentLang].alertNameCode); return; }
+            isHost = false;
+
+            peer = new Peer({ host: '0.peerjs.com', port: 443, secure: true });
+
+            peer.on('open', () => {
+                hostConnection = peer.connect(code, { reliable: true });
+                hostConnection.on('open', () => {
+                    setupClientConnectionEvents(hostConnection);
+                    hostConnection.send({ type: 'JOIN', name: myName, accessory: equippedAccessory });
+                    
+                    document.getElementById("setup").classList.add("hidden");
+                    document.getElementById("lobby-wait-box").classList.remove("hidden");
+                    document.getElementById("display-code").innerText = rawCode.toUpperCase();
+                    document.getElementById("client-wait-msg").classList.remove("hidden");
+                });
+            });
+        }
+
+        function sendData(data) {
+            if (isHost) {
+                handleIncomingData(data);
+                clientConnections.forEach(c => { if(c && c.open) c.send(data); });
+            } else {
+                if (data.type === 'CHAT_MSG') handleIncomingData(data);
+                if(hostConnection && hostConnection.open) hostConnection.send(data);
+            }
+        }
+
+        function setupHostConnectionEvents(c) {
+            c.on('data', (data) => {
+                if (data.type === 'JOIN') {
+                    if (!players.some(p => p.name === data.name)) {
+                        players.push({ name: data.name, accessory: data.accessory, eliminated: false });
+                        let updateMsg = { type: 'UPDATE_PLAYERS', players: players };
+                        updatePlayerList();
+                        clientConnections.forEach(conn => conn.send(updateMsg));
+                    }
+                } else if (data.type === 'REGISTER_USER') {
+                    let users = getGlobalUsers();
+                    users[data.email] = { name: data.name, pass: data.pass, role: data.role };
+                    saveGlobalUsers(users);
+                } else if (data.type === 'SUBMIT_FEEDBACK') {
+                    saveGlobalFeedback(data.feedback);
+                } else {
+                    handleIncomingData(data);
+                    clientConnections.forEach(conn => { if(conn !== c && conn.open) conn.send(data); });
+                }
+            });
+        }
+
+        function setupClientConnectionEvents(c) {
+            c.on('data', (data) => { handleIncomingData(data); });
+        }
+
+        function handleIncomingData(data) {
+            if (data.type === 'UPDATE_PLAYERS') {
+                players = data.players;
+                updatePlayerList();
+            } else if (data.type === 'START_GAME') {
+                players = data.players;
+                startGameUI();
+            } else if (data.type === 'SUBMIT_CHOICE') {
+                pendingChoice = data.choice;
+                assignTaskCreator(data.playerName, data.choice);
+            } else if (data.type === 'ASSIGN_CREATOR') {
+                setupCreatorUI(data.targetPlayer, data.choice, data.creatorName);
+            } else if (data.type === 'SHOW_TASK') {
+                currentTaskText = data.taskText;
+                displayTaskScreen(data.targetPlayer, data.choice, data.taskText, data.creator);
+            } else if (data.type === 'SHOW_RESULT') {
+                showFeedbackScreen(data.targetPlayer, data.choice, data.taskText, data.resultText);
+            } else if (data.type === 'VOTE_NEXT_TURN') {
+                handleNextTurnVote(data.playerName);
+            } else if (data.type === 'EXECUTE_NEXT_TURN') {
+                executeProceedToNextTurn();
+            } else if (data.type === 'START_WHEEL') {
+                document.getElementById("woP-phase").classList.add("hidden");
+                document.getElementById("wheel-phase").classList.remove("hidden");
+            } else if (data.type === 'SPIN_WHEEL') {
+                runWheelAnimation(data.sector, data.rotation);
+            } else if (data.type === 'VOTE_NEXT_ROUND') {
+                handleNextRoundVote(data.playerName);
+            } else if (data.type === 'NEXT_ROUND') {
+                nextRound();
+            } else if (data.type === 'ELIMINATE') {
+                players = data.players;
+                updatePlayerList();
+            } else if (data.type === 'CHAT_MSG') {
+                appendChat(data.sender, data.text);
+            } else if (data.type === 'SYNC_USERS') {
+                localStorage.setItem("wop_users_global_v6", JSON.stringify(data.users));
+                if (document.getElementById("admin-modal").classList.contains("hidden") === false) {
+                    renderAdminUserList();
+                }
+            } else if (data.type === 'SYNC_FEEDBACK') {
+                localStorage.setItem("wop_feedback_global_v6", JSON.stringify(data.feedback));
+                if (document.getElementById("admin-modal").classList.contains("hidden") === false) {
+                    renderAdminFeedbackList();
+                }
+            }
+        }
+
+        function updatePlayerList() {
+            const list = document.getElementById("player-list");
+            if (!list) return;
+            list.innerHTML = "";
+            players.forEach((p, index) => {
+                list.innerHTML += `<li><b>${index + 1}.</b> ${p.accessory || ''} ${p.name} ${p.eliminated ? '❌' : ''}</li>`;
+            });
+            if (isHost && players.length >= 1) {
+                document.getElementById("start-btn").classList.remove("hidden");
+            }
+        }
+
+        function startOnlineGame() {
+            if (!isHost) return;
+            sendData({ type: 'START_GAME', players: players });
+            startGameUI();
+        }
+
+        function startGameUI() {
+            document.getElementById("auth-modal").classList.add("hidden");
+            document.getElementById("account-modal").classList.add("hidden");
+            document.getElementById("setup").classList.add("hidden");
+            document.getElementById("lobby-wait-box").classList.add("hidden");
+            document.getElementById("woP-phase").classList.remove("hidden");
+            document.getElementById("emergency-box").classList.remove("hidden");
+            document.getElementById("chat-box-container").classList.remove("hidden");
+            updateWopTurn();
+        }
+
+        function updateWopTurn() {
+            while (currentPlayerIndex < players.length && players[currentPlayerIndex].eliminated) {
+                currentPlayerIndex++;
+            }
+            if (currentPlayerIndex >= players.length) {
+                if (isHost) {
+                    sendData({ type: 'START_WHEEL' });
+                    document.getElementById("woP-phase").classList.add("hidden");
+                    document.getElementById("wheel-phase").classList.remove("hidden");
+                }
+                return;
+            }
+
+            let currentP = players[currentPlayerIndex];
+            document.getElementById("wop-turn-title").innerHTML = translations[currentLang].turnTitle + `<span style="color: var(--primary-color);">${currentP.name}</span>`;
+            
+            document.getElementById("wop-choice-area").classList.add("hidden");
+            document.getElementById("creator-input-area").classList.add("hidden");
+            document.getElementById("active-task-area").classList.add("hidden");
+            document.getElementById("result-feedback-area").classList.add("hidden");
+            document.getElementById("waiting-for-player-box").classList.add("hidden");
+
+            if (currentP.name === myName) {
+                document.getElementById("wop-choice-area").classList.remove("hidden");
+            } else {
+                document.getElementById("waiting-for-player-box").classList.remove("hidden");
+                document.getElementById("waiting-info-text").innerText = (currentLang === 'de' ? `Warte, bis ${currentP.name} wählt...` : `Waiting for ${currentP.name} to choose...`);
+            }
+        }
+
+        function submitWopChoice() {
+            let choice = document.getElementById("wop-choice").value;
+            pendingChoice = choice;
+            sendData({ type: 'SUBMIT_CHOICE', playerName: myName, choice: choice });
+        }
+
+        function assignTaskCreator(targetName, choice) {
+            let activeOthers = players.filter(p => !p.eliminated && p.name !== targetName);
+            let creatorName = activeOthers.length > 0 ? activeOthers[Math.floor(Math.random() * activeOthers.length)].name : targetName;
+            sendData({ type: 'ASSIGN_CREATOR', targetPlayer: targetName, choice: choice, creatorName: creatorName });
+        }
+
+        function setupCreatorUI(targetPlayer, choice, creatorName) {
+            document.getElementById("wop-choice-area").classList.add("hidden");
+            document.getElementById("waiting-for-player-box").classList.add("hidden");
+            if (creatorName === myName) {
+                document.getElementById("creator-input-area").classList.remove("hidden");
+                document.getElementById("creator-instruction-title").innerText = (currentLang === 'de' ? "Erstelle eine Aufgabe für: " : "Create a task for: ") + targetPlayer;
+            } else {
+                document.getElementById("waiting-for-player-box").classList.add("hidden");
+                document.getElementById("waiting-for-player-box").classList.remove("hidden");
+                document.getElementById("waiting-info-text").innerText = (currentLang === 'de' ? `Warte auf ${creatorName}...` : `Waiting for ${creatorName}...`);
+            }
+        }
+
+        function sendCustomTask() {
+            let taskText = document.getElementById("custom-task-input").value.trim();
+            if (!taskText) { alert(translations[currentLang].alertTask); return; }
+            let targetPlayer = players[currentPlayerIndex].name;
+            currentTaskText = taskText;
+            document.getElementById("creator-input-area").classList.add("hidden");
+            document.getElementById("custom-task-input").value = "";
+            sendData({ type: 'SHOW_TASK', targetPlayer: targetPlayer, choice: pendingChoice, taskText: taskText, creator: myName });
+        }
+
+        function displayTaskScreen(targetPlayer, choice, taskText, creator) {
+            document.getElementById("wop-choice-area").classList.add("hidden");
+            document.getElementById("creator-input-area").classList.add("hidden");
+            document.getElementById("waiting-for-player-box").classList.add("hidden");
+
+            if (targetPlayer === myName) {
+                document.getElementById("active-task-area").classList.remove("hidden");
+                document.getElementById("task-title-text").innerText = choice === "truth" ? (currentLang === 'de' ? "💡 WAHRHEIT" : "💡 TRUTH") : (currentLang === 'de' ? "🔥 PFLICHT" : "🔥 DARE");
+                document.getElementById("task-assigner-info").innerText = (currentLang === 'de' ? "Von: " : "From: ") + creator;
+                document.getElementById("task-content-desc").innerText = taskText;
+                
+                if (choice === "truth") {
+                    document.getElementById("answer-box").classList.remove("hidden");
+                    document.getElementById("dare-box").classList.add("hidden");
+                    document.getElementById("player-answer-input").value = "";
+                } else {
+                    document.getElementById("answer-box").classList.add("hidden");
+                    document.getElementById("dare-box").classList.remove("hidden");
+                }
+            } else {
+                document.getElementById("waiting-for-player-box").classList.remove("hidden");
+                document.getElementById("waiting-info-text").innerText = (currentLang === 'de' ? `${targetPlayer} ist dran...` : `${targetPlayer}'s turn...`);
+            }
+        }
+
+        function submitAnswer() {
+            let ans = document.getElementById("player-answer-input").value.trim();
+            if (!ans) { alert(translations[currentLang].alertAnswer); return; }
+            finishTaskAndReward();
+            sendData({ type: 'SHOW_RESULT', targetPlayer: players[currentPlayerIndex].name, choice: pendingChoice, taskText: currentTaskText, resultText: (currentLang === 'de' ? `Antwort: "${ans}"` : `Answer: "${ans}"`) });
+        }
+
+        function submitDareDone() {
+            finishTaskAndReward();
+            sendData({ type: 'SHOW_RESULT', targetPlayer: players[currentPlayerIndex].name, choice: pendingChoice, taskText: currentTaskText, resultText: (currentLang === 'de' ? "Erfolgreich erfüllt! ✅" : "Successfully completed! ✅") });
+        }
+
+        function finishTaskAndReward() {
+            let isDare = (pendingChoice === "dare");
+            if (players[currentPlayerIndex].name === myName) {
+                addRewards(isDare);
+            }
+        }
+
+        function showFeedbackScreen(targetPlayer, choice, taskText, resultText) {
+            document.getElementById("active-task-area").classList.add("hidden");
+            document.getElementById("result-feedback-area").classList.remove("hidden");
+            document.getElementById("next-turn-btn").disabled = false;
+            document.getElementById("feedback-player-name").innerText = (currentLang === 'de' ? `${targetPlayer} hat abgeschlossen!` : `${targetPlayer} finished!`);
+            document.getElementById("feedback-task-info").innerText = (currentLang === 'de' ? `Aufgabe: "${taskText}"` : `Task: "${taskText}"`);
+            document.getElementById("feedback-result-box").innerText = resultText;
+            nextTurnVotedPlayers = [];
+        }
+
+        function voteNextTurn() {
+            document.getElementById("next-turn-btn").disabled = true;
+            sendData({ type: 'VOTE_NEXT_TURN', playerName: myName });
+        }
+
+        function handleNextTurnVote(pName) {
+            if (!nextTurnVotedPlayers.includes(pName)) nextTurnVotedPlayers.push(pName);
+            let activeCount = players.filter(p => !p.eliminated).length;
+            document.getElementById("next-votes-count").innerText = nextTurnVotedPlayers.length;
+            document.getElementById("next-votes-total").innerText = activeCount;
+
+            if (isHost && nextTurnVotedPlayers.length >= activeCount) {
+                sendData({ type: 'EXECUTE_NEXT_TURN' });
+            }
+        }
+
+        function executeProceedToNextTurn() {
+            document.getElementById("result-feedback-area").classList.add("hidden");
+            currentPlayerIndex++;
+            updateWopTurn();
+        }
+
+        function spinWheel() {
+            let sectors = translations[currentLang].wheelSectors;
+            let idx = Math.floor(Math.random() * sectors.length);
+            currentRotation += 1800 + (idx * (360 / sectors.length));
+            sendData({ type: 'SPIN_WHEEL', sector: idx, rotation: currentRotation });
+        }
+
+        function runWheelAnimation(sectorIndex, rotationVal) {
+            document.getElementById("spin-btn").disabled = true;
+            let wheel = document.getElementById("wheel-container");
+            wheel.style.transform = `rotate(-${rotationVal}deg)`;
+            setTimeout(() => {
+                document.getElementById("spin-btn").disabled = false;
+                let selected = translations[currentLang].wheelSectors[sectorIndex];
+                wheel.innerText = (currentLang === 'de' ? "ERGEBNIS!" : "RESULT!");
+                document.getElementById("wheel-action-title").innerText = selected.title;
+                document.getElementById("wheel-action-desc").innerText = selected.desc;
+                document.getElementById("wheel-result-box").classList.remove("hidden");
+                document.getElementById("next-round-btn").disabled = false;
+                userXP += 50; userCoins += 30; saveUserData(); updateHUD();
+            }, 3000);
+        }
+
+        function voteNextRound() {
+            document.getElementById("next-round-btn").disabled = true;
+            sendData({ type: 'VOTE_NEXT_ROUND', playerName: myName });
+        }
+
+        function handleNextRoundVote(pName) {
+            if (!nextRoundVotedPlayers.includes(pName)) nextRoundVotedPlayers.push(pName);
+            let activeCount = players.filter(p => !p.eliminated).length;
+            if (isHost && nextRoundVotedPlayers.length >= activeCount) sendData({ type: 'NEXT_ROUND' });
+        }
+
+        function nextRound() {
+            currentPlayerIndex = 0;
+            nextRoundVotedPlayers = [];
+            document.getElementById("wheel-result-box").classList.add("hidden");
+            document.getElementById("wheel-phase").classList.add("hidden");
+            document.getElementById("woP-phase").classList.remove("hidden");
+            updateWopTurn();
+        }
+
+        function triggerLeak() {
+            let targetName = prompt(currentLang === 'de' ? "Wer hat geleakt / aufgegeben?" : "Who leaked / gave up?");
+            let target = players.find(p => p.name.toLowerCase() === targetName?.trim().toLowerCase());
+            if (target) {
+                target.eliminated = true;
+                userStreak = 0; saveUserData(); updateHUD();
+                sendData({ type: 'ELIMINATE', players: players });
+                input.value = "";
+        }
+
+        function appendChat(sender, text) {
+            let box = document.getElementById("chat-messages");
+            box.innerHTML += `<div class="chat-msg"><b>${sender}:</b> ${text}</div>`;
+            box.scrollTop = box.scrollHeight;
+        }
+    </script>
+</body>
+</html>
