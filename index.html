@@ -985,21 +985,34 @@
             const email = document.getElementById("auth-email").value.trim().toLowerCase();
             const username = document.getElementById("auth-username").value.trim();
             const password = document.getElementById("auth-password").value.trim();
-            if (!email || !username || !password) { alert(translations[currentLang].alertEmailNamePass); return; }
+            
+            if (!email || !username || !password) {
+                alert(translations[currentLang].alertEmailNamePass || "Bitte alle Felder ausfüllen!");
+                return;
+            }
 
             let users = getGlobalUsers();
-            if (users[email]) { alert(translations[currentLang].alertAccountExists); return; }
 
-            let assignedRole = (email === "master@vibe.party") ? "master" : "user";
+            if (users[email]) {
+                alert("Ein Account mit dieser E-Mail existiert bereits. Bitte einloggen!");
+                return;
+            }
 
-            users[email] = { name: username, pass: password, role: assignedRole };
+            // Neuen User speichern
+            users[email] = { name: username, pass: password, role: "user" };
             saveGlobalUsers(users);
-            
+
             myEmail = email;
             myName = username;
-            myRole = assignedRole;
+            myRole = "user";
+
             localStorage.setItem("wop_user_email_v6", myEmail);
             localStorage.setItem("wop_user_name_v6", myName);
+            
+            loadUserData();
+            showLoggedInState();
+        }
+
 
             // Falls Client, an Host melden
             if (!isHost && hostConnection && hostConnection.open) {
