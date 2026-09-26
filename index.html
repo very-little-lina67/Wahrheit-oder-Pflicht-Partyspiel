@@ -789,6 +789,7 @@
         function getGlobalUsers() {
             return JSON.parse(localStorage.getItem("wop_users_global_v6") || "{}");
         }
+      
         function saveGlobalUsers(users) {
             localStorage.setItem("wop_users_global_v6", JSON.stringify(users));
             if (isHost) {
