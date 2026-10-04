@@ -1,0 +1,18 @@
+{
+  "name": "wahrheit-oder-pflicht-partyspiel",
+  "version": "1.0.0",
+  "description": "Wahrheit oder Pflicht Partyspiel mit Themes und Multiplayer",
+  "main": "index.html",
+  "scripts": {
+    "start": "node dev-server.js",
+    "dev": "node dev-server.js"
+  },
+  "keywords": [
+    "truth-or-dare",
+    "party-game",
+    "firebase",
+    "multiplayer"
+  ],
+  "author": "",
+  "license": "ISC"
+}
