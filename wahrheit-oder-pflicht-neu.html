@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wahrheit oder Pflicht Partyspiel / Truth or Dare Party Game</title>
+
+    <!-- Firebase (compat) -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
+    <!-- Styles -->
+    <style>
+        :root {
+            --primary-color: #00bfff;
+            --accent-color: #ff00ff;
+            --bg: #0f0f1a;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body.theme-default {
+            background: linear-gradient(135deg, #0f0f1a, #1a0f2a);
+            color: #fff;
+            font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        /* Modals */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, .85);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 16px;
+        }
+
+        .modal-overlay.hidden {
+            display: none !important;
+        }
+
+        .modal-content {
+            background: #1e1e32;
+            border: 1px solid rgba(255, 255, 255, .15);
+            border-radius: 16px;
+            padding: 16px;
+            width: 100%;
+            max-width: 480px;
+            max-height: 90vh;
+            overflow: auto;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* Sections & Buttons */
+        .box-section {
+            background: rgba(255, 255, 255, .05);
+            border-left: 4px solid var(--primary-color);
+            border-radius: 8px;
+            padding: 12px;
+            margin: 12px 0;
+        }
+
+        .btn-blue,
+        .btn-green,
+        .btn-danger {
+            border: 0;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .btn-blue {
+            background: var(--primary-color);
+            color: #000;
+        }
+
+        .btn-green {
+            background: #28a745;
+            color: #fff;
+        }
+
+        .btn-danger {
+            background: #ff3344;
+            color: #fff;
+        }
+
+        input,
+        select,
+        textarea {
+            width: 100%;
+            background: #0a0a14;
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, .2);
+            border-radius: 8px;
+            padding: 10px;
+            margin: 6px 0;
+        }
+
+        .avatar-preview-box {
+            font-size: 48px;
+            position: relative;
+            width: 80px;
+            height: 80px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, .08);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .shop-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .shop-item {
+            background: rgba(255, 255, 255, .06);
+            padding: 8px;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 12px;
+        }
+
+        /* Game UI */
+        #main-container {
+            max-width: 680px;
+            margin: 0 auto;
+        }
+
+        #wheel-container {
+            width: 260px;
+            height: 260px;
+            margin: 16px auto;
+            border-radius: 50%;
+            background: conic-gradient(#ff00ff, #00bfff, #ffcc00, #28a745, #ff00ff);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+
+        .pointer {
+            width: 0;
+            height: 0;
+            border-left: 12px solid transparent;
+            border-right: 12px solid transparent;
+            border-bottom: 20px solid #fff;
+            margin: 0 auto;
+        }
+
+        #chat-messages {
+            max-height: 180px;
+            overflow: auto;
+            background: rgba(0, 0, 0, .3);
+            border-radius: 8px;
+            padding: 8px;
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+
+<body class="theme-default">
+
+    <!-- LOGIN & AUTH MODAL -->
+    <div id="auth-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <h2 id="ui-auth-title" style="color: var(--primary-color); margin: 0; font-size: 1.2rem;">
+                    Benutzer-Konto & Vibe
+                </h2>
+                <div>
+                    <select id="auth-lang-select" onchange="changeLanguage()" style="padding: 3px; font-size: 12px; width: auto; margin: 0;">
+                        <option value="de">Deutsch</option>
+                        <option value="en">English</option>
+                    </select>
+                </div>
+            </div>
+
+            <p id="ui-auth-desc" style="font-size: 12px; color: #bbb; text-align: center; margin-bottom: 12px;">
+                Logge dich ein, um XP, Coins und den Shop zu nutzen!
+            </p>
+
+            <label id="ui-label-email" style="font-size: 12px; color: #ccc;">E-Mail-Adresse:</label>
+            <input type="email" id="auth-email" placeholder="name@example.com">
+
+            <label id="ui-label-username" style="font-size: 12px; color: #ccc; margin-top: 6px; display: block;">Benutzername:</label>
+            <input type="text" id="auth-username" placeholder="Dein Spielername">
+
+            <label id="ui-label-pass" style="font-size: 12px; color: #ccc; margin-top: 6px; display: block;">Passwort:</label>
+            <input type="password" id="auth-password" placeholder="Dein sicheres Passwort">
+
+            <div style="display: flex; gap: 8px; margin-top: 12px;">
+                <button id="ui-btn-register" onclick="registerUser()" style="padding: 10px; font-size: 14px;">Registrieren</button>
+                <button id="ui-btn-login" onclick="loginUser()" style="padding: 10px; font-size: 14px;">Einloggen</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SHOP & PROFILE MODAL -->
+    <div id="account-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h2 id="ui-shop-head" style="color: var(--accent-color); margin-top: 0; text-align: center; font-size: 1.2rem;">
+                👤 Profil & Vibe-Shop
+            </h2>
+
+            <div style="text-align: center; margin-bottom: 10px;">
+                <div class="avatar-preview-box" id="avatar-display">
+                    😊<span id="equipped-accessory" class="acc-default"></span>
+                </div>
+
+                <label id="ui-avatar-emote-label" for="avatar-emote-select" style="font-size: 12px; color: #ccc;">
+                    🙂 Eigenes Emote / Avatar auswählen
+                </label>
+
+                <select id="avatar-emote-select" onchange="setAvatarEmote(this.value)" style="max-width: 260px; margin: 4px auto 8px;">
+                    <option id="ui-emote-happy" value="😊">😊 Fröhlich</option>
+                    <option id="ui-emote-excited" value="🤩">🤩 Begeistert</option>
+                    <option id="ui-emote-party" value="🥳">🥳 Party</option>
+                    <option id="ui-emote-cheeky" value="😈">😈 Frech</option>
+                    <option id="ui-emote-robot" value="🤖">🤖 Roboter</option>
+                    <option id="ui-emote-ghost" value="👻">👻 Geist</option>
+                    <option id="ui-emote-cat" value="🐱">🐱 Katze</option>
+                    <option id="ui-emote-fox" value="🦊">🦊 Fuchs</option>
+                    <option id="ui-emote-frog" value="🐸">🐸 Frosch</option>
+                    <option id="ui-emote-skull" value="💀">💀 Totenkopf</option>
+                    <option id="ui-emote-fire" value="🔥">🔥 Feuer</option>
+                </select>
+
+                <strong id="acc-display-name" style="color: #ffcc00; font-size: 16px;"></strong>
+                <span id="acc-display-role" style="background: #ff3300; padding: 2px 5px; border-radius: 4px; font-size: 10px; font-weight: bold;"></span>
+                <br>
+                <span id="acc-display-level" style="font-size: 12px; color: #00bfff;"></span> |
+                💰 <span id="acc-display-coins" style="color: #ffcc00;">0</span>
+                <span id="ui-coins-text">Coins</span>
+            </div>
+
+            <div class="box-section" style="margin-top: 0; padding: 8px;">
+                <h4 id="ui-badges-head" style="margin: 0 0 6px 0; color: var(--primary-color); font-size: 13px;">🏆 Deine Badges & Trophäen</h4>
+                <div id="badge-container"></div>
+            </div>
+
+            <div class="box-section" style="padding: 8px;">
+                <h4 style="margin: 0 0 6px 0; font-size: 13px;">🛒 Vibe-Shop</h4>
+                <div class="shop-grid">
+                    <div class="shop-item">
+                        🎩 Hut<br>
+                        <button class="btn-blue" style="padding: 4px 8px; font-size: 11px; margin-top: 4px;" onclick="buyItem('hat', 100, '🎩')">100 Coins</button>
+                    </div>
+                    <div class="shop-item">
+                        👑 Krone<br>
+                        <button class="btn-blue" style="padding: 4px 8px; font-size: 11px; margin-top: 4px;" onclick="buyItem('crown', 250, '👑')">250 Coins</button>
+                    </div>
+                    <div class="shop-item">
+                        🕶️ Brille<br>
+                        <button class="btn-blue" style="padding: 4px 8px; font-size: 11px; margin-top: 4px;" onclick="buyItem('glasses', 80, '🕶️')">80 Coins</button>
+                    </div>
+                    <div class="shop-item">
+                        🌈 Theme<br>
+                        <button class="btn-blue" style="padding: 4px 8px; font-size: 11px; margin-top: 4px;" onclick="buyTheme('theme-rainbow', 150)">150 Coins</button>
+                    </div>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 8px; margin-top: 12px;">
+                <button onclick="logoutUser()" class="btn-danger" style="flex: 1; padding: 8px; font-size: 12px;">Logout</button>
+                <button onclick="closeAccountModal()" class="btn-blue" style="flex: 1; padding: 8px; font-size: 12px;">Schließen</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN GAME CONTAINER -->
+    <div id="main-container" class="hidden">
+        
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h1 style="font-size: 1.4rem; margin: 0; color: var(--primary-color);">Wahrheit oder Pflicht</h1>
+            <button onclick="document.getElementById('account-modal').classList.remove('hidden')" class="btn-blue" style="padding: 6px 10px; font-size: 12px;">👤 Profil</button>
+        </div>
+
+        <div class="box-section">
+            <h3 style="margin: 0 0 8px 0; font-size: 14px;">Leaderboard</h3>
+            <div style="display: flex; gap: 6px; margin-bottom: 8px;">
+                <button onclick="switchLeaderboardTab('xp')" class="btn-blue" style="padding: 4px 8px; font-size: 11px;">XP</button>
+                <button onclick="switchLeaderboardTab('coins')" class="btn-green" style="padding: 4px 8px; font-size: 11px;">Coins</button>
+            </div>
+            <div id="leaderboard-list" style="font-size: 12px; color: #ccc;">Noch keine Daten...</div>
+        </div>
+
+        <!-- WOP Choice -->
+        <div id="wop-choice-area" class="box-section" style="text-align: center;">
+            <h3 style="font-size: 14px;">Wahrheit oder Pflicht?</h3>
+            <div style="display: flex; gap: 8px; justify-content: center;">
+                <button class="btn-blue" style="padding: 10px 16px;" onclick="submitWopChoice()">Wahrheit 🤫</button>
+                <button class="btn-danger" style="padding: 10px 16px;" onclick="submitWopChoice()">Pflicht 😈</button>
+            </div>
+        </div>
+
+        <!-- Creator Input -->
+        <div id="creator-input-area" class="box-section hidden">
+            <h4 style="margin: 0 0 6px 0; font-size: 13px;">Eigene Aufgabe erstellen:</h4>
+            <textarea id="custom-task-input" placeholder="Schreibe eine Wahrheit oder Pflicht..."></textarea>
+            <button class="btn-green" style="padding: 8px; width: 100%; margin-top: 6px;" onclick="sendCustomTask()">Aufgabe senden</button>
+        </div>
+
+        <!-- Active Task -->
+        <div id="active-task-area" class="box-section hidden">
+            <h3 style="color: var(--accent-color); margin: 0 0 6px 0; font-size: 14px;">Aktuelle Aufgabe:</h3>
+            <p id="task-content-desc" style="font-size: 14px; margin: 0;"></p>
+
+            <div id="answer-box" class="hidden" style="margin-top: 10px;">
+                <input type="text" id="player-answer-input" placeholder="Deine Antwort...">
+                <button class="btn-blue" style="padding: 8px; width: 100%; margin-top: 6px;" onclick="submitAnswer()">Antwort absenden</button>
+            </div>
+
+            <div id="dare-box" class="hidden" style="margin-top: 10px;">
+                <button class="btn-green" style="padding: 8px; width: 100%;" onclick="submitDareDone()">✅ Erledigt!</button>
+            </div>
+        </div>
+
+        <!-- Result Feedback -->
+        <div id="result-feedback-area" class="box-section hidden">
+            <h4 style="margin: 0 0 6px 0; font-size: 13px;">Feedback:</h4>
+            <div id="feedback-result-box" style="font-size: 13px; background: rgba(0,0,0,.3); padding: 8px; border-radius: 6px;"></div>
+            <button class="btn-blue" style="padding: 8px; width: 100%; margin-top: 8px; font-size: 12px;" onclick="voteNextTurn()">➡️ Nächster Spieler</button>
+        </div>
+
+        <!-- Wheel -->
+        <div id="wheel-area" class="box-section" style="text-align: center;">
+            <h3 style="margin: 0 0 8px 0; font-size: 14px;">Glücksrad</h3>
+            <div class="pointer"></div>
+            <div id="wheel-container">Wheel ready!</div>
+            <button onclick="spinWheel()" id="spin-btn" class="btn-blue" style="font-size: 14px; padding: 10px;">Glücksrad jetzt drehen 🎡</button>
+
+            <div id="wheel-result-box" class="box-section hidden" style="border-left-color: var(--accent-color); text-align: center;">
+                <h3 id="wheel-action-title" style="color: #ffcc00; font-size: 14px; margin-top: 0;"></h3>
+                <p id="wheel-action-desc" style="font-size: 12px;"></p>
+                <button id="next-round-btn" onclick="voteNextRound()" class="btn-blue" style="margin-top: 8px; font-size: 13px; padding: 8px;">➡️ Weiter zur nächsten Runde!</button>
+                <p id="waiting-round-msg" style="color: var(--accent-color); font-size: 12px; margin-top: 6px;">
+                    <span id="ui-waiting-other-round">Warte auf die Bestätigungen der anderen Spieler...</span>
+                    (<span id="round-votes-count">0</span>/<span id="round-votes-total">0</span>)
+                </p>
+            </div>
+        </div>
+
+        <!-- Chat -->
+        <div id="chat-box-container" class="hidden">
+            <div id="chat-messages"></div>
+            <div style="display: flex; gap: 5px;">
+                <input type="text" id="chat-input" placeholder="Schreibe eine Nachricht..." style="margin: 0; font-size: 13px; padding: 8px;" onkeydown="if(event.key === 'Enter') sendChatMessage()">
+                <button class="btn-blue" style="width: 70px; margin: 0; padding: 8px; font-size: 12px;" onclick="sendChatMessage()" id="ui-chat-send">Senden</button>
+            </div>
+        </div>
+
+        <!-- Emergency -->
+        <div id="emergency-box" class="hidden" style="margin-top: 20px; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 10px;">
+            <p id="ui-emergency-desc" style="font-size: 12px; color: #ff9999;">Wer einknickt oder leakt, hat sofort verloren!</p>
+            <button onclick="triggerLeak()" class="btn-danger" id="ui-leak-btn" style="font-size: 12px; padding: 8px;">🚨 Ich habe geleakt / musste pinkeln (Verloren!)</button>
+        </div>
+
+        <!-- Footer -->
+        <div id="legal-footer" style="margin-top: 24px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.15); text-align: center; font-size: 12px;">
+            <a href="impressum.html" style="color: #00bfff; text-decoration: none; margin: 0 8px;">Impressum</a>
+            <span style="color: #666;">·</span>
+            <a href="datenschutz.html" style="color: #00bfff; text-decoration: none; margin: 0 8px;">Datenschutz</a>
+        </div>
+
+    </div>
+
+    <!-- ==================== LOGIC ==================== -->
+    <script>
+        // === GITHUB PAGES KOMPATIBLER FALLBACK ===
+        console.log('✅ Single-File Mode: Externe js/app.js entfernt, Stubs aktiv');
+
+        function registerUser() {
+            alert('Demo: Registrieren - Firebase Config in app.js einfügen');
+            document.getElementById('auth-modal').classList.add('hidden');
+            document.getElementById('main-container').classList.remove('hidden');
+        }
+
+        function loginUser() {
+            registerUser();
+        }
+
+        function changeLanguage() {
+            console.log('Sprache gewechselt');
+        }
+
+        function setAvatarEmote(value) {
+            const display = document.getElementById('avatar-display');
+            if (display && display.childNodes[0]) {
+                display.childNodes[0].textContent = value;
+            }
+        }
+
+        function buyItem(id, cost, emoji) {
+            const coinsEl = document.getElementById('acc-display-coins');
+            let coins = parseInt(coinsEl.textContent) || 0;
+
+            if (coins >= cost) {
+                coins -= cost;
+                coinsEl.textContent = coins;
+                alert(emoji + ' ausgerüstet!');
+                document.getElementById('equipped-accessory').textContent = emoji;
+            } else {
+                alert('Nicht genug Coins! Du hast ' + coins + ' brauchst ' + cost);
+            }
+        }
+
+        function buyTheme(id, cost) {
+            buyItem(id, cost, '🎨');
+            document.body.className = id;
+        }
+
+        function logoutUser() {
+            location.reload();
+        }
+
+        function closeAccountModal() {
+            document.getElementById('account-modal').classList.add('hidden');
+        }
+
+        function switchLeaderboardTab(tab) {
+            console.log('Tab', tab);
+        }
+
+        function sendChatMessage() {
+            const input = document.getElementById('chat-input');
+            const msg = input.value.trim();
+            if (!msg) return;
+
+            const box = document.getElementById('chat-messages');
+            const div = document.createElement('div');
+            div.style.padding = '4px';
+            div.textContent = 'Du: ' + msg;
+            box.appendChild(div);
+            input.value = '';
+        }
+
+        function submitWopChoice() {
+            document.getElementById('creator-input-area').classList.remove('hidden');
+        }
+
+        function sendCustomTask() {
+            const task = document.getElementById('custom-task-input').value;
+            document.getElementById('active-task-area').classList.remove('hidden');
+            document.getElementById('task-content-desc').textContent = task || 'Deine Aufgabe!';
+            document.getElementById('answer-box').classList.remove('hidden');
+            document.getElementById('dare-box').classList.remove('hidden');
+        }
+
+        function submitAnswer() {
+            document.getElementById('result-feedback-area').classList.remove('hidden');
+            document.getElementById('feedback-result-box').textContent = document.getElementById('player-answer-input').value;
+        }
+
+        function submitDareDone() {
+            document.getElementById('result-feedback-area').classList.remove('hidden');
+            document.getElementById('feedback-result-box').textContent = 'Pflicht erledigt!';
+        }
+
+        function voteNextTurn() {
+            document.getElementById('result-feedback-area').classList.add('hidden');
+            alert('Nächster Spieler dran!');
+        }
+
+        function spinWheel() {
+            const wheel = document.getElementById('wheel-container');
+            wheel.style.transition = 'transform 3s cubic-bezier(.2,.8,.2,1)';
+            wheel.style.transform = 'rotate(' + (720 + Math.random() * 360) + 'deg)';
+
+            setTimeout(() => {
+                document.getElementById('wheel-result-box').classList.remove('hidden');
+                document.getElementById('wheel-action-title').textContent = 'Alle müssen tanzen!';
+                document.getElementById('wheel-action-desc').textContent = '30 Sekunden Party-Tanz';
+            }, 3000);
+        }
+
+        function voteNextRound() {
+            location.reload();
+        }
+
+        function triggerLeak() {
+            if (confirm('Wirklich aufgeben?')) {
+                alert('Du hast verloren!');
+            }
+        }
+
+        // Init demo data
+        window.onload = () => {
+            document.getElementById('acc-display-coins').textContent = '500';
+            document.getElementById('acc-display-name').textContent = 'Demo-Spieler';
+            document.getElementById('acc-display-level').textContent = 'Level 5';
+            document.getElementById('main-container').classList.remove('hidden');
+        };
+    </script>
+
+    <script>
+        // Fallback: zeigt Hinweis wenn js/app.js fehlt - verhindert weißen Screen
+        window.addEventListener('error', function (e) {
+            if (e.target && e.target.src && e.target.src.includes('js/app.js')) {
+                console.warn('js/app.js nicht gefunden - erstelle Fallback');
+                const info = document.createElement('div');
+                info.style.cssText = 'position:fixed;bottom:10px;left:10px;right:10px;background:#ff3344;color:#fff;padding:12px;border-radius:8px;z-index:9999;font-size:12px;text-align:center';
+                info.innerHTML = '⚠️ js/app.js fehlt im Repo! Lege den Ordner /js/app.js an oder nutze diese Datei als Single-File. Die UI ist trotzdem sichtbar.';
+                document.body.appendChild(info);
+            }
+        }, true);
+    </script>
+
+</body>
+</html>
