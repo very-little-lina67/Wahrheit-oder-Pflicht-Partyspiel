@@ -401,17 +401,5 @@ window.onload=()=>{
 
 
 <script>
-// Fallback: zeigt an wenn js/app.js fehlt - verhindert weißen Screen
-window.addEventListener('error', function(e){
-  if(e.target && e.target.src && e.target.src.includes('js/app.js')){
-    console.warn('js/app.js nicht gefunden - erstelle Fallback');
-    var info = document.createElement('div');
-    info.style.cssText='position:fixed;bottom:10px;left:10px;right:10px;background:#ff3344;color:#fff;padding:12px;border-radius:8px;z-index:9999;font-size:12px;text-align:center';
-    info.innerHTML='⚠️ js/app.js fehlt im Repo! Lege den Ordner /js/app.js an oder nutze diese Datei als Single-File. Die UI ist trotzdem sichtbar.';
-    document.body.appendChild(info);
-  }
-}, true);
-</script>
-
 </body>
 </html>
