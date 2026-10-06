@@ -691,4 +691,2169 @@ function applyTranslations(){
     if(typeof updateHUD === 'function') try{ updateHUD(); }catch(e){}
 }
 
-// Restliche Spiellogik (Daten, User, Lobby, etc.)...
+let myName = "";
+let myEmail = "";
+let myRole = "user";
+const MASTER_EMAIL = "master@vibe.party";
+function isMasterAccount(email) {
+    return String(email || "").trim().toLowerCase() === MASTER_EMAIL;
+}
+function resolveRole(email, storedRole) {
+    if (isMasterAccount(email)) return "master";
+    return storedRole || "user";
+}
+let userXP = 0;
+let userCoins = 50;
+let monthlyCoins = 0;
+let monthlyCoinsMonth = "";
+let userStreak = 0;
+let userLevel = 1;
+let equippedAccessory = "";
+let avatarEmote = "😊";
+let unlockedItems = [];
+let unlockedThemes = [];
+let unlockedBadges = [];
+let truthCount = 0;
+let dareCount = 0;
+
+async function loadUserDataFromCloud() {
+    if (!myEmail) return;
+    try {
+        let docRef = db.collection("users").doc(myEmail);
+        let doc = await docRef.get();
+        if (doc.exists) {
+            let data = doc.data();
+            myName = getUserDisplayName(data, myName || "Spieler");
+            myRole = resolveRole(myEmail, data.role);
+
+            if (isMasterAccount(myEmail) && data.role !== "master") {
+                try {
+                    await docRef.set({ role: "master" }, { merge: true });
+                } catch (e) {}
+            }
+
+            if ((!data.name || typeof data.name !== "string" || !data.name.trim()) &&
+                myName && myName !== "Spieler") {
+                try {
+                    await docRef.set({ name: myName }, { merge: true });
+                } catch (e) {}
+            }
+            userXP = data.xp || 0;
+            userCoins = data.coins || 50;
+            monthlyCoins = Number(data.monthlyCoins) || 0;
+            monthlyCoinsMonth = data.monthlyCoinsMonth || getCurrentMonthKey(); 
+            userStreak = data.streak || 0;
+            equippedAccessory = data.accessory || "";
+            avatarEmote = data.avatarEmote || "😊";
+            unlockedItems = data.items || [];
+            unlockedThemes = data.themes || [];
+            unlockedBadges = data.badges || [];
+            truthCount = data.truthCount || 0;
+            dareCount = data.dareCount || 0;
+            {
+                const raw = Array.isArray(data.friends) ? data.friends : [];
+                myFriends = [...new Set(raw.map(e => String(e || "").trim().toLowerCase()).filter(Boolean))];
+            }
+            if (data.theme) setTheme(data.theme);
+        } else {
+            console.warn("Benutzerdaten nicht gefunden - Logout.");
+            logoutUser();
+            return;
+        }
+        calculateLevel();
+        updateHUD();
+        updateProfileModal();
+        checkAdminPermissions();
+        updateOnlineStatus(true);
+        startOnlineHeartbeat();
+    } catch (e) {
+        console.error("Fehler beim Laden aus Cloud:", e);
+    }
+}
+
+function getCurrentMonthKey() {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2, "0")}`;
+}
+
+function ensureMonthlyCoinReset() {
+    const current = getCurrentMonthKey();
+    if (monthlyCoinsMonth !== current) {
+        monthlyCoins = 0;
+        monthlyCoinsMonth = current;
+        return true;
+    }
+    return false;
+}
+
+function addMonthlyCoins(amount) {
+    ensureMonthlyCoinReset();
+    monthlyCoins += Math.max(0, Number(amount) || 0);
+}
+
+let monthlyResetTimer = null;
+function startMonthlyResetWatcher() {
+    if (monthlyResetTimer) clearInterval(monthlyResetTimer);
+    monthlyResetTimer = setInterval(async () => {
+        const changed = ensureMonthlyCoinReset();
+        if (changed && myEmail) {
+            await saveUserDataToCloud();
+            updateHUD();
+        }
+    }, 30000);
+}
+
+async function saveUserDataToCloud() {
+    if (!myEmail) return;
+    try {
+        const roleToSave = resolveRole(myEmail, myRole);
+        myRole = roleToSave;
+        await db.collection("users").doc(myEmail).set({
+            name: myName,
+            role: roleToSave,
+            xp: userXP,
+            coins: userCoins,
+            monthlyCoins: monthlyCoins,
+            monthlyCoinsMonth: monthlyCoinsMonth || getCurrentMonthKey(),
+            streak: userStreak,
+            accessory: equippedAccessory,
+            avatarEmote: avatarEmote,
+            items: unlockedItems,
+            themes: unlockedThemes,
+            badges: unlockedBadges,
+            truthCount: truthCount,
+            dareCount: dareCount,
+            theme: document.body.className,
+            lastActive: firebase.firestore.FieldValue.serverTimestamp(),
+            isOnline: true,
+            currentLobby: activeLobbyCode || ""
+        }, { merge: true });
+    } catch (e) {
+        console.error("Fehler beim Speichern in Cloud:", e);
+    }
+}
+
+async function updateOnlineStatus(status) {
+    if (!myEmail) return;
+    try {
+        await db.collection("users").doc(myEmail).set({
+            isOnline: status,
+            lastActive: firebase.firestore.FieldValue.serverTimestamp(),
+            currentLobby: activeLobbyCode || ""
+        }, { merge: true });
+    } catch(e) {}
+}
+
+const ONLINE_HEARTBEAT_MS = 30000;
+const ONLINE_TIMEOUT_MS = 90000;
+let onlineHeartbeatTimer = null;
+let lobbyJoinTimeout = null;
+
+function startOnlineHeartbeat() {
+    if (onlineHeartbeatTimer) clearInterval(onlineHeartbeatTimer);
+    onlineHeartbeatTimer = setInterval(() => {
+        if (myEmail && !document.hidden) {
+            updateOnlineStatus(true);
+        }
+    }, ONLINE_HEARTBEAT_MS);
+}
+
+function stopOnlineHeartbeat() {
+    if (onlineHeartbeatTimer) {
+        clearInterval(onlineHeartbeatTimer);
+        onlineHeartbeatTimer = null;
+    }
+}
+
+async function openLeaderboard() {
+    const container = document.getElementById("leaderboard-list");
+    const t = translations[currentLang];
+    ensureMonthlyCoinReset();
+    container.innerHTML = t.lbLoading || "Lade Ranglisten...";
+    document.getElementById("leaderboard-modal").classList.remove("hidden");
+
+    const globalBtn = document.getElementById("lb-tab-global");
+    const friendsBtn = document.getElementById("lb-tab-friends");
+    if (globalBtn) globalBtn.className = currentLbTab === "global" ? "btn-green" : "btn-blue";
+    if (friendsBtn) friendsBtn.className = currentLbTab === "friends" ? "btn-green" : "btn-blue";
+
+    try {
+        const snapshot = await db.collection("users").get();
+        let users = [];
+        snapshot.forEach(doc => {
+            const data = doc.data() || {};
+            let m = Number(data.monthlyCoins) || 0;
+            const mm = data.monthlyCoinsMonth || "";
+            if (mm !== getCurrentMonthKey()) m = 0;
+            users.push({
+                email: doc.id,
+                name: (typeof data.name === "string" && data.name.trim()) ? data.name.trim() : "Party-Spieler",
+                accessory: data.accessory || "",
+                coins: Number(data.coins) || 0,
+                monthlyCoins: m
+            });
+        });
+
+        if (currentLbTab === "friends") {
+            if (!myFriends.length) {
+                container.innerHTML = `<span style="font-size:13px;color:#888;">${currentLang === "de" ? "Noch keine Freunde in der Liste. Füge Freunde hinzu, um ihre Rangliste zu sehen!" : "No friends yet. Add friends to see their ranking!"}</span>`;
+                return;
+            }
+            users = users.filter(u => myFriends.includes(u.email) || u.email === myEmail);
+        }
+
+        const render = (title, key, icon) => {
+            const arr = users.slice().sort((a,b)=>b[key]-a[key]).slice(0,15);
+            const section = document.createElement("div");
+            section.style.marginBottom = "14px";
+            const h = document.createElement("h3");
+            h.textContent = title;
+            h.style.cssText = "margin:8px 0;color:#ffcc00;font-size:15px;";
+            section.appendChild(h);
+            if (!arr.length) {
+                const empty = document.createElement("span");
+                empty.style.cssText = "font-size:12px;color:#888;";
+                empty.textContent = currentLang === "de" ? "Keine Einträge." : "No entries.";
+                section.appendChild(empty);
+            }
+            arr.forEach((data, i) => {
+                const row = document.createElement("div");
+                row.style.cssText = "display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,.05);padding:8px;border-radius:6px;margin-bottom:5px;font-size:13px;";
+                const isMe = data.email === myEmail;
+                const name = document.createElement("b");
+                name.textContent = `${i+1}. ${i===0?'👑 ':i===1?'🥈 ':i===2?'🥉 ':''}${data.name}${isMe ? ' (Du)' : ''}`;
+                if (isMe) name.style.color = "var(--primary-color)";
+                const left = document.createElement("div");
+                left.appendChild(name);
+                if (data.accessory) {
+                    const a = document.createElement("span");
+                    a.style.cssText = "font-size:11px;color:#aaa";
+                    a.textContent = ` (${data.accessory})`;
+                    left.appendChild(a);
+                }
+                const val = document.createElement("div");
+                val.style.cssText = "color:#ffcc00;font-weight:bold";
+                val.textContent = `${icon} ${data[key]} ${t.lbCoins || 'Coins'}`;
+                row.append(left, val);
+                section.appendChild(row);
+            });
+            container.appendChild(section);
+        };
+
+        container.innerHTML = "";
+        const prefix = currentLbTab === "friends"
+            ? (currentLang === "de" ? "👥 Freunde – " : "👥 Friends – ")
+            : (currentLang === "de" ? "🌍 " : "🌍 ");
+        render(prefix + (t.lbGlobalTitle || "Allgemeine Coin-Rangliste"), "coins", "💰");
+        render(prefix + (t.lbMonthlyTitle || "Monatliche Coin-Rangliste"), "monthlyCoins", "🪙");
+    } catch(e) {
+        console.error(e);
+        container.innerHTML = t.lbError || "Fehler beim Laden der Ranglisten.";
+    }
+}
+
+async function openOnlinePlayersModal() {
+    let container = document.getElementById("online-players-list");
+    container.innerHTML = "Suche online Spieler...";
+    document.getElementById("online-players-modal").classList.remove("hidden");
+
+    try {
+        let snapshot = await db.collection("users").where("isOnline", "==", true).get();
+        const now = Date.now();
+        container.innerHTML = "";
+        let found = false;
+
+        snapshot.forEach(doc => {
+            let data = doc.data() || {};
+            const playerName = getUserDisplayName(data);
+            const lastActiveMs = data.lastActive && typeof data.lastActive.toMillis === "function"
+                ? data.lastActive.toMillis()
+                : 0;
+            const isRecentlyOnline = lastActiveMs > 0 && (now - lastActiveMs) <= ONLINE_TIMEOUT_MS;
+
+            if (playerName !== myName && isRecentlyOnline) {
+                found = true;
+                let lobbyInfo = data.currentLobby ? `(Lobby: ${String(data.currentLobby).toUpperCase()})` : "(Bereit)";
+                const safeEmail = String(doc.id).replace(/'/g, "\\'");
+                const safeName = playerName.replace(/'/g, "\\'");
+                const safeDisplayName = playerName.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+                const safeAccessory = String(data.accessory || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+                container.innerHTML += `<div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.05); padding:8px; border-radius:6px; margin-bottom:6px; font-size:12px;">
+                    <div><b>${safeAccessory} ${safeDisplayName}</b> <br><span style="color:#28a745; font-size:10px;">${lobbyInfo}</span></div>
+                    <div style="display:flex;gap:3px;">
+                        <button class="btn-blue" style="padding:4px 6px; font-size:10px; margin:0; width:auto;" onclick="sendFriendRequest('${safeEmail}', '${safeName}')">👥</button>
+                        <button class="btn-green" style="padding:4px 8px; font-size:11px; margin:0; width:auto;" onclick="sendGameInvite('${safeEmail}', '${safeName}')">Einladen 📨</button>
+                    </div>
+                </div>`;
+            }
+        });
+
+        if (!found) {
+            container.innerHTML = `<span style="font-size:12px; color:#888;">Keine anderen Spieler online.</span>`;
+        }
+    } catch(e) {
+        container.innerHTML = "Fehler beim Laden der Spieler.";
+    }
+}
+
+async function sendGameInvite(targetEmail, targetName) {
+    if (!activeLobbyCode) {
+        alert("Du musst zuerst eine Lobby erstellen (Host), um jemanden einzuladen!");
+        return;
+    }
+    try {
+        await db.collection("invites").add({
+            toEmail: targetEmail,
+            fromName: myName,
+            lobbyCode: activeLobbyCode,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        alert(`Einladung an ${targetName} gesendet! 🚀`);
+        document.getElementById("online-players-modal").classList.add("hidden");
+    } catch(e) {
+        alert("Fehler beim Senden der Einladung.");
+    }
+}
+
+let incomingInviteLobby = "";
+let incomingInviteId = "";
+let inviteUnsubscribe = null;
+function listenForInvitations() {
+    if (!myEmail) return;
+
+    if (inviteUnsubscribe) {
+        inviteUnsubscribe();
+        inviteUnsubscribe = null;
+    }
+
+    inviteUnsubscribe = db.collection("invites")
+        .where("toEmail", "==", myEmail)
+        .onSnapshot(snapshot => {
+            snapshot.docChanges().forEach(change => {
+                if (change.type === "added") {
+                    const data = change.doc.data();
+                    incomingInviteId = change.doc.id;
+                    incomingInviteLobby = data.lobbyCode || "";
+
+                    const msg = document.getElementById("invite-msg-text");
+                    if (msg) {
+                        msg.innerText = `${data.fromName || "Spieler"} hat dich in die Lobby ${String(incomingInviteLobby).toUpperCase()} eingeladen!`;
+                    }
+                    document.getElementById("invite-modal").classList.remove("hidden");
+                }
+            });
+        }, error => {
+            console.error("Fehler beim Überwachen von Einladungen:", error);
+        });
+}
+
+async function acceptInvitation() {
+    document.getElementById("invite-modal").classList.add("hidden");
+
+    const lobby = incomingInviteLobby;
+    const inviteId = incomingInviteId;
+    incomingInviteLobby = "";
+    incomingInviteId = "";
+
+    if (inviteId) {
+        try { await db.collection("invites").doc(inviteId).delete(); } catch (e) {
+            console.warn("Einladung konnte nicht gelöscht werden:", e);
+        }
+    }
+
+    if (lobby) {
+        document.getElementById("lobby-code-input").value = lobby;
+        joinGame();
+    }
+}
+
+async function rejectInvitation() {
+    document.getElementById("invite-modal").classList.add("hidden");
+
+    const inviteId = incomingInviteId;
+    incomingInviteLobby = "";
+    incomingInviteId = "";
+
+    if (inviteId) {
+        try { await db.collection("invites").doc(inviteId).delete(); } catch (e) {
+            console.warn("Einladung konnte nicht gelöscht werden:", e);
+        }
+    }
+}
+
+function calculateLevel() {
+    userLevel = Math.floor(userXP / 100) + 1;
+}
+
+function updateHUD() {
+    document.getElementById("hud-streak").innerText = userStreak;
+    document.getElementById("hud-xp").innerText = userXP;
+    document.getElementById("hud-coins").innerText = userCoins;
+}
+
+function checkAdminPermissions() {
+    let adminBtn = document.getElementById("btn-admin-panel");
+    if (myRole === "master" || myRole === "admin" || myRole === "moderator") {
+        adminBtn.classList.remove("hidden");
+    } else {
+        adminBtn.classList.add("hidden");
+    }
+}
+
+function updateProfileModal() {
+    document.getElementById("acc-display-name").innerText = myName;
+    let roleBadge = document.getElementById("acc-display-role");
+    roleBadge.innerText = myRole.toUpperCase();
+    if(myRole === "master") roleBadge.style.background = "#ff0055";
+    else if(myRole === "admin") roleBadge.style.background = "#ff3300";
+    else if(myRole === "moderator") roleBadge.style.background = "#00bfff";
+    else roleBadge.style.background = "#666";
+
+    document.getElementById("acc-display-level").innerText = (currentLang === 'de' ? `Partystufe ${userLevel} (${userXP} XP)` : `Party Level ${userLevel} (${userXP} XP)`);
+    document.getElementById("acc-display-coins").innerText = userCoins;
+    const avatarDisplay = document.getElementById("avatar-display");
+    avatarDisplay.childNodes[0].textContent = avatarEmote || "😊";
+    document.getElementById("avatar-emote-select").value = avatarEmote || "😊";
+    applyAccessoryStyle(equippedAccessory);
+    
+    let badgeBox = document.getElementById("badge-container");
+    badgeBox.innerHTML = unlockedBadges.length > 0 ? "" : `<span style='font-size:11px; color:#888;'>${currentLang === 'de' ? 'Noch keine Badges freigeschaltet.' : 'No badges unlocked yet.'}</span>`;
+    unlockedBadges.forEach(b => {
+        badgeBox.innerHTML += `<span class="badge-tag">${b}</span>`;
+    });
+}
+
+function addRewards(isDare) {
+    let mult = userStreak >= 5 ? 2 : 1;
+    let xpGain = isDare ? 20 : 10;
+    let coinGain = (isDare ? 8 : 4) * mult;
+
+    userXP += xpGain;
+    userCoins += coinGain;
+    addMonthlyCoins(coinGain);
+    userStreak++;
+    
+    if(isDare) dareCount++;
+    else truthCount++;
+
+    checkBadges();
+    calculateLevel();
+    updateHUD();
+    saveUserDataToCloud();
+}
+
+function checkBadges() {
+    if (dareCount >= 10 && !unlockedBadges.includes("🔥 10 Pflichten")) {
+        unlockedBadges.push("🔥 10 Pflichten");
+    }
+    if (userStreak >= 5 && !unlockedBadges.includes("⚡ Streak-Monster")) {
+        unlockedBadges.push("⚡ Streak-Monster");
+    }
+}
+
+async function setAvatarEmote(emote) {
+    avatarEmote = emote || "😊";
+    updateProfileModal();
+    await saveUserDataToCloud();
+}
+
+function applyAccessoryStyle(symbol) {
+    const el = document.getElementById("equipped-accessory");
+    if (!el) return;
+
+    el.className = "";
+    el.innerText = symbol || "";
+
+    if (!symbol) {
+        el.classList.add("acc-default");
+        return;
+    }
+
+    const headItems = ["👑", "🎩", "🧢", "🦄"];
+    const glassesItems = ["🕶️", "👓"];
+    const headphonesItems = ["🎧"];
+    const beardItems = ["🧔"];
+    const maskItems = ["🎭"];
+    const sideItems = ["🦋", "✨", "⭐", "💎", "🌸"];
+    const decorItems = ["🔥", "🌈"];
+
+    if (headphonesItems.includes(symbol)) {
+        el.classList.add("acc-headphones");
+    } else if (headItems.includes(symbol)) {
+        el.classList.add("acc-head");
+    } else if (glassesItems.includes(symbol)) {
+        el.classList.add("acc-glasses");
+    } else if (beardItems.includes(symbol)) {
+        el.classList.add("acc-beard");
+    } else if (maskItems.includes(symbol)) {
+        el.classList.add("acc-mask");
+    } else if (sideItems.includes(symbol)) {
+        el.classList.add("acc-side");
+    } else if (decorItems.includes(symbol)) {
+        el.classList.add("acc-decor");
+    } else {
+        el.classList.add("acc-default");
+    }
+}
+
+async function buyItem(itemKey, cost, symbol) {
+    if (unlockedItems.includes(itemKey)) {
+        equippedAccessory = (equippedAccessory === symbol) ? "" : symbol;
+    } else {
+        if (userCoins >= cost) {
+            userCoins -= cost;
+            unlockedItems.push(itemKey);
+            equippedAccessory = symbol;
+            alert(currentLang === 'de' ? "Erfolgreich gekauft und ausgerüstet!" : "Successfully purchased and equipped!");
+        } else {
+            alert(currentLang === 'de' ? "Nicht genug Coins!" : "Not enough coins!");
+        }
+    }
+    await saveUserDataToCloud();
+    updateProfileModal();
+}
+
+async function buyTheme(themeName, cost) {
+    const alreadyUnlocked = unlockedThemes.includes(themeName);
+
+    if (!alreadyUnlocked) {
+        if (userCoins < cost) {
+            alert(currentLang === 'de' ? "Nicht genug Coins!" : "Not enough coins!");
+            return;
+        }
+
+        userCoins -= cost;
+        unlockedThemes.push(themeName);
+        alert(currentLang === 'de' ? "Theme freigeschaltet!" : "Theme unlocked!");
+    }
+
+    setTheme(themeName);
+    await saveUserDataToCloud();
+    updateHUD();
+    updateProfileModal();
+}
+
+function setTheme(className) {
+    document.body.className = className;
+}
+
+window.addEventListener("DOMContentLoaded", async () => {
+    startMonthlyResetWatcher();
+
+    const savedEmail = localStorage.getItem("wop_user_email_v6");
+    const savedName = localStorage.getItem("wop_user_name_v6");
+
+    if (savedEmail && savedName) {
+        myEmail = savedEmail;
+        myName = savedName;
+        await loadUserDataFromCloud();
+        showLoggedInState();
+        startOnlineHeartbeat();
+        listenForInvitations();
+        loadFriendsData();
+        listenForFriendRequests();
+
+        const savedLobby = getSavedLobbySession();
+        if (savedLobby && savedLobby.code) {
+            activeLobbyCode = String(savedLobby.code).toLowerCase();
+            isHost = savedLobby.role === "host";
+
+            if (isHost) {
+                players = loadLobbyPlayers();
+                if (!players.some(p => p.name === myName)) {
+                    players.unshift({
+                        name: myName,
+                        accessory: equippedAccessory,
+                        eliminated: false
+                    });
+                }
+            }
+
+            restoringLobby = true;
+            setTimeout(() => reconnectLobby(), 250);
+        }
+    }
+
+    changeLanguage();
+});
+
+window.addEventListener("online", () => {
+    if (myEmail && !onlineHeartbeatTimer) startOnlineHeartbeat();
+    if (!leavingLobbyManually && activeLobbyCode) {
+        updateOnlineStatus(true);
+        scheduleLobbyReconnect();
+    }
+});
+
+document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) {
+        if (myEmail) updateOnlineStatus(true);
+        if (myEmail && !onlineHeartbeatTimer) startOnlineHeartbeat();
+    }
+
+    if (!document.hidden && !leavingLobbyManually && activeLobbyCode) {
+        updateOnlineStatus(true);
+
+        if (isHost) {
+            if (!peer || peer.destroyed || peer.disconnected) {
+                reconnectLobby();
+            }
+        } else if (!hostConnection || !hostConnection.open) {
+            scheduleLobbyReconnect();
+        }
+    }
+});
+
+async function registerUser() {
+    const email = document.getElementById("auth-email").value.trim().toLowerCase();
+    const username = document.getElementById("auth-username").value.trim();
+    const password = document.getElementById("auth-password").value.trim();
+
+    if (!email || !username || !password) {
+        alert(translations[currentLang]?.alertEmailNamePass || "Bitte alle Felder ausfüllen!");
+        return;
+    }
+
+    try {
+        let docRef = db.collection("users").doc(email);
+        let doc = await docRef.get();
+        if (doc.exists) {
+            alert(translations[currentLang]?.alertAccountExists || "Ein Account mit dieser E-Mail existiert bereits. Bitte einloggen!");
+            return;
+        }
+
+        let hashedPass = await hashPassword(password);
+
+        myEmail = email;
+        myName = username;
+        myRole = resolveRole(email, "user");
+
+        await docRef.set({
+            name: username,
+            passHash: hashedPass,
+            role: myRole,
+            xp: 0,
+            coins: 50,
+            monthlyCoins: 0,
+            monthlyCoinsMonth: getCurrentMonthKey(),
+            streak: 0,
+            accessory: "",
+            items: [],
+            badges: [],
+            friends: [],
+            truthCount: 0,
+            dareCount: 0,
+            theme: "theme-default",
+            isOnline: true,
+            currentLobby: ""
+        });
+
+        localStorage.setItem("wop_user_email_v6", myEmail);
+        localStorage.setItem("wop_user_name_v6", myName);
+
+        await loadUserDataFromCloud();
+        alert(translations[currentLang]?.alertRegistered || "Erfolgreich registriert!");
+        showLoggedInState();
+        startOnlineHeartbeat();
+        listenForInvitations();
+        loadFriendsData();
+        listenForFriendRequests();
+    } catch (e) {
+        console.error("Registrierungsfehler:", e);
+        alert("Fehler bei der Registrierung: " + e.message);
+    }
+}
+
+async function loginUser() {
+    const email = document.getElementById("auth-email").value.trim().toLowerCase();
+    const password = document.getElementById("auth-password").value.trim();
+    
+    if (!email || !password) { 
+        alert(translations[currentLang]?.alertEmailNamePass || "Bitte E-Mail und Passwort eingeben!"); 
+        return; 
+    }
+
+    try {
+        let docRef = db.collection("users").doc(email);
+        let doc = await docRef.get();
+        if (doc.exists) {
+            let data = doc.data();
+            let hashedInputPass = await hashPassword(password);
+
+            const passwordMatches = (data.passHash && data.passHash === hashedInputPass) ||
+                                    (data.pass && data.pass === password);
+
+            if (passwordMatches) {
+                if (data.pass) {
+                    try {
+                        await docRef.update({
+                            passHash: hashedInputPass,
+                            pass: firebase.firestore.FieldValue.delete()
+                        });
+                    } catch (migErr) {
+                        console.warn("Passwort-Migration zu Hash fehlgeschlagen:", migErr);
+                    }
+                }
+
+                myEmail = email;
+                myName = getUserDisplayName(data, localStorage.getItem("wop_user_name_v6") || "Spieler");
+                myRole = resolveRole(email, data.role);
+
+                if (isMasterAccount(email) && data.role !== "master") {
+                    try {
+                        await docRef.set({ role: "master" }, { merge: true });
+                    } catch (e) {}
+                }
+
+                localStorage.setItem("wop_user_email_v6", myEmail);
+                localStorage.setItem("wop_user_name_v6", myName);
+                await loadUserDataFromCloud();
+                showLoggedInState();
+                startOnlineHeartbeat();
+                listenForInvitations();
+                loadFriendsData();
+                listenForFriendRequests();
+            } else {
+                alert(translations[currentLang]?.alertNoAccount || "Falsche Anmeldedaten oder Konto nicht gefunden!");
+            }
+        } else {
+            alert(translations[currentLang]?.alertNoAccount || "Falsche Anmeldedaten oder Konto nicht gefunden!");
+        }
+    } catch (e) {
+        console.error("Login-Fehler:", e);
+        alert("Fehler beim Login: " + e.message);
+    }
+}
+
+async function logoutUser() {
+    stopOnlineHeartbeat();
+    await updateOnlineStatus(false);
+    if (inviteUnsubscribe) {
+        inviteUnsubscribe();
+        inviteUnsubscribe = null;
+    }
+    incomingInviteLobby = "";
+    incomingInviteId = "";
+    localStorage.removeItem("wop_user_email_v6");
+    localStorage.removeItem("wop_user_name_v6");
+    myEmail = ""; myName = ""; myRole = "user";
+    document.getElementById("account-modal").classList.add("hidden");
+    document.getElementById("auth-modal").classList.remove("hidden");
+    document.getElementById("setup").classList.add("hidden");
+}
+
+function showLoggedInState() {
+    document.getElementById("auth-modal").classList.add("hidden");
+    document.getElementById("account-modal").classList.add("hidden");
+    document.getElementById("setup").classList.remove("hidden");
+}
+
+function openAccountModal() {
+    updateProfileModal();
+    document.getElementById("account-modal").classList.remove("hidden");
+}
+function closeAccountModal() {
+    document.getElementById("account-modal").classList.add("hidden");
+}
+
+function openFeedbackModal() {
+    document.getElementById("feedback-text-input").value = "";
+    document.getElementById("feedback-modal").classList.remove("hidden");
+}
+
+async function submitFeedback() {
+    let type = document.getElementById("feedback-type").value;
+    let text = document.getElementById("feedback-text-input").value.trim();
+    if (!text) { alert(translations[currentLang].alertFeedbackEmpty); return; }
+
+    try {
+        await db.collection("feedback").add({
+            author: myName,
+            emailMasked: maskEmail(myEmail),
+            type: type,
+            text: text,
+            date: new Date().toLocaleString()
+        });
+        document.getElementById("feedback-modal").classList.add("hidden");
+        alert(translations[currentLang].alertFeedbackSuccess);
+    } catch (e) {
+        console.error("Fehler beim Senden des Feedbacks:", e);
+    }
+}
+
+function openAdminModal() {
+    if (myRole !== "master" && myRole !== "admin" && myRole !== "moderator") {
+        alert("Keine Berechtigung!");
+        return;
+    }
+    renderAdminUserList();
+    renderAdminFeedbackList();
+    document.getElementById("admin-modal").classList.remove("hidden");
+}
+
+async function renderAdminUserList() {
+    let container = document.getElementById("admin-user-list");
+    container.innerHTML = "Lade Benutzer...";
+    try {
+        let snapshot = await db.collection("users").get();
+        container.innerHTML = "";
+        snapshot.forEach(doc => {
+            let email = doc.id;
+            let u = doc.data();
+            let isMaster = isMasterAccount(email) || u.role === "master";
+            let maskedMail = maskEmail(email);
+            const displayRole = isMasterAccount(email) ? "master" : (u.role || "user");
+            
+            let html = `<div style="background:rgba(255,255,255,0.05); padding:6px; border-radius:6px; margin-bottom:5px; display:flex; justify-content:space-between; align-items:center; font-size:12px;">
+                <div><b>${u.name}</b> (${maskedMail}) <br><span style="color:#00bfff;">Rolle: ${displayRole}</span></div>`;
+            
+            let canModify = (myRole === "master" || (myRole === "admin" && !isMaster && u.role !== "admin"));
+
+            if (canModify && !isMaster) {
+                html += `<div>
+                    <select onchange="changeUserRole('${email}', this.value)" style="padding:3px; font-size:11px; width:auto; margin:0;">
+                        <option value="user" ${displayRole==='user'?'selected':''}>User</option>
+                        <option value="moderator" ${displayRole==='moderator'?'selected':''}>Mod</option>
+                        <option value="admin" ${displayRole==='admin'?'selected':''}>Admin</option>
+                    </select>
+                    <button class="btn-danger" style="padding:3px 6px; font-size:10px; margin:0;" onclick="deleteUser('${email}')">X</button>
+                </div>`;
+            } else if (isMaster) {
+                html += `<span style="color:#ff0055; font-weight:bold;">👑</span>`;
+            } else {
+                html += `<span style="color:#888; font-size:10px;">-</span>`;
+            }
+
+            html += `</div>`;
+            container.innerHTML += html;
+        });
+    } catch (e) {
+        console.error("Fehler beim Abrufen der Benutzer:", e);
+    }
+}
+
+async function renderAdminFeedbackList() {
+    let container = document.getElementById("admin-feedback-list");
+    container.innerHTML = "Lade Feedback...";
+    try {
+        let snapshot = await db.collection("feedback").get();
+        container.innerHTML = "";
+        if (snapshot.empty) {
+            container.innerHTML = `<span style="font-size:11px; color:#888;">Kein Feedback vorhanden.</span>`;
+            return;
+        }
+        snapshot.forEach(doc => {
+            let fb = doc.data();
+            let docId = doc.id;
+            let typeColor = fb.type === 'bug' ? '#ff3300' : '#00bfff';
+            let displayMail = fb.emailMasked || maskEmail(fb.email || "");
+            container.innerHTML += `<div style="background:rgba(255,255,255,0.05); padding:6px; border-radius:6px; margin-bottom:5px; font-size:12px; border-left:4px solid ${typeColor};">
+                <div><b>${fb.author}</b> (${displayMail}) - <span style="color:${typeColor}; font-weight:bold;">${fb.type.toUpperCase()}</span></div>
+                <div style="margin-top:2px; color:#fff;">${fb.text}</div>
+                ${myRole === 'master' || myRole === 'admin' ? `<button class="btn-danger" style="padding:2px 5px; font-size:9px; margin-top:3px;" onclick="deleteFeedback('${docId}')">Löschen</button>` : ''}
+            </div>`;
+        });
+    } catch (e) {
+        console.error("Fehler beim Laden von Feedback:", e);
+    }
+}
+
+async function changeUserRole(email, newRole) {
+    if (myRole !== "master" && myRole !== "admin") return;
+    if (isMasterAccount(email)) return;
+    if (newRole === "master") return;
+    await db.collection("users").doc(email).update({ role: newRole });
+    renderAdminUserList();
+}
+
+async function deleteUser(email) {
+    if (myRole !== "master" && myRole !== "admin") return;
+    if (isMasterAccount(email)) return;
+    await db.collection("users").doc(email).delete();
+    renderAdminUserList();
+}
+
+async function deleteFeedback(docId) {
+    await db.collection("feedback").doc(docId).delete();
+    renderAdminFeedbackList();
+}
+
+let myFriends = [];
+let myFriendRequests = [];
+let currentLbTab = "global";
+let friendReqUnsubscribe = null;
+
+async function loadFriendsData() {
+    if (!myEmail) return;
+    try {
+        const doc = await db.collection("users").doc(myEmail).get();
+        if (doc.exists) {
+            const data = doc.data() || {};
+            const raw = Array.isArray(data.friends) ? data.friends : [];
+            myFriends = [...new Set(raw.map(e => String(e || "").trim().toLowerCase()).filter(Boolean))];
+        }
+        await loadFriendRequests();
+        updateFriendRequestBadge();
+    } catch (e) {
+        console.error("Freunde laden fehlgeschlagen:", e);
+    }
+}
+
+async function loadFriendRequests() {
+    if (!myEmail) return;
+    try {
+        const snap = await db.collection("friendRequests")
+            .where("toEmail", "==", myEmail)
+            .get();
+        myFriendRequests = [];
+        snap.forEach(doc => {
+            const d = doc.data() || {};
+            myFriendRequests.push({
+                id: doc.id,
+                fromEmail: d.fromEmail || "",
+                fromName: d.fromName || "Spieler"
+            });
+        });
+        updateFriendRequestBadge();
+    } catch (e) {
+        console.error("Anfragen laden:", e);
+    }
+}
+
+function updateFriendRequestBadge() {
+    const badge = document.getElementById("friend-req-badge");
+    if (!badge) return;
+    const n = myFriendRequests.length;
+    if (n > 0) {
+        badge.style.display = "inline";
+        badge.innerText = String(n);
+    } else {
+        badge.style.display = "none";
+    }
+}
+
+function listenForFriendRequests() {
+    if (!myEmail) return;
+    if (friendReqUnsubscribe) {
+        try { friendReqUnsubscribe(); } catch(e) {}
+        friendReqUnsubscribe = null;
+    }
+    friendReqUnsubscribe = db.collection("friendRequests")
+        .where("toEmail", "==", myEmail)
+        .onSnapshot(snap => {
+            myFriendRequests = [];
+            snap.forEach(doc => {
+                const d = doc.data() || {};
+                myFriendRequests.push({
+                    id: doc.id,
+                    fromEmail: d.fromEmail || "",
+                    fromName: d.fromName || "Spieler"
+                });
+            });
+            updateFriendRequestBadge();
+            const panel = document.getElementById("friends-requests-panel");
+            if (panel && !panel.classList.contains("hidden")) {
+                renderFriendRequests();
+            }
+        }, err => console.error("Friend request listener:", err));
+}
+
+function openFriendsModal() {
+    if (!myEmail) {
+        alert(currentLang === "de" ? "Bitte zuerst einloggen." : "Please log in first.");
+        return;
+    }
+    showFriendsTab("list");
+    document.getElementById("friends-modal").classList.remove("hidden");
+    loadFriendsData().then(() => {
+        renderFriendsList();
+        renderFriendRequests();
+    });
+}
+
+function showFriendsTab(tab) {
+    document.getElementById("friends-list-panel").classList.toggle("hidden", tab !== "list");
+    document.getElementById("friends-requests-panel").classList.toggle("hidden", tab !== "requests");
+    document.getElementById("friends-add-panel").classList.toggle("hidden", tab !== "add");
+    if (tab === "list") renderFriendsList();
+    if (tab === "requests") renderFriendRequests();
+    if (tab === "add") {
+        document.getElementById("friend-search-results").innerHTML = "";
+        document.getElementById("friend-search-input").value = "";
+    }
+}
+
+async function renderFriendsList() {
+    const container = document.getElementById("friends-list");
+    if (!container) return;
+    container.innerHTML = currentLang === "de" ? "Lade Freunde..." : "Loading friends...";
+
+    if (!myFriends.length) {
+        container.innerHTML = `<span style="font-size:12px;color:#888;">${currentLang === "de" ? "Noch keine Freunde. Sende eine Anfrage!" : "No friends yet. Send a request!"}</span>`;
+        return;
+    }
+
+    try {
+        const now = Date.now();
+        let html = "";
+        for (const email of myFriends) {
+            try {
+                const doc = await db.collection("users").doc(email).get();
+                if (!doc.exists) continue;
+                const d = doc.data() || {};
+                const name = getUserDisplayName(d, "Spieler");
+                const accessory = d.accessory || "";
+                const isOnline = !!d.isOnline && d.lastActive &&
+                    (d.lastActive.toMillis ? (now - d.lastActive.toMillis() < ONLINE_TIMEOUT_MS) : true);
+                const lobby = d.currentLobby ? String(d.currentLobby).toUpperCase() : "";
+                const statusColor = isOnline ? "#28a745" : "#888";
+                const statusText = isOnline
+                    ? (lobby ? `Online · Lobby ${lobby}` : (currentLang === "de" ? "Online · Bereit" : "Online · Ready"))
+                    : (currentLang === "de" ? "Offline" : "Offline");
+                const safeEmail = email.replace(/'/g, "\\'");
+                const safeName = name.replace(/'/g, "\\'").replace(/"/g, "&quot;");
+
+                html += `<div style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,0.05);padding:8px;border-radius:6px;margin-bottom:6px;font-size:12px;">
+                    <div>
+                        <b>${accessory} ${name.replace(/</g,"&lt;")}</b><br>
+                        <span style="color:${statusColor};font-size:10px;">● ${statusText}</span>
+                    </div>
+                    <div style="display:flex;gap:4px;">
+                        ${isOnline && activeLobbyCode && isHost ? `<button class="btn-green" style="padding:3px 6px;font-size:10px;width:auto;margin:0;" onclick="sendGameInvite('${safeEmail}', '${safeName}')">Einladen</button>` : ""}
+                        <button class="btn-danger" style="padding:3px 6px;font-size:10px;width:auto;margin:0;" onclick="removeFriend('${safeEmail}')">✕</button>
+                    </div>
+                </div>`;
+            } catch (e) {}
+        }
+        container.innerHTML = html || `<span style="font-size:12px;color:#888;">${currentLang === "de" ? "Keine Freunde gefunden." : "No friends found."}</span>`;
+    } catch (e) {
+        container.innerHTML = "Fehler beim Laden.";
+    }
+}
+
+function renderFriendRequests() {
+    const container = document.getElementById("friend-requests-list");
+    if (!container) return;
+    if (!myFriendRequests.length) {
+        container.innerHTML = `<span style="font-size:12px;color:#888;">${currentLang === "de" ? "Keine offenen Anfragen." : "No pending requests."}</span>`;
+        return;
+    }
+    let html = "";
+    myFriendRequests.forEach(req => {
+        const safeId = req.id.replace(/'/g, "\\'");
+        const safeEmail = (req.fromEmail || "").replace(/'/g, "\\'");
+        html += `<div style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,0.05);padding:8px;border-radius:6px;margin-bottom:6px;font-size:12px;">
+            <div><b>${(req.fromName || "Spieler").replace(/</g,"&lt;")}</b></div>
+            <div style="display:flex;gap:4px;">
+                <button class="btn-green" style="padding:3px 8px;font-size:11px;width:auto;margin:0;" onclick="acceptFriendRequest('${safeId}', '${safeEmail}', '${(req.fromName||'').replace(/'/g,"\\'")}')">✓</button>
+                <button class="btn-danger" style="padding:3px 8px;font-size:11px;width:auto;margin:0;" onclick="rejectFriendRequest('${safeId}')">✕</button>
+            </div>
+        </div>`;
+    });
+    container.innerHTML = html;
+}
+
+async function searchAndAddFriend() {
+    const q = (document.getElementById("friend-search-input").value || "").trim().toLowerCase();
+    const results = document.getElementById("friend-search-results");
+    if (!q) {
+        alert(currentLang === "de" ? "Bitte E-Mail oder Namen eingeben." : "Please enter email or name.");
+        return;
+    }
+    results.innerHTML = currentLang === "de" ? "Suche..." : "Searching...";
+    try {
+        const snap = await db.collection("users").get();
+        let found = false;
+        let html = "";
+        snap.forEach(doc => {
+            const email = doc.id;
+            if (email === myEmail) return;
+            const d = doc.data() || {};
+            const name = (d.name || "").toLowerCase();
+            if (email === q || name.includes(q) || email.includes(q)) {
+                found = true;
+                const displayName = getUserDisplayName(d, "Spieler");
+                const alreadyFriend = myFriends.includes(email);
+                const safeEmail = email.replace(/'/g, "\\'");
+                const safeName = displayName.replace(/'/g, "\\'");
+                html += `<div style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,0.05);padding:8px;border-radius:6px;margin-bottom:6px;font-size:12px;">
+                    <div><b>${displayName.replace(/</g,"&lt;")}</b><br><span style="font-size:10px;color:#888;">${maskEmail(email)}</span></div>
+                    ${alreadyFriend
+                        ? `<span style="color:#28a745;font-size:11px;">✓ Freund</span>`
+                        : `<button class="btn-green" style="padding:4px 8px;font-size:11px;width:auto;margin:0;" onclick="sendFriendRequest('${safeEmail}', '${safeName}')">Anfrage</button>`}
+                </div>`;
+            }
+        });
+        results.innerHTML = found ? html : `<span style="font-size:12px;color:#888;">${currentLang === "de" ? "Niemand gefunden." : "Nobody found."}</span>`;
+    } catch (e) {
+        results.innerHTML = "Fehler bei der Suche.";
+    }
+}
+
+async function sendFriendRequest(targetEmail, targetName) {
+    const toEmail = String(targetEmail || "").trim().toLowerCase();
+    if (!myEmail || !toEmail || toEmail === myEmail) return;
+    if (myFriends.includes(toEmail)) {
+        alert(currentLang === "de" ? "Ihr seid bereits Freunde!" : "You are already friends!");
+        return;
+    }
+    try {
+        const existing = await db.collection("friendRequests")
+            .where("fromEmail", "==", myEmail)
+            .where("toEmail", "==", toEmail)
+            .get();
+        if (!existing.empty) {
+            alert(currentLang === "de" ? "Anfrage bereits gesendet!" : "Request already sent!");
+            return;
+        }
+        const reverse = await db.collection("friendRequests")
+            .where("fromEmail", "==", toEmail)
+            .where("toEmail", "==", myEmail)
+            .get();
+        if (!reverse.empty) {
+            const doc = reverse.docs[0];
+            await acceptFriendRequest(doc.id, toEmail, targetName);
+            return;
+        }
+        await db.collection("friendRequests").add({
+            fromEmail: myEmail,
+            fromName: myName,
+            toEmail: toEmail,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        alert(currentLang === "de" ? `Freundschaftsanfrage an ${targetName} gesendet! 👥` : `Friend request sent to ${targetName}! 👥`);
+    } catch (e) {
+        console.error(e);
+        alert(currentLang === "de" ? "Fehler beim Senden der Anfrage." : "Error sending request.");
+    }
+}
+
+async function acceptFriendRequest(reqId, fromEmail, fromName) {
+    if (!myEmail || !fromEmail) return;
+    const friendEmail = String(fromEmail).trim().toLowerCase();
+    if (!friendEmail || friendEmail === myEmail) return;
+
+    try {
+        await db.collection("users").doc(myEmail).set({
+            friends: firebase.firestore.FieldValue.arrayUnion(friendEmail)
+        }, { merge: true });
+
+        await db.collection("users").doc(friendEmail).set({
+            friends: firebase.firestore.FieldValue.arrayUnion(myEmail)
+        }, { merge: true });
+
+        if (!myFriends.includes(friendEmail)) {
+            myFriends.push(friendEmail);
+        }
+
+        if (reqId) {
+            try { await db.collection("friendRequests").doc(reqId).delete(); } catch (e) {}
+        }
+        myFriendRequests = myFriendRequests.filter(r => r.id !== reqId);
+        updateFriendRequestBadge();
+        renderFriendRequests();
+        renderFriendsList();
+        alert(currentLang === "de" ? `Du bist jetzt mit ${fromName || "Spieler"} befreundet! 🎉` : `You are now friends with ${fromName || "player"}! 🎉`);
+    } catch (e) {
+        console.error(e);
+        alert(currentLang === "de" ? "Fehler beim Annehmen." : "Error accepting request.");
+    }
+}
+
+async function rejectFriendRequest(reqId) {
+    try {
+        await db.collection("friendRequests").doc(reqId).delete();
+        myFriendRequests = myFriendRequests.filter(r => r.id !== reqId);
+        updateFriendRequestBadge();
+        renderFriendRequests();
+    } catch (e) {
+        console.error(e);
+    }
+}
+
+async function removeFriend(friendEmail) {
+    if (!confirm(currentLang === "de" ? "Freund wirklich entfernen?" : "Really remove this friend?")) return;
+    const email = String(friendEmail || "").trim().toLowerCase();
+    if (!email) return;
+    try {
+        await db.collection("users").doc(myEmail).set({
+            friends: firebase.firestore.FieldValue.arrayRemove(email)
+        }, { merge: true });
+        await db.collection("users").doc(email).set({
+            friends: firebase.firestore.FieldValue.arrayRemove(myEmail)
+        }, { merge: true });
+
+        myFriends = myFriends.filter(e => e !== email);
+        renderFriendsList();
+    } catch (e) {
+        console.error(e);
+    }
+}
+
+function switchLeaderboardTab(tab) {
+    currentLbTab = tab;
+    const globalBtn = document.getElementById("lb-tab-global");
+    const friendsBtn = document.getElementById("lb-tab-friends");
+    if (globalBtn) globalBtn.className = tab === "global" ? "btn-green" : "btn-blue";
+    if (friendsBtn) friendsBtn.className = tab === "friends" ? "btn-green" : "btn-blue";
+    openLeaderboard();
+}
+
+let peer = null;
+let hostConnection = null;
+let clientConnections = [];
+let isHost = false;
+let players = [];
+let currentPlayerIndex = 0;
+let pendingChoice = "";
+let currentTaskText = "";
+let currentRotation = 0;
+let nextTurnVotedPlayers = [];
+let nextRoundVotedPlayers = [];
+let currentSharedResult = null;
+let currentSharedResultKey = "";
+let taskCompleted = false;
+let activeLobbyCode = "";
+
+const LOBBY_STORAGE_KEY = "wop_active_lobby_v7";
+const RECONNECT_DELAY = 1500;
+let reconnectTimer = null;
+let leavingLobbyManually = false;
+let restoringLobby = false;
+let reconnectAttempts = 0;
+
+let lobbyUserUnsubscribe = null;
+let lobbyHostUnsubscribe = null;
+let lobbyHostEmail = "";
+let lobbyMessageSeq = 0;
+let lobbyLastHostSeq = 0;
+const lobbyProcessedClientSeq = {};
+
+function stopFirestoreLobbyTransport() {
+    try { if (lobbyUserUnsubscribe) lobbyUserUnsubscribe(); } catch (e) {}
+    try { if (lobbyHostUnsubscribe) lobbyHostUnsubscribe(); } catch (e) {}
+    lobbyUserUnsubscribe = null;
+    lobbyHostUnsubscribe = null;
+    lobbyHostEmail = "";
+    lobbyLastHostSeq = 0;
+    Object.keys(lobbyProcessedClientSeq).forEach(k => delete lobbyProcessedClientSeq[k]);
+}
+
+async function setLobbyPresence(fields = {}) {
+    if (!myEmail || !activeLobbyCode) return;
+    await db.collection("users").doc(myEmail).set({
+        currentLobby: activeLobbyCode,
+        lobbyRole: isHost ? "host" : "client",
+        lobbyHostEmail: isHost ? myEmail : (lobbyHostEmail || ""),
+        lobbyPrivate: false,
+        ...fields,
+        lastActive: firebase.firestore.FieldValue.serverTimestamp(),
+        isOnline: true
+    }, { merge: true });
+}
+
+async function clearLobbyPresence() {
+    if (!myEmail) return;
+    try {
+        await db.collection("users").doc(myEmail).set({
+            currentLobby: "",
+            lobbyRole: "",
+            lobbyHostEmail: "",
+            lobbyMessage: firebase.firestore.FieldValue.delete(),
+            hostMessage: firebase.firestore.FieldValue.delete()
+        }, { merge: true });
+    } catch (e) {}
+}
+
+function startHostFirestoreLobby() {
+    stopFirestoreLobbyTransport();
+    lobbyHostEmail = myEmail;
+
+    lobbyUserUnsubscribe = db.collection("users")
+        .where("currentLobby", "==", activeLobbyCode)
+        .onSnapshot(snapshot => {
+            if (!isHost || leavingLobbyManually) return;
+
+            const nextPlayers = [];
+            snapshot.forEach(doc => {
+                const d = doc.data() || {};
+                const name = getUserDisplayName(d, "Spieler");
+
+                if (d.currentLobby === activeLobbyCode && name) {
+                    const oldPlayer = players.find(p => p.name === name);
+                    nextPlayers.push({
+                        name,
+                        accessory: d.accessory || "",
+                        eliminated: !!oldPlayer?.eliminated
+                    });
+
+                    if (doc.id !== myEmail) {
+                        const msg = d.lobbyMessage;
+                        const seq = Number(msg && msg.seq) || 0;
+
+                        if (seq > (lobbyProcessedClientSeq[doc.id] || 0)) {
+                            lobbyProcessedClientSeq[doc.id] = seq;
+                            if (msg && msg.data) {
+                                handleIncomingData(msg.data);
+                                broadcastLobbyData(msg.data);
+                            }
+                        }
+                    }
+                }
+            });
+
+            const changed = JSON.stringify(players) !== JSON.stringify(nextPlayers);
+            players = nextPlayers;
+
+            if (changed) {
+                updatePlayerList();
+                saveLobbyPlayers();
+                broadcastLobbyData({ type: "UPDATE_PLAYERS", players });
+            } else {
+                updatePlayerList();
+            }
+        }, () => {
+            if (!leavingLobbyManually) scheduleLobbyReconnect();
+        });
+}
+
+function startClientFirestoreLobby(hostEmail) {
+    stopFirestoreLobbyTransport();
+    lobbyHostEmail = hostEmail;
+
+    lobbyHostUnsubscribe = db.collection("users").doc(hostEmail)
+        .onSnapshot(doc => {
+            if (!doc.exists || leavingLobbyManually || isHost) return;
+
+            const d = doc.data() || {};
+            if (d.currentLobby !== activeLobbyCode) return;
+
+            const msg = d.hostMessage;
+            const seq = Number(msg && msg.seq) || 0;
+
+            if (seq > lobbyLastHostSeq) {
+                lobbyLastHostSeq = seq;
+                if (msg && msg.data) handleIncomingData(msg.data);
+            }
+        }, () => {
+            if (!leavingLobbyManually) scheduleLobbyReconnect();
+        });
+}
+
+async function broadcastLobbyData(data) {
+    if (!myEmail || !activeLobbyCode || !isHost) return;
+
+    lobbyMessageSeq++;
+    try {
+        await db.collection("users").doc(myEmail).set({
+            hostMessage: { seq: lobbyMessageSeq, data, sentAt: Date.now() },
+            currentLobby: activeLobbyCode,
+            lobbyRole: "host",
+            lobbyHostEmail: myEmail,
+            lastActive: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+    } catch (e) {}
+}
+
+async function sendClientLobbyData(data) {
+    if (!myEmail || !activeLobbyCode || isHost) return;
+
+    lobbyMessageSeq++;
+    try {
+        await db.collection("users").doc(myEmail).set({
+            lobbyMessage: { seq: lobbyMessageSeq, data, sentAt: Date.now() },
+            currentLobby: activeLobbyCode,
+            lobbyRole: "client",
+            lobbyHostEmail: lobbyHostEmail,
+            lastActive: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+    } catch (e) {}
+}
+
+function saveLobbySession() {
+    if (!activeLobbyCode || leavingLobbyManually) return;
+    try {
+        localStorage.setItem(LOBBY_STORAGE_KEY, JSON.stringify({
+            code: activeLobbyCode,
+            role: isHost ? "host" : "client",
+            name: myName,
+            savedAt: Date.now()
+        }));
+    } catch (e) {
+        console.warn("Lobby-Session konnte nicht gespeichert werden:", e);
+    }
+}
+
+function getSavedLobbySession() {
+    try {
+        const raw = localStorage.getItem(LOBBY_STORAGE_KEY);
+        if (!raw) return null;
+        const data = JSON.parse(raw);
+        if (!data || !data.code || !data.role) return null;
+        if (data.savedAt && (Date.now() - data.savedAt > 3 * 60 * 60 * 1000)) {
+            clearSavedLobbySession();
+            return null;
+        }
+        return data;
+    } catch (e) {
+        clearSavedLobbySession();
+        return null;
+    }
+}
+
+function clearSavedLobbySession() {
+    try {
+        localStorage.removeItem(LOBBY_STORAGE_KEY);
+        localStorage.removeItem(LOBBY_STORAGE_KEY + "_players");
+    } catch (e) {}
+}
+
+function saveLobbyPlayers() {
+    if (!isHost || !activeLobbyCode) return;
+    try {
+        localStorage.setItem(
+            LOBBY_STORAGE_KEY + "_players",
+            JSON.stringify(Array.isArray(players) ? players : [])
+        );
+    } catch (e) {}
+}
+
+function loadLobbyPlayers() {
+    try {
+        const raw = localStorage.getItem(LOBBY_STORAGE_KEY + "_players");
+        if (!raw) return [];
+        const data = JSON.parse(raw);
+        return Array.isArray(data) ? data : [];
+    } catch (e) {
+        return [];
+    }
+}
+
+function showLobbyUI(code, client = false) {
+    document.getElementById("setup").classList.add("hidden");
+    document.getElementById("lobby-wait-box").classList.remove("hidden");
+    document.getElementById("leave-lobby-btn").classList.remove("hidden");
+    document.getElementById("display-code").innerText = String(code).toUpperCase();
+    document.getElementById("client-wait-msg").classList.toggle("hidden", !client);
+    saveLobbySession();
+    updateOnlineStatus(true);
+}
+
+function stopReconnectTimer() {
+    if (reconnectTimer) {
+        clearTimeout(reconnectTimer);
+        reconnectTimer = null;
+    }
+}
+
+function scheduleLobbyReconnect() {
+    if (leavingLobbyManually || !activeLobbyCode || reconnectTimer) return;
+
+    reconnectAttempts++;
+    const delay = Math.min(RECONNECT_DELAY * Math.max(1, Math.min(reconnectAttempts, 8)), 10000);
+
+    reconnectTimer = setTimeout(() => {
+        reconnectTimer = null;
+        reconnectLobby();
+    }, delay);
+}
+
+function destroyPeerOnly() {
+    try { if (hostConnection) hostConnection.close(); } catch (e) {}
+    try { if (peer) peer.destroy(); } catch (e) {}
+    hostConnection = null;
+    peer = null;
+    clientConnections = [];
+}
+
+async function hostGame(options = {}) {
+    const restoring = !!options.restoring;
+    restoringLobby = restoring;
+    leavingLobbyManually = false;
+    stopReconnectTimer();
+
+    if (!myName || !myEmail) {
+        if (!restoring) alert(currentLang === "de" ? "Bitte zuerst einloggen." : "Please log in first.");
+        return;
+    }
+
+    isHost = true;
+
+    if (!restoring || !activeLobbyCode) {
+        activeLobbyCode = "vibe" + Math.random().toString(36).slice(2, 8);
+        players = [{ name: getUserDisplayName({name: myName}, "Spieler"), accessory: equippedAccessory || "", eliminated: false }];
+    } else {
+        const savedPlayers = loadLobbyPlayers();
+        players = Array.isArray(savedPlayers) && savedPlayers.length ? savedPlayers : [];
+        if (!players.some(p => p.name === myName)) {
+            players.unshift({ name: myName, accessory: equippedAccessory || "", eliminated: false });
+        }
+    }
+
+    destroyPeerOnly();
+    stopFirestoreLobbyTransport();
+    saveLobbySession();
+    saveLobbyPlayers();
+    updateOnlineStatus(true);
+
+    try {
+        await setLobbyPresence({
+            lobbyMessage: firebase.firestore.FieldValue.delete(),
+            hostMessage: firebase.firestore.FieldValue.delete()
+        });
+        startHostFirestoreLobby();
+        showLobbyUI(activeLobbyCode, false);
+        document.getElementById("start-btn").classList.remove("hidden");
+        updatePlayerList();
+        restoringLobby = false;
+    } catch (e) {
+        if (!restoring) {
+            alert(currentLang === "de"
+                ? "Lobby konnte nicht erstellt werden. Bitte erneut versuchen."
+                : "Could not create the lobby. Please try again.");
+        }
+    }
+}
+
+function clearLobbyJoinTimeout() {
+    if (lobbyJoinTimeout) {
+        clearTimeout(lobbyJoinTimeout);
+        lobbyJoinTimeout = null;
+    }
+}
+
+function normalizeLobbyCode(value) {
+    return String(value || "")
+        .trim()
+        .replace(/\s+/g, "")
+        .toLowerCase();
+}
+
+async function joinGame(options = {}) {
+    const restoring = !!options.restoring;
+    const input = document.getElementById("lobby-code-input");
+    const rawCode = restoring ? String(activeLobbyCode || "") : (input ? input.value : "");
+    const code = normalizeLobbyCode(rawCode);
+
+    if (!code) {
+        if (!restoring) alert(currentLang === "de" ? "Bitte gib einen Lobby-Code ein." : "Please enter a lobby code.");
+        return;
+    }
+
+    if (!myName || !myEmail) {
+        if (!restoring) alert(currentLang === "de" ? "Bitte zuerst einloggen." : "Please log in first.");
+        return;
+    }
+
+    restoringLobby = restoring;
+    leavingLobbyManually = false;
+    stopReconnectTimer();
+    activeLobbyCode = code;
+    isHost = false;
+    clearLobbyJoinTimeout();
+    destroyPeerOnly();
+    stopFirestoreLobbyTransport();
+
+    try {
+        const snap = await db.collection("users")
+            .where("currentLobby", "==", code)
+            .get();
+
+        let hostEmail = "";
+        snap.forEach(doc => {
+            const d = doc.data() || {};
+            if (!hostEmail && (d.lobbyRole === "host" || doc.id === d.lobbyHostEmail)) {
+                hostEmail = doc.id;
+            }
+        });
+
+        if (!hostEmail) {
+            if (!restoring) {
+                alert(currentLang === "de"
+                    ? "Lobby nicht gefunden. Prüfe den Lobby-Code."
+                    : "Lobby not found. Check the lobby code.");
+            }
+            return;
+        }
+
+        lobbyHostEmail = hostEmail;
+
+        await setLobbyPresence({
+            lobbyMessage: firebase.firestore.FieldValue.delete()
+        });
+
+        startClientFirestoreLobby(hostEmail);
+        showLobbyUI(code, true);
+        document.getElementById("display-code").innerText = code.toUpperCase();
+        document.getElementById("client-wait-msg").classList.remove("hidden");
+        restoringLobby = false;
+    } catch (e) {
+        if (!restoring) {
+            alert(currentLang === "de"
+                ? "Lobby konnte nicht beigetreten werden. Bitte Code prüfen."
+                : "Could not join the lobby. Please check the code.");
+        }
+    }
+}
+
+function reconnectLobby() {
+    if (leavingLobbyManually || !activeLobbyCode) return;
+
+    const saved = getSavedLobbySession();
+    const role = saved?.role || (isHost ? "host" : "client");
+
+    if (role === "host") hostGame({ restoring: true });
+    else joinGame({ restoring: true });
+}
+
+function leaveLobby() {
+    if (confirm(currentLang === 'de' ? "Möchtest du die Lobby wirklich verlassen?" : "Do you really want to leave the lobby?")) {
+        leavingLobbyManually = true;
+        stopReconnectTimer();
+
+        try { sendData({ type: 'LEAVE_LOBBY', playerName: myName }); } catch (e) {}
+
+        clearSavedLobbySession();
+        cleanupAndResetLobby(true);
+    }
+}
+
+function cleanupAndResetLobby(manual = false) {
+    clearTimeout(window.__autoNextTurnTimer);
+    window.__autoNextTurnTimer = null;
+    if (manual) leavingLobbyManually = true;
+    stopReconnectTimer();
+    clearLobbyJoinTimeout();
+    stopFirestoreLobbyTransport();
+    clearLobbyPresence();
+
+    if (peer) {
+        try { peer.destroy(); } catch(e) {}
+        peer = null;
+    }
+
+    hostConnection = null;
+    clientConnections = [];
+    isHost = false;
+    players = [];
+    currentPlayerIndex = 0;
+    activeLobbyCode = "";
+
+    if (manual) clearSavedLobbySession();
+
+    updateOnlineStatus(true);
+
+    document.getElementById("lobby-wait-box").classList.add("hidden");
+    document.getElementById("woP-phase").classList.add("hidden");
+    document.getElementById("wheel-phase").classList.add("hidden");
+    document.getElementById("emergency-box").classList.add("hidden");
+    document.getElementById("chat-box-container").classList.add("hidden");
+    document.getElementById("leave-lobby-btn").classList.add("hidden");
+    document.getElementById("start-btn").classList.add("hidden");
+    document.getElementById("client-wait-msg").classList.add("hidden");
+    document.getElementById("setup").classList.remove("hidden");
+    document.getElementById("chat-messages").innerHTML = "";
+}
+
+function sendData(data) {
+    if (!data) return;
+
+    if (isHost) {
+        handleIncomingData(data);
+        broadcastLobbyData(data);
+    } else {
+        sendClientLobbyData(data);
+    }
+}
+
+function setupHostConnectionEvents(c) {}
+function setupClientConnectionEvents(c) {}
+
+function handlePlayerLeaving(leftName) {
+    players = players.filter(p => p.name !== leftName);
+    updatePlayerList();
+    saveLobbyPlayers();
+    appendChat("System", currentLang === 'de' ? `${leftName} hat die Lobby verlassen.` : `${leftName} has left the lobby.`);
+
+    if (isHost) {
+        broadcastLobbyData({ type: 'UPDATE_PLAYERS', players: players });
+    }
+}
+
+function handleIncomingData(data) {
+    if (data.type === 'UPDATE_PLAYERS') {
+        players = data.players;
+        updatePlayerList();
+    } else if (data.type === 'LEAVE_LOBBY') {
+        handlePlayerLeaving(data.playerName);
+    } else if (data.type === 'START_GAME') {
+        players = data.players;
+        startGameUI();
+    } else if (data.type === 'SUBMIT_CHOICE') {
+        pendingChoice = data.choice;
+        assignTaskCreator(data.playerName, data.choice);
+    } else if (data.type === 'ASSIGN_CREATOR') {
+        setupCreatorUI(data.targetPlayer, data.choice, data.creatorName);
+    } else if (data.type === 'SHOW_TASK') {
+        currentTaskText = data.taskText;
+        displayTaskScreen(data.targetPlayer, data.choice, data.taskText, data.creator);
+    } else if (data.type === 'SHOW_RESULT') {
+        currentSharedResult = {
+            targetPlayer: data.targetPlayer,
+            choice: data.choice,
+            taskText: data.taskText,
+            resultText: data.resultText
+        };
+        showFeedbackScreen(
+            data.targetPlayer,
+            data.choice,
+            data.taskText,
+            data.resultText
+        );
+    } else if (data.type === 'VOTE_NEXT_TURN') {
+        handleNextTurnVote(data.playerName);
+    } else if (data.type === 'EXECUTE_NEXT_TURN') {
+        executeProceedToNextTurn();
+    } else if (data.type === 'START_WHEEL') {
+        document.getElementById("woP-phase").classList.add("hidden");
+        document.getElementById("wheel-phase").classList.remove("hidden");
+        const spinBtn = document.getElementById("spin-btn");
+        if (spinBtn) spinBtn.disabled = false;
+        const wheelResult = document.getElementById("wheel-result-box");
+        if (wheelResult) wheelResult.classList.add("hidden");
+    } else if (data.type === 'SPIN_WHEEL') {
+        runWheelAnimation(data.sector, data.rotation);
+    } else if (data.type === 'VOTE_NEXT_ROUND') {
+        handleNextRoundVote(data.playerName);
+    } else if (data.type === 'NEXT_ROUND') {
+        nextRound();
+    } else if (data.type === 'ELIMINATE') {
+        players = data.players;
+        updatePlayerList();
+    } else if (data.type === 'CHAT_MSG') {
+        if (data.sender !== myName) {
+            appendChat(data.sender, data.text);
+        }
+    }
+}
+
+function updatePlayerList() {
+    const list = document.getElementById("player-list");
+    if (!list) return;
+    list.innerHTML = "";
+    players.forEach((p, index) => {
+        const playerName = getUserDisplayName(p);
+        const accessory = String(p.accessory || "");
+        list.innerHTML += `<li><b>${index + 1}.</b> ${accessory} ${playerName} ${p.eliminated ? '❌' : ''}</li>`;
+    });
+    if (isHost && players.length >= 1) {
+        document.getElementById("start-btn").classList.remove("hidden");
+    }
+}
+
+function startOnlineGame() {
+    if (!isHost) return;
+    sendData({ type: 'START_GAME', players: players });
+    startGameUI();
+}
+
+function startGameUI() {
+    document.getElementById("auth-modal").classList.add("hidden");
+    document.getElementById("account-modal").classList.add("hidden");
+    document.getElementById("setup").classList.add("hidden");
+    document.getElementById("lobby-wait-box").classList.add("hidden");
+    document.getElementById("woP-phase").classList.remove("hidden");
+    document.getElementById("emergency-box").classList.remove("hidden");
+    document.getElementById("chat-box-container").classList.remove("hidden");
+    document.getElementById("leave-lobby-btn").classList.remove("hidden");
+    updateWopTurn();
+}
+
+function updateWopTurn() {
+    if (currentSharedResult) {
+        showFeedbackScreen(
+            currentSharedResult.targetPlayer,
+            currentSharedResult.choice,
+            currentSharedResult.taskText,
+            currentSharedResult.resultText
+        );
+        return;
+    }
+
+    while (currentPlayerIndex < players.length && players[currentPlayerIndex].eliminated) {
+        currentPlayerIndex++;
+    }
+    if (currentPlayerIndex >= players.length) {
+        if (isHost) {
+            sendData({ type: 'START_WHEEL' });
+            document.getElementById("woP-phase").classList.add("hidden");
+            document.getElementById("wheel-phase").classList.remove("hidden");
+        }
+        return;
+    }
+
+    let currentP = players[currentPlayerIndex];
+    const currentPlayerName = getUserDisplayName(currentP, "Spieler");
+    document.getElementById("wop-turn-title").innerHTML = translations[currentLang].turnTitle + `<span style="color: var(--primary-color);">${currentPlayerName}</span>`;
+    
+    document.getElementById("wop-choice-area").classList.add("hidden");
+    document.getElementById("creator-input-area").classList.add("hidden");
+    document.getElementById("active-task-area").classList.add("hidden");
+    document.getElementById("result-feedback-area").classList.add("hidden");
+    document.getElementById("waiting-for-player-box").classList.add("hidden");
+
+    if (currentPlayerName === myName) {
+        document.getElementById("ui-select-btn").disabled = false;
+        document.getElementById("wop-choice-area").classList.remove("hidden");
+    } else {
+        document.getElementById("waiting-for-player-box").classList.remove("hidden");
+        document.getElementById("waiting-info-text").innerText = (currentLang === 'de' ? `Warte, bis ${currentPlayerName} wählt...` : `Waiting for ${currentPlayerName} to choose...`);
+    }
+}
+
+function submitWopChoice() {
+    if (players[currentPlayerIndex]?.name !== myName) return;
+
+    const button = document.getElementById("ui-select-btn");
+    if (button.disabled) return;
+
+    const choice = document.getElementById("wop-choice").value;
+    pendingChoice = choice;
+    button.disabled = true;
+    sendData({ type: 'SUBMIT_CHOICE', playerName: myName, choice: choice });
+}
+
+function assignTaskCreator(targetName, choice) {
+    let activeOthers = players.filter(p => !p.eliminated && p.name !== targetName);
+    let creatorName = activeOthers.length > 0 ? activeOthers[Math.floor(Math.random() * activeOthers.length)].name : targetName;
+    sendData({ type: 'ASSIGN_CREATOR', targetPlayer: targetName, choice: choice, creatorName: creatorName });
+}
+
+function setupCreatorUI(targetPlayer, choice, creatorName) {
+    targetPlayer = getUserDisplayName({ name: targetPlayer }, "Spieler");
+    creatorName = getUserDisplayName({ name: creatorName }, "Spieler");
+    const isTruth = choice === "truth";
+    const instruction = currentLang === 'de'
+        ? (isTruth ? `Wähle eine Wahrheitsfrage für ${targetPlayer}:` : `Wähle eine Pflicht-Aufgabe für ${targetPlayer}:`)
+        : (isTruth ? `Choose a truth question for ${targetPlayer}:` : `Choose a dare for ${targetPlayer}:`);
+
+    document.getElementById("wop-choice-area").classList.add("hidden");
+    document.getElementById("waiting-for-player-box").classList.add("hidden");
+    document.getElementById("creator-input-area").classList.add("hidden");
+    document.getElementById("creator-instruction-title").innerText = instruction;
+    document.getElementById("creator-target-info").innerText = currentLang === 'de'
+        ? `${isTruth ? "Wahrheit" : "Pflicht"} für ${targetPlayer}`
+        : `${isTruth ? "Truth" : "Dare"} for ${targetPlayer}`;
+
+    if (creatorName === myName) {
+        document.getElementById("creator-input-area").classList.remove("hidden");
+        document.getElementById("custom-task-input").placeholder = currentLang === 'de'
+            ? (isTruth ? `Wahrheitsfrage für ${targetPlayer} eingeben...` : `Pflicht-Aufgabe für ${targetPlayer} eingeben...`)
+            : (isTruth ? `Enter a truth question for ${targetPlayer}...` : `Enter a dare for ${targetPlayer}...`);
+    } else {
+        document.getElementById("waiting-for-player-box").classList.add("hidden");
+        document.getElementById("waiting-for-player-box").classList.remove("hidden");
+        document.getElementById("waiting-info-text").innerText = (currentLang === 'de' ? `Warte auf ${creatorName}...` : `Waiting for ${creatorName}...`);
+    }
+}
+
+function sendCustomTask() {
+    let taskText = document.getElementById("custom-task-input").value.trim();
+    if (!taskText) { alert(translations[currentLang].alertTask); return; }
+    let targetPlayer = players[currentPlayerIndex].name;
+    currentTaskText = taskText;
+    document.getElementById("creator-input-area").classList.add("hidden");
+    document.getElementById("custom-task-input").value = "";
+    sendData({ type: 'SHOW_TASK', targetPlayer: targetPlayer, choice: pendingChoice, taskText: taskText, creator: myName });
+}
+
+function displayTaskScreen(targetPlayer, choice, taskText, creator) {
+    pendingChoice = choice;
+    currentTaskText = taskText;
+    taskCompleted = false;
+
+    document.getElementById("ui-submit-answer-btn").disabled = false;
+    document.getElementById("ui-dare-done-btn").disabled = false;
+    document.getElementById("wop-choice-area").classList.add("hidden");
+    document.getElementById("creator-input-area").classList.add("hidden");
+    document.getElementById("waiting-for-player-box").classList.add("hidden");
+
+    if (targetPlayer === myName) {
+        document.getElementById("active-task-area").classList.remove("hidden");
+        document.getElementById("task-title-text").innerText = choice === "truth" ? (currentLang === 'de' ? "💡 WAHRHEIT" : "💡 TRUTH") : (currentLang === 'de' ? "🔥 PFLICHT" : "🔥 DARE");
+        document.getElementById("task-assigner-info").innerText = (currentLang === 'de' ? "Von: " : "From: ") + creator;
+        document.getElementById("task-content-desc").innerText = taskText;
+        
+        if (choice === "truth") {
+            document.getElementById("answer-box").classList.remove("hidden");
+            document.getElementById("dare-box").classList.add("hidden");
+            document.getElementById("player-answer-input").value = "";
+        } else {
+            document.getElementById("answer-box").classList.add("hidden");
+            document.getElementById("dare-box").classList.remove("hidden");
+        }
+    } else {
+        document.getElementById("waiting-for-player-box").classList.remove("hidden");
+        document.getElementById("waiting-info-text").innerText = (currentLang === 'de' ? `${targetPlayer} ist dran...` : `${targetPlayer}'s turn...`);
+    }
+}
+
+function submitAnswer() {
+    if (taskCompleted) return;
+
+    const ans = document.getElementById("player-answer-input").value.trim();
+    if (!ans) { alert(translations[currentLang].alertAnswer); return; }
+
+    taskCompleted = true;
+    document.getElementById("ui-submit-answer-btn").disabled = true;
+    document.getElementById("ui-dare-done-btn").disabled = true;
+
+    finishTaskAndReward(pendingChoice);
+
+    const resultData = {
+        type: 'SHOW_RESULT',
+        targetPlayer: players[currentPlayerIndex].name,
+        choice: pendingChoice,
+        taskText: currentTaskText,
+        resultText: (currentLang === 'de' ? `Antwort: "${ans}"` : `Answer: "${ans}"`)
+    };
+
+    handleIncomingData(resultData);
+
+    if (!isHost) {
+        sendClientLobbyData(resultData);
+    } else {
+        broadcastLobbyData(resultData);
+    }
+}
+
+function submitDareDone() {
+    if (taskCompleted) return;
+
+    taskCompleted = true;
+    document.getElementById("ui-submit-answer-btn").disabled = true;
+    document.getElementById("ui-dare-done-btn").disabled = true;
+
+    finishTaskAndReward(pendingChoice);
+
+    const resultData = {
+        type: 'SHOW_RESULT',
+        targetPlayer: players[currentPlayerIndex].name,
+        choice: pendingChoice,
+        taskText: currentTaskText,
+        resultText: (currentLang === 'de' ? "Erfolgreich erfüllt! ✅" : "Successfully completed! ✅")
+    };
+
+    handleIncomingData(resultData);
+
+    if (!isHost) {
+        sendClientLobbyData(resultData);
+    } else {
+        broadcastLobbyData(resultData);
+    }
+}
+
+function finishTaskAndReward(choice) {
+    const currentPlayer = players[currentPlayerIndex];
+    if (!currentPlayer || currentPlayer.name !== myName) return;
+
+    addRewards(choice === "dare");
+}
+
+function showFeedbackScreen(targetPlayer, choice, taskText, resultText) {
+    const resultKey = [
+        String(targetPlayer || ""),
+        String(choice || ""),
+        String(taskText || ""),
+        String(resultText || "")
+    ].join("|");
+
+    const isNewResult = resultKey !== currentSharedResultKey;
+    currentSharedResult = {
+        targetPlayer,
+        choice,
+        taskText,
+        resultText
+    };
+    currentSharedResultKey = resultKey;
+
+    document.getElementById("active-task-area").classList.add("hidden");
+    document.getElementById("creator-input-area").classList.add("hidden");
+    document.getElementById("wop-choice-area").classList.add("hidden");
+    document.getElementById("waiting-for-player-box").classList.add("hidden");
+    document.getElementById("result-feedback-area").classList.remove("hidden");
+
+    if (isNewResult) {
+        nextTurnVotedPlayers = [];
+    }
+
+    const nextBtn = document.getElementById("next-turn-btn");
+    nextBtn.disabled = nextTurnVotedPlayers.includes(myName);
+
+    document.getElementById("feedback-player-name").innerText =
+        currentLang === 'de'
+            ? `${targetPlayer} hat abgeschlossen!`
+            : `${targetPlayer} finished!`;
+
+    document.getElementById("feedback-task-info").innerText =
+        currentLang === 'de'
+            ? `Aufgabe: "${taskText}"`
+            : `Task: "${taskText}"`;
+
+    document.getElementById("feedback-result-box").innerText = resultText;
+
+    const activeCount = players.filter(p => !p.eliminated).length;
+    document.getElementById("next-votes-count").innerText = String(nextTurnVotedPlayers.length);
+    document.getElementById("next-votes-total").innerText = String(activeCount);
+}
+
+function voteNextTurn() {
+    if (!currentSharedResult) return;
+
+    const me = players.find(p => p.name === myName);
+    if (!me || me.eliminated) return;
+    if (nextTurnVotedPlayers.includes(myName)) return;
+
+    document.getElementById("next-turn-btn").disabled = true;
+
+    const voteData = { type: 'VOTE_NEXT_TURN', playerName: myName };
+
+    handleIncomingData(voteData);
+
+    if (!isHost) {
+        sendClientLobbyData(voteData);
+    } else {
+        broadcastLobbyData(voteData);
+    }
+}
+
+function handleNextTurnVote(pName) {
+    const activePlayers = players.filter(p => !p.eliminated);
+    const activeNames = activePlayers.map(p => p.name);
+    if (!activeNames.includes(pName)) return;
+    if (!nextTurnVotedPlayers.includes(pName)) {
+        nextTurnVotedPlayers.push(pName);
+    }
+
+    document.getElementById("next-votes-count").innerText = nextTurnVotedPlayers.length;
+    document.getElementById("next-votes-total").innerText = activePlayers.length;
+
+    if (pName === myName) {
+        document.getElementById("next-turn-btn").disabled = true;
+    }
+
+    if (isHost && nextTurnVotedPlayers.length >= activePlayers.length) {
+        const nextData = { type: 'EXECUTE_NEXT_TURN' };
+
+        handleIncomingData(nextData);
+        broadcastLobbyData(nextData);
+    }
+}
+
+function executeProceedToNextTurn() {
+    currentSharedResult = null;
+    currentSharedResultKey = "";
+    document.getElementById("result-feedback-area").classList.add("hidden");
+    document.getElementById("active-task-area").classList.add("hidden");
+    document.getElementById("creator-input-area").classList.add("hidden");
+    document.getElementById("waiting-for-player-box").classList.add("hidden");
+    document.getElementById("next-turn-btn").disabled = false;
+    nextTurnVotedPlayers = [];
+    currentPlayerIndex++;
+    updateWopTurn();
+}
+
+function spinWheel() {
+    const button = document.getElementById("spin-btn");
+    if (button.disabled) return;
+
+    let sectors = translations[currentLang].wheelSectors;
+    let idx = Math.floor(Math.random() * sectors.length);
+    currentRotation += 1800 + (idx * (360 / sectors.length));
+    button.disabled = true;
+    sendData({ type: 'SPIN_WHEEL', sector: idx, rotation: currentRotation });
+}
+
+function runWheelAnimation(sectorIndex, rotationVal) {
+    document.getElementById("spin-btn").disabled = true;
+    let wheel = document.getElementById("wheel-container");
+    wheel.style.transform = `rotate(-${rotationVal}deg)`;
+    setTimeout(() => {
+        document.getElementById("spin-btn").disabled = false;
+        let selected = translations[currentLang].wheelSectors[sectorIndex];
+        wheel.innerText = translations[currentLang].wheelResult;
+        document.getElementById("wheel-action-title").innerText = selected.title;
+        document.getElementById("wheel-action-desc").innerText = selected.desc;
+        document.getElementById("wheel-result-box").classList.remove("hidden");
+        document.getElementById("next-round-btn").disabled = false;
+        userXP += 25;
+        userCoins += 12;
+        addMonthlyCoins(12);
+        calculateLevel();
+        updateHUD();
+        updateProfileModal();
+        saveUserDataToCloud();
+    }, 3000);
+}
+
+function voteNextRound() {
+    document.getElementById("next-round-btn").disabled = true;
+    sendData({ type: 'VOTE_NEXT_ROUND', playerName: myName });
+}
+
+function handleNextRoundVote(pName) {
+    if (!nextRoundVotedPlayers.includes(pName)) nextRoundVotedPlayers.push(pName);
+    let activeCount = players.filter(p => !p.eliminated).length;
+    
+    const countEl = document.getElementById("round-votes-count");
+    const totalEl = document.getElementById("round-votes-total");
+    if (countEl) countEl.innerText = nextRoundVotedPlayers.length;
+    if (totalEl) totalEl.innerText = activeCount;
+
+    if (isHost && nextRoundVotedPlayers.length >= activeCount) {
+        sendData({ type: 'NEXT_ROUND' });
+    }
+}
+
+function nextRound() {
+    currentPlayerIndex = 0;
+    nextRoundVotedPlayers = [];
+    document.getElementById("wheel-result-box").classList.add("hidden");
+    document.getElementById("wheel-phase").classList.add("hidden");
+    document.getElementById("woP-phase").classList.remove("hidden");
+    updateWopTurn();
+}
+
+async function triggerLeak() {
+    const targetName = prompt(translations[currentLang].promptLeak);
+    const normalized = targetName?.trim().toLowerCase();
+    const target = players.find(p => p.name.toLowerCase() === normalized);
+
+    if (!target) return;
+
+    target.eliminated = true;
+
+    if (target.name === myName) {
+        userStreak = 0;
+        await saveUserDataToCloud();
+        updateHUD();
+        updateProfileModal();
+    }
+
+    sendData({ type: 'ELIMINATE', players: players });
+}
+
+function appendChat(sender, text) {
+    let box = document.getElementById("chat-messages");
+    box.innerHTML += `<div class="chat-msg"><b>${sender}:</b> ${text}</div>`;
+    box.scrollTop = box.scrollHeight;
+}
+
+function sendChatMessage() {
+    let input = document.getElementById("chat-input");
+    let text = input.value.trim();
+    if(!text) return;
+    appendChat(myName, text);
+    sendData({ type: 'CHAT_MSG', sender: myName, text: text });
+    input.value = "";
+}
