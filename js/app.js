@@ -332,6 +332,10 @@
                 alertInviteSent: "Einladung gesendet! 🚀",
                 alertInviteError: "Fehler beim Senden der Einladung.",
                 statusPanelTitle: "📊 Spieler-Status",
+                statusSettingsBtn: "⚙️ Status einstellen",
+                statusSettingsTitle: "⚙️ Mein Status einstellen",
+                statusSettingsDesc: "Stelle deine aktuellen Werte ein – sie werden live an die Lobby gesendet.",
+                statusSettingsClose: "Schließen",
                 toiletLabel: "🚻 Klo-Dringlichkeit",
                 hornyLabel: "🔥 Horny-Level",
                 alcoholLabel: "🍺 Alkohol-Pegel",
@@ -509,6 +513,10 @@
                 alertInviteSent: "Invite sent! 🚀",
                 alertInviteError: "Error sending invite.",
                 statusPanelTitle: "📊 Player Status",
+                statusSettingsBtn: "⚙️ Set Status",
+                statusSettingsTitle: "⚙️ Set my status",
+                statusSettingsDesc: "Adjust your current values – they are sent live to the lobby.",
+                statusSettingsClose: "Close",
                 toiletLabel: "🚻 Restroom Urgency",
                 hornyLabel: "🔥 Horny Level",
                 alcoholLabel: "🍺 Alcohol Level",
@@ -752,9 +760,17 @@
             const emDesc = document.getElementById("ui-emergency-desc"); if (emDesc) emDesc.innerText = t.emergencyDesc;
             const leakBtn = document.getElementById("ui-leak-btn"); if (leakBtn) leakBtn.innerText = t.leakBtn;
 
-            // Spieler-Status Panel (Klo / Horny / Alkohol / Durst / Müdigkeit)
+            // Spieler-Status Panel + Einstellungs-Modal
             const statusTitle = document.getElementById("status-panel-title");
             if (statusTitle) statusTitle.innerText = t.statusPanelTitle || (currentLang === "de" ? "📊 Spieler-Status" : "📊 Player Status");
+            const statusBtn = document.getElementById("ui-btn-status-settings");
+            if (statusBtn) statusBtn.innerText = t.statusSettingsBtn || (currentLang === "de" ? "⚙️ Status einstellen" : "⚙️ Set Status");
+            const statusSetTitle = document.getElementById("ui-status-settings-title");
+            if (statusSetTitle) statusSetTitle.innerText = t.statusSettingsTitle || (currentLang === "de" ? "⚙️ Mein Status einstellen" : "⚙️ Set my status");
+            const statusSetDesc = document.getElementById("ui-status-settings-desc");
+            if (statusSetDesc) statusSetDesc.innerText = t.statusSettingsDesc || (currentLang === "de" ? "Stelle deine aktuellen Werte ein – sie werden live an die Lobby gesendet." : "Adjust your current values – they are sent live to the lobby.");
+            const statusSetClose = document.getElementById("ui-status-settings-close");
+            if (statusSetClose) statusSetClose.innerText = t.statusSettingsClose || (currentLang === "de" ? "Schließen" : "Close");
             const statusLabelMap = [
                 { id: "ui-toilet-label", valueId: "toilet-level-value", key: "toiletLabel", fallbackDe: "🚻 Klo-Dringlichkeit", fallbackEn: "🚻 Restroom Urgency" },
                 { id: "ui-horny-label", valueId: "horny-level-value", key: "hornyLabel", fallbackDe: "🔥 Horny-Level", fallbackEn: "🔥 Horny Level" },
@@ -2566,6 +2582,7 @@
                 document.getElementById("leave-lobby-btn")?.classList.remove("hidden");
                 document.getElementById("chat-box-container")?.classList.remove("hidden");
                 document.getElementById("emergency-box")?.classList.remove("hidden");
+                document.getElementById("player-status-panel")?.classList.remove("hidden");
 
                 if (phase === "wop") {
                     document.getElementById("woP-phase")?.classList.remove("hidden");
@@ -2880,6 +2897,7 @@
             document.getElementById("wheel-phase").classList.add("hidden");
             document.getElementById("emergency-box").classList.add("hidden");
             document.getElementById("chat-box-container").classList.add("hidden");
+            document.getElementById("player-status-panel")?.classList.add("hidden");
             document.getElementById("leave-lobby-btn").classList.add("hidden");
             document.getElementById("start-btn").classList.add("hidden");
             document.getElementById("client-wait-msg").classList.add("hidden");
@@ -3005,6 +3023,23 @@
             renderPlayerStatuses();
         }
 
+        function openStatusSettingsModal() {
+            // Aktuelle Werte aus playerStatuses in die Slider übernehmen
+            const st = playerStatuses[myName] || {};
+            ["toilet", "horny", "alcohol", "thirst", "energy"].forEach(kind => {
+                const input = document.getElementById(kind + "-level");
+                if (input) {
+                    input.value = Math.max(0, Math.min(100, Number(st[kind]) || 0));
+                }
+            });
+            updateOwnStatusPreview();
+            document.getElementById("status-settings-modal")?.classList.remove("hidden");
+        }
+
+        function closeStatusSettingsModal() {
+            document.getElementById("status-settings-modal")?.classList.add("hidden");
+        }
+
         function updateOwnStatusPreview() {
             ["toilet", "horny", "alcohol", "thirst", "energy"].forEach(kind => {
                 const input = document.getElementById(kind + "-level");
@@ -3077,6 +3112,7 @@
             document.getElementById("woP-phase").classList.remove("hidden");
             document.getElementById("emergency-box").classList.remove("hidden");
             document.getElementById("chat-box-container").classList.remove("hidden");
+            document.getElementById("player-status-panel")?.classList.remove("hidden");
             document.getElementById("leave-lobby-btn").classList.remove("hidden");
             updateWopTurn();
             if (isHost) scheduleSaveGameState();
@@ -3595,6 +3631,7 @@
                 document.getElementById("wheel-phase")?.classList.add("hidden");
                 document.getElementById("emergency-box")?.classList.add("hidden");
                 document.getElementById("chat-box-container")?.classList.add("hidden");
+                document.getElementById("player-status-panel")?.classList.add("hidden");
                 document.getElementById("leave-lobby-btn")?.classList.add("hidden");
                 document.getElementById("start-btn")?.classList.add("hidden");
                 document.getElementById("client-wait-msg")?.classList.add("hidden");
@@ -3621,6 +3658,7 @@
                 document.getElementById("wheel-phase")?.classList.add("hidden");
                 document.getElementById("emergency-box")?.classList.add("hidden");
                 document.getElementById("chat-box-container")?.classList.add("hidden");
+                document.getElementById("player-status-panel")?.classList.add("hidden");
                 document.getElementById("lobby-wait-box")?.classList.add("hidden");
                 document.getElementById("setup")?.classList.remove("hidden");
             }
