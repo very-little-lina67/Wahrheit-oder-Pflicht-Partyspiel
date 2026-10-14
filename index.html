@@ -369,31 +369,6 @@
             <div id="client-wait-msg" class="hidden" style="color: #ffcc00; font-size: 12px;">Mit Lobby verbunden! Warte darauf, dass der Host startet...</div>
         </div>
 
-                    <div id="player-status-panel" class="box-section" style="margin-top:8px;padding:10px;text-align:left;">
-                <h4 id="status-panel-title" style="margin:0 0 8px;">📊 Spieler-Status</h4>
-                <div style="font-size:12px;margin-bottom:8px;">
-                    <label id="ui-toilet-label" for="toilet-level">🚻 Klo-Dringlichkeit: <span id="toilet-level-value">0%</span></label>
-                    <input id="toilet-level" type="range" min="0" max="100" value="0" step="10" oninput="updateOwnStatusPreview()" onchange="publishOwnStatus()" style="width:100%;">
-                </div>
-                <div style="font-size:12px;margin-bottom:8px;">
-                    <label id="ui-horny-label" for="horny-level">🔥 Horny-Level: <span id="horny-level-value">0%</span></label>
-                    <input id="horny-level" type="range" min="0" max="100" value="0" step="10" oninput="updateOwnStatusPreview()" onchange="publishOwnStatus()" style="width:100%;">
-                </div>
-                <div style="font-size:12px;margin-bottom:8px;">
-                    <label id="ui-alcohol-label" for="alcohol-level">🍺 Alkohol-Pegel: <span id="alcohol-level-value">0%</span></label>
-                    <input id="alcohol-level" type="range" min="0" max="100" value="0" step="10" oninput="updateOwnStatusPreview()" onchange="publishOwnStatus()" style="width:100%;">
-                </div>
-                <div style="font-size:12px;margin-bottom:8px;">
-                    <label id="ui-thirst-label" for="thirst-level">💧 Durst: <span id="thirst-level-value">0%</span></label>
-                    <input id="thirst-level" type="range" min="0" max="100" value="0" step="10" oninput="updateOwnStatusPreview()" onchange="publishOwnStatus()" style="width:100%;">
-                </div>
-                <div style="font-size:12px;margin-bottom:8px;">
-                    <label id="ui-energy-label" for="energy-level">😴 Müdigkeit: <span id="energy-level-value">0%</span></label>
-                    <input id="energy-level" type="range" min="0" max="100" value="0" step="10" oninput="updateOwnStatusPreview()" onchange="publishOwnStatus()" style="width:100%;">
-                </div>
-                <div id="player-status-list" style="display:grid;gap:8px;"></div>
-            </div>
-
         <!-- WAHRHEIT ODER PFLICHT PHASE -->
         <div id="woP-phase" class="hidden">
             <h2 id="wop-turn-title" style="font-size: 1.2rem;">Current Turn: </h2>
@@ -476,6 +451,46 @@
                 <button class="btn-blue" style="width: 70px; margin:0; padding:8px; font-size: 12px;" onclick="sendChatMessage()" id="ui-chat-send">Send</button>
             </div>
         </div>
+
+        <!-- SPIELER-STATUS (unter dem Chat) – nur Anzeige, Einstellen per Button -->
+        <div id="player-status-panel" class="box-section hidden" style="margin-top:12px;padding:10px;text-align:left;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; gap:8px; flex-wrap:wrap;">
+                <h4 id="status-panel-title" style="margin:0; font-size:14px;">📊 Spieler-Status</h4>
+                <button id="ui-btn-status-settings" class="btn-blue" onclick="openStatusSettingsModal()" style="padding:5px 10px; font-size:12px; width:auto; margin:0;">⚙️ Status einstellen</button>
+            </div>
+            <div id="player-status-list" style="display:grid;gap:8px;"></div>
+        </div>
+
+    <!-- STATUS-EINSTELLUNGEN MODAL (eigene Slider) -->
+    <div id="status-settings-modal" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width:420px;">
+            <h2 id="ui-status-settings-title" style="color: var(--accent-color); margin-top:0; font-size:1.2rem;">⚙️ Mein Status einstellen</h2>
+            <p id="ui-status-settings-desc" style="font-size:12px; color:#ccc; margin:0 0 12px 0;">Stelle deine aktuellen Werte ein – sie werden live an die Lobby gesendet.</p>
+
+            <div style="font-size:12px;margin-bottom:10px;">
+                <label id="ui-toilet-label" for="toilet-level">🚻 Klo-Dringlichkeit: <span id="toilet-level-value">0%</span></label>
+                <input id="toilet-level" type="range" min="0" max="100" value="0" step="10" oninput="updateOwnStatusPreview()" onchange="publishOwnStatus()" style="width:100%;">
+            </div>
+            <div style="font-size:12px;margin-bottom:10px;">
+                <label id="ui-horny-label" for="horny-level">🔥 Horny-Level: <span id="horny-level-value">0%</span></label>
+                <input id="horny-level" type="range" min="0" max="100" value="0" step="10" oninput="updateOwnStatusPreview()" onchange="publishOwnStatus()" style="width:100%;">
+            </div>
+            <div style="font-size:12px;margin-bottom:10px;">
+                <label id="ui-alcohol-label" for="alcohol-level">🍺 Alkohol-Pegel: <span id="alcohol-level-value">0%</span></label>
+                <input id="alcohol-level" type="range" min="0" max="100" value="0" step="10" oninput="updateOwnStatusPreview()" onchange="publishOwnStatus()" style="width:100%;">
+            </div>
+            <div style="font-size:12px;margin-bottom:10px;">
+                <label id="ui-thirst-label" for="thirst-level">💧 Durst: <span id="thirst-level-value">0%</span></label>
+                <input id="thirst-level" type="range" min="0" max="100" value="0" step="10" oninput="updateOwnStatusPreview()" onchange="publishOwnStatus()" style="width:100%;">
+            </div>
+            <div style="font-size:12px;margin-bottom:12px;">
+                <label id="ui-energy-label" for="energy-level">😴 Müdigkeit: <span id="energy-level-value">0%</span></label>
+                <input id="energy-level" type="range" min="0" max="100" value="0" step="10" oninput="updateOwnStatusPreview()" onchange="publishOwnStatus()" style="width:100%;">
+            </div>
+
+            <button id="ui-status-settings-close" class="btn-blue" onclick="closeStatusSettingsModal()" style="width:100%; padding:10px; font-size:13px;">Schließen</button>
+        </div>
+    </div>
 
         <!-- NOTFALL BUTTON -->
         <div id="emergency-box" class="hidden" style="margin-top: 20px; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 10px;">
