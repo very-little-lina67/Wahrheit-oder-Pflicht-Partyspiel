@@ -1838,3 +1838,1469 @@
                 document.getElementById("friend-search-input").value = "";
             }
         }
+            if (!myEmail) {
+                alert(currentLang === "de" ? "Bitte zuerst einloggen." : "Please log in first.");
+                return;
+            }
+            showFriendsTab("list");
+            document.getElementById("friends-modal").classList.remove("hidden");
+            // Immer frisch aus der Cloud laden, damit atomare arrayUnion-Updates
+            // (z. B. wenn der andere Spieler die Anfrage angenommen hat) sichtbar werden.
+            loadFriendsData().then(() => {
+                renderFriendsList();
+                renderFriendRequests();
+            });
+        }
+
+        function showFriendsTab(tab) {
+            document.getElementById("friends-list-panel").classList.toggle("hidden", tab !== "list");
+            document.getElementById("friends-requests-panel").classList.toggle("hidden", tab !== "requests");
+            document.getElementById("friends-add-panel").classList.toggle("hidden", tab !== "add");
+            if (tab === "list") renderFriendsList();
+            if (tab === "requests") renderFriendRequests();
+            if (tab === "add") {
+                document.getElementById("friend-search-results").innerHTML = "";
+                document.getElementById("friend-search-input").value = "";
+            }
+        }
+
+        async function renderFriendsList() {
+            const container = document.getElementById("friends-list");
+            if (!container) return;
+            container.innerHTML = currentLang === "de" ? "Lade Freunde..." : "Loading friends...";
+
+            if (!myFriends.length) {
+                container.innerHTML = `<span style="font-size:12px;color:#888;">${currentLang === "de" ? "Noch keine Freunde. Sende eine Anfrage!" : "No friends yet. Send a request!"}</span>`;
+                return;
+            }
+
+            try {
+                const now = Date.now();
+                let html = "";
+                // Batch get friends (Firestore limit ~10 for getAll, so sequential for simplicity)
+                for (const email of myFriends) {
+                    try {
+                        const doc = await db.collection("users").doc(email).get();
+                        if (!doc.exists) continue;
+                        const d = doc.data() || {};
+                        const name = getUserDisplayName(d, "Spieler");
+                        const accessory = d.accessory || "";
+                        const isOnline = !!d.isOnline && d.lastActive &&
+                            (d.lastActive.toMillis ? (now - d.lastActive.toMillis() < ONLINE_TIMEOUT_MS) : true);
+                        const lobby = d.currentLobby ? String(d.currentLobby).toUpperCase() : "";
+                        const statusColor = isOnline ? "#28a745" : "#888";
+                        const statusText = isOnline
+                            ? (lobby ? `Online · Lobby ${lobby}` : (currentLang === "de" ? "Online · Bereit" : "Online · Ready"))
+                            : (currentLang === "de" ? "Offline" : "Offline");
+                        const safeEmail = email.replace(/'/g, "\\'");
+                        const safeName = name.replace(/'/g, "\\'").replace(/"/g, "&quot;");
+
+                        html += `<div style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,0.05);padding:8px;border-radius:6px;margin-bottom:6px;font-size:12px;">
+                            <div>
+                                <b>${accessory} ${name.replace(/</g,"&lt;")}</b><br>
+                                <span style="color:${statusColor};font-size:10px;">● ${statusText}</span>
+                            </div>
+                            <div style="display:flex;gap:4px;">
+                                ${isOnline && activeLobbyCode && isHost ? `<button class="btn-green" style="padding:3px 6px;font-size:10px;width:auto;margin:0;" onclick="sendGameInvite('${safeEmail}', '${safeName}')">${currentLang === "de" ? "Einladen" : "Invite"}</button>` : ""}
+                                <button class="btn-danger" style="padding:3px 6px;font-size:10px;width:auto;margin:0;" onclick="removeFriend('${safeEmail}')">✕</button>
+                            </div>
+                        </div>`;
+                    } catch (e) {}
+                }
+                container.innerHTML = html || `<span style="font-size:12px;color:#888;">${currentLang === "de" ? "Keine Freunde gefunden." : "No friends found."}</span>`;
+            } catch (e) {
+                container.innerHTML = currentLang === "de" ? "Fehler beim Laden." : "Error loading.";
+            }
+        }
+
+        function renderFriendRequests() {
+            const container = document.getElementById("friend-requests-list");
+            if (!container) return;
+            if (!myFriendRequests.length) {
+                container.innerHTML = `<span style="font-size:12px;color:#888;">${currentLang === "de" ? "Keine offenen Anfragen." : "No pending requests."}</span>`;
+                return;
+            }
+            let html = "";
+            myFriendRequests.forEach(req => {
+                const safeId = req.id.replace(/'/g, "\\'");
+                const safeEmail = (req.fromEmail || "").replace(/'/g, "\\'");
+                html += `<div style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,0.05);padding:8px;border-radius:6px;margin-bottom:6px;font-size:12px;">
+                    <div><b>${(req.fromName || "Spieler").replace(/</g,"&lt;")}</b></div>
+                    <div style="display:flex;gap:4px;">
+                        <button class="btn-green" style="padding:3px 8px;font-size:11px;width:auto;margin:0;" onclick="acceptFriendRequest('${safeId}', '${safeEmail}', '${(req.fromName||'').replace(/'/g,"\\'")}')">✓</button>
+                        <button class="btn-danger" style="padding:3px 8px;font-size:11px;width:auto;margin:0;" onclick="rejectFriendRequest('${safeId}')">✕</button>
+                    </div>
+                </div>`;
+            });
+            container.innerHTML = html;
+        }
+
+        async function searchAndAddFriend() {
+            const q = (document.getElementById("friend-search-input").value || "").trim().toLowerCase();
+            const results = document.getElementById("friend-search-results");
+            if (!q) {
+                alert(currentLang === "de" ? "Bitte E-Mail oder Namen eingeben." : "Please enter email or name.");
+                return;
+            }
+            results.innerHTML = currentLang === "de" ? "Suche..." : "Searching...";
+            try {
+                const snap = await db.collection("users").get();
+                let found = false;
+                let html = "";
+                snap.forEach(doc => {
+                    const email = doc.id;
+                    if (email === myEmail) return;
+                    const d = doc.data() || {};
+                    const name = (d.name || "").toLowerCase();
+                    if (email === q || name.includes(q) || email.includes(q)) {
+                        found = true;
+                        const displayName = getUserDisplayName(d, "Spieler");
+                        const alreadyFriend = myFriends.includes(email);
+                        const safeEmail = email.replace(/'/g, "\\'");
+                        const safeName = displayName.replace(/'/g, "\\'");
+                        html += `<div style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,0.05);padding:8px;border-radius:6px;margin-bottom:6px;font-size:12px;">
+                            <div><b>${displayName.replace(/</g,"&lt;")}</b><br><span style="font-size:10px;color:#888;">${maskEmail(email)}</span></div>
+                            ${alreadyFriend
+                                ? `<span style="color:#28a745;font-size:11px;">${currentLang === "de" ? "✓ Freund" : "✓ Friend"}</span>`
+                                : `<button class="btn-green" style="padding:4px 8px;font-size:11px;width:auto;margin:0;" onclick="sendFriendRequest('${safeEmail}', '${safeName}')">${currentLang === "de" ? "Anfrage" : "Request"}</button>`}
+                        </div>`;
+                    }
+                });
+                results.innerHTML = found ? html : `<span style="font-size:12px;color:#888;">${currentLang === "de" ? "Niemand gefunden." : "Nobody found."}</span>`;
+            } catch (e) {
+                results.innerHTML = currentLang === "de" ? "Fehler bei der Suche." : "Error searching.";
+            }
+        }
+
+        async function sendFriendRequest(targetEmail, targetName) {
+            const toEmail = String(targetEmail || "").trim().toLowerCase();
+            if (!myEmail || !toEmail || toEmail === myEmail) return;
+            if (myFriends.includes(toEmail)) {
+                alert(currentLang === "de" ? "Ihr seid bereits Freunde!" : "You are already friends!");
+                return;
+            }
+            try {
+                // Check existing request
+                const existing = await db.collection("friendRequests")
+                    .where("fromEmail", "==", myEmail)
+                    .where("toEmail", "==", toEmail)
+                    .get();
+                if (!existing.empty) {
+                    alert(currentLang === "de" ? "Anfrage bereits gesendet!" : "Request already sent!");
+                    return;
+                }
+                // Check reverse request → auto-accept
+                const reverse = await db.collection("friendRequests")
+                    .where("fromEmail", "==", toEmail)
+                    .where("toEmail", "==", myEmail)
+                    .get();
+                if (!reverse.empty) {
+                    const doc = reverse.docs[0];
+                    await acceptFriendRequest(doc.id, toEmail, targetName);
+                    return;
+                }
+                await db.collection("friendRequests").add({
+                    fromEmail: myEmail,
+                    fromName: myName,
+                    toEmail: toEmail,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                alert(currentLang === "de" ? `Freundschaftsanfrage an ${targetName} gesendet! 👥` : `Friend request sent to ${targetName}! 👥`);
+            } catch (e) {
+                console.error(e);
+                alert(currentLang === "de" ? "Fehler beim Senden der Anfrage." : "Error sending request.");
+            }
+        }
+
+        async function acceptFriendRequest(reqId, fromEmail, fromName) {
+            if (!myEmail || !fromEmail) return;
+            const friendEmail = String(fromEmail).trim().toLowerCase();
+            if (!friendEmail || friendEmail === myEmail) return;
+
+            try {
+                // Atomare Updates: arrayUnion verhindert Race-Conditions mit
+                // parallelen saveUserDataToCloud-Aufrufen und doppelten Einträgen.
+                await db.collection("users").doc(myEmail).set({
+                    friends: firebase.firestore.FieldValue.arrayUnion(friendEmail)
+                }, { merge: true });
+
+                await db.collection("users").doc(friendEmail).set({
+                    friends: firebase.firestore.FieldValue.arrayUnion(myEmail)
+                }, { merge: true });
+
+                if (!myFriends.includes(friendEmail)) {
+                    myFriends.push(friendEmail);
+                }
+
+                if (reqId) {
+                    try { await db.collection("friendRequests").doc(reqId).delete(); } catch (e) {}
+                }
+                myFriendRequests = myFriendRequests.filter(r => r.id !== reqId);
+                updateFriendRequestBadge();
+                renderFriendRequests();
+                renderFriendsList();
+                alert(currentLang === "de" ? `Du bist jetzt mit ${fromName || "Spieler"} befreundet! 🎉` : `You are now friends with ${fromName || "player"}! 🎉`);
+            } catch (e) {
+                console.error(e);
+                alert(currentLang === "de" ? "Fehler beim Annehmen." : "Error accepting request.");
+            }
+        }
+
+        async function rejectFriendRequest(reqId) {
+            try {
+                await db.collection("friendRequests").doc(reqId).delete();
+                myFriendRequests = myFriendRequests.filter(r => r.id !== reqId);
+                updateFriendRequestBadge();
+                renderFriendRequests();
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        async function removeFriend(friendEmail) {
+            if (!confirm(currentLang === "de" ? "Freund wirklich entfernen?" : "Really remove this friend?")) return;
+            const email = String(friendEmail || "").trim().toLowerCase();
+            if (!email) return;
+            try {
+                // Atomar entfernen – kein vollständiges Array-Überschreiben
+                await db.collection("users").doc(myEmail).set({
+                    friends: firebase.firestore.FieldValue.arrayRemove(email)
+                }, { merge: true });
+                await db.collection("users").doc(email).set({
+                    friends: firebase.firestore.FieldValue.arrayRemove(myEmail)
+                }, { merge: true });
+
+                myFriends = myFriends.filter(e => e !== email);
+                renderFriendsList();
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        // --- Leaderboard with Friends tab ---
+        function switchLeaderboardTab(tab) {
+            currentLbTab = tab;
+            const globalBtn = document.getElementById("lb-tab-global");
+            const friendsBtn = document.getElementById("lb-tab-friends");
+            if (globalBtn) globalBtn.className = tab === "global" ? "btn-green" : "btn-blue";
+            if (friendsBtn) friendsBtn.className = tab === "friends" ? "btn-green" : "btn-blue";
+            openLeaderboard();
+        }
+
+
+        // --- NETZWERK & PEERJS SPIEL-LOGIK ---
+        let peer = null;
+        let hostConnection = null;
+        let clientConnections = [];
+        let isHost = false;
+        let players = [];
+        let currentPlayerIndex = 0;
+        let pendingChoice = "";
+        let currentTaskText = "";
+        let currentRotation = 0;
+        let nextTurnVotedPlayers = [];
+        let nextRoundVotedPlayers = [];
+        let currentSharedResult = null;
+        let currentSharedResultKey = "";
+        let playerStatusByName = {};
+        let creatorHistoryByTarget = {};
+        // Globale Auswahlhistorie verhindert, dass derselbe Spieler ständig Aufgaben erstellt.
+        let creatorRecentHistory = [];
+        let taskCompleted = false;
+        let activeLobbyCode = "";
+
+// ==============================================================================
+// 12. MULTIPLAYER LOBBY-TRANSPORT & SESSION-CACHING
+// ==============================================================================
+        // STABILE LOBBY-SESSION
+        // Die Lobby endet nur noch über "Lobby verlassen".
+        // Reload/App-Wechsel/kurze Netzwerkunterbrechungen führen
+        // nicht mehr automatisch zum Verlassen der Lobby.
+        // ==========================================================
+        const LOBBY_STORAGE_KEY = "wop_active_lobby_v7";
+        const RECONNECT_DELAY = 1500;
+        let reconnectTimer = null;
+        let leavingLobbyManually = false;
+        let restoringLobby = false;
+        let reconnectAttempts = 0;
+
+        // Firebase-Lobby-Transport: zuverlässiger als direkte WebRTC-Verbindungen
+        // zwischen unterschiedlichen Netzwerken. Die vorhandene Firebase-Verbindung
+        // wird als Lobby-Signalisierung und Spiel-Datenkanal verwendet.
+        let lobbyUserUnsubscribe = null;
+        let lobbyHostUnsubscribe = null;
+        let lobbyHostEmail = "";
+        let lobbyMessageSeq = 0;
+        let lobbyLastHostSeq = 0;
+        let hasRestoredCloudGameState = false;
+        let lastAppliedGameStateVersion = 0;
+        let gameStateSaveTimer = null;
+        const lobbyProcessedClientSeq = {};
+
+        function stopFirestoreLobbyTransport() {
+            try { if (lobbyUserUnsubscribe) lobbyUserUnsubscribe(); } catch (e) {}
+            try { if (lobbyHostUnsubscribe) lobbyHostUnsubscribe(); } catch (e) {}
+            lobbyUserUnsubscribe = null;
+            lobbyHostUnsubscribe = null;
+            lobbyHostEmail = "";
+            lobbyLastHostSeq = 0;
+            Object.keys(lobbyProcessedClientSeq).forEach(k => delete lobbyProcessedClientSeq[k]);
+        }
+
+        async function setLobbyPresence(fields = {}) {
+            if (!myEmail || !activeLobbyCode) return;
+            await db.collection("users").doc(myEmail).set({
+                currentLobby: activeLobbyCode,
+                lobbyRole: isHost ? "host" : "client",
+                lobbyHostEmail: isHost ? myEmail : (lobbyHostEmail || ""),
+                lobbyPrivate: false,
+                ...fields,
+                lastActive: firebase.firestore.FieldValue.serverTimestamp(),
+                isOnline: true
+            }, { merge: true });
+        }
+
+        async function clearLobbyPresence() {
+            if (!myEmail) return;
+            try {
+                await db.collection("users").doc(myEmail).set({
+                    currentLobby: "",
+                    lobbyRole: "",
+                    lobbyHostEmail: "",
+                    lobbyMessage: firebase.firestore.FieldValue.delete(),
+                    hostMessage: firebase.firestore.FieldValue.delete()
+                }, { merge: true });
+            } catch (e) {}
+        }
+
+        function startHostFirestoreLobby() {
+            stopFirestoreLobbyTransport();
+            lobbyHostEmail = myEmail;
+
+            lobbyUserUnsubscribe = db.collection("users")
+                .where("currentLobby", "==", activeLobbyCode)
+                .onSnapshot(snapshot => {
+                    if (!isHost || leavingLobbyManually) return;
+
+                    const playersFromPresence = [];
+                    snapshot.forEach(doc => {
+                        const d = doc.data() || {};
+                        const name = getUserDisplayName(d, "Spieler");
+
+                        if (d.currentLobby === activeLobbyCode && name) {
+                            const oldPlayer = players.find(p => p.name === name);
+                            playersFromPresence.push({
+                                name,
+                                accessory: d.accessory || oldPlayer?.accessory || "",
+                                eliminated: !!oldPlayer?.eliminated
+                            });
+
+                            if (doc.id !== myEmail) {
+                                const msg = d.lobbyMessage;
+                                const seq = Number(msg && msg.seq) || 0;
+
+                                if (seq > (lobbyProcessedClientSeq[doc.id] || 0)) {
+                                    lobbyProcessedClientSeq[doc.id] = seq;
+                                    if (msg && msg.data) {
+                                        handleIncomingData(msg.data);
+
+                                        // Client-Nachrichten werden nach der Verarbeitung
+                                        // vom Host an ALLE Spieler weitergeleitet.
+                                        broadcastLobbyData(msg.data);
+                                    }
+                                }
+                            }
+                        }
+                    });
+
+                    // Firestore-Abfragen liefern keine verlässliche Spielreihenfolge.
+                    // Bestehende Reihenfolge behalten, neue Spieler nur hinten anhängen.
+                    const presenceByName = new Map(playersFromPresence.map(p => [p.name, p]));
+                    const nextPlayers = [];
+                    players.forEach(oldPlayer => {
+                        const present = presenceByName.get(oldPlayer.name);
+                        if (present) {
+                            nextPlayers.push({ ...oldPlayer, ...present, eliminated: !!oldPlayer.eliminated });
+                            presenceByName.delete(oldPlayer.name);
+                        }
+                    });
+                    presenceByName.forEach(p => nextPlayers.push(p));
+                    const changed = JSON.stringify(players) !== JSON.stringify(nextPlayers);
+                    players = nextPlayers;
+
+                    if (changed) {
+                        updatePlayerList();
+                        saveLobbyPlayers();
+                        broadcastLobbyData({ type: "UPDATE_PLAYERS", players });
+                    } else {
+                        updatePlayerList();
+                    }
+                }, () => {
+                    if (!leavingLobbyManually) scheduleLobbyReconnect();
+                });
+        }
+
+        function startClientFirestoreLobby(hostEmail) {
+            stopFirestoreLobbyTransport();
+            lobbyHostEmail = hostEmail;
+
+            lobbyHostUnsubscribe = db.collection("users").doc(hostEmail)
+                .onSnapshot(doc => {
+                    if (!doc.exists || leavingLobbyManually || isHost) return;
+
+                    const d = doc.data() || {};
+                    if (d.currentLobby !== activeLobbyCode) return;
+
+                    // Nach Reload den zuletzt gespeicherten Spielstand einmalig laden.
+                    if (d.gameState && Number(d.gameState.version || 0) > lastAppliedGameStateVersion) {
+                        lastAppliedGameStateVersion = Number(d.gameState.version || 0);
+                        if (!hasRestoredCloudGameState) {
+                            hasRestoredCloudGameState = true;
+                            applySavedGameState(d.gameState);
+                        }
+                    }
+
+                    const msg = d.hostMessage;
+                    const seq = Number(msg && msg.seq) || 0;
+
+                    if (seq > lobbyLastHostSeq) {
+                        lobbyLastHostSeq = seq;
+                        if (msg && msg.data) handleIncomingData(msg.data);
+                    }
+                }, () => {
+                    if (!leavingLobbyManually) scheduleLobbyReconnect();
+                });
+        }
+
+        async function broadcastLobbyData(data) {
+            if (!myEmail || !activeLobbyCode || !isHost) return;
+
+            lobbyMessageSeq++;
+            try {
+                await db.collection("users").doc(myEmail).set({
+                    hostMessage: { seq: lobbyMessageSeq, data, sentAt: Date.now() },
+                    currentLobby: activeLobbyCode,
+                    lobbyRole: "host",
+                    lobbyHostEmail: myEmail,
+                    lastActive: firebase.firestore.FieldValue.serverTimestamp()
+                }, { merge: true });
+            } catch (e) {}
+        }
+
+        async function sendClientLobbyData(data) {
+            if (!myEmail || !activeLobbyCode || isHost) return;
+
+            lobbyMessageSeq++;
+            try {
+                await db.collection("users").doc(myEmail).set({
+                    lobbyMessage: { seq: lobbyMessageSeq, data, sentAt: Date.now() },
+                    currentLobby: activeLobbyCode,
+                    lobbyRole: "client",
+                    lobbyHostEmail: lobbyHostEmail,
+                    lastActive: firebase.firestore.FieldValue.serverTimestamp()
+                }, { merge: true });
+            } catch (e) {}
+        }
+
+
+        function saveLobbySession() {
+            if (!activeLobbyCode || leavingLobbyManually) return;
+            try {
+                localStorage.setItem(LOBBY_STORAGE_KEY, JSON.stringify({
+                    code: activeLobbyCode,
+                    role: isHost ? "host" : "client",
+                    name: myName,
+                    savedAt: Date.now()
+                }));
+            } catch (e) {
+                console.warn("Lobby-Session konnte nicht gespeichert werden:", e);
+            }
+        }
+
+        function getSavedLobbySession() {
+            try {
+                const raw = localStorage.getItem(LOBBY_STORAGE_KEY);
+                if (!raw) return null;
+                const data = JSON.parse(raw);
+                if (!data || !data.code || !data.role) return null;
+                // Veraltete Sessions (> 3 Stunden) automatisch verwerfen
+                if (data.savedAt && (Date.now() - data.savedAt > 3 * 60 * 60 * 1000)) {
+                    clearSavedLobbySession();
+                    return null;
+                }
+                return data;
+            } catch (e) {
+                clearSavedLobbySession();
+                return null;
+            }
+        }
+
+        function clearSavedLobbySession() {
+            try {
+                localStorage.removeItem(LOBBY_STORAGE_KEY);
+                localStorage.removeItem(LOBBY_STORAGE_KEY + "_players");
+            } catch (e) {}
+        }
+
+        function saveLobbyPlayers() {
+            if (!isHost || !activeLobbyCode) return;
+            try {
+                localStorage.setItem(
+                    LOBBY_STORAGE_KEY + "_players",
+                    JSON.stringify(Array.isArray(players) ? players : [])
+                );
+            } catch (e) {}
+        }
+
+        function loadLobbyPlayers() {
+            try {
+                const raw = localStorage.getItem(LOBBY_STORAGE_KEY + "_players");
+                if (!raw) return [];
+                const data = JSON.parse(raw);
+                return Array.isArray(data) ? data : [];
+                                } catch (e) {
+                return [];
+            }
+        }
+
+        function showLobbyUI(code, client = false) {
+            document.getElementById("setup").classList.add("hidden");
+            document.getElementById("lobby-wait-box").classList.remove("hidden");
+            document.getElementById("leave-lobby-btn").classList.remove("hidden");
+            document.getElementById("display-code").innerText = String(code).toUpperCase();
+            document.getElementById("client-wait-msg").classList.toggle("hidden", !client);
+            saveLobbySession();
+            updateOnlineStatus(true);
+        }
+
+        function stopReconnectTimer() {
+            if (reconnectTimer) {
+                clearTimeout(reconnectTimer);
+                reconnectTimer = null;
+            }
+        }
+
+        function scheduleLobbyReconnect() {
+            if (leavingLobbyManually || !activeLobbyCode || reconnectTimer) return;
+
+            reconnectAttempts++;
+            const delay = Math.min(RECONNECT_DELAY * Math.max(1, Math.min(reconnectAttempts, 8)), 10000);
+
+            reconnectTimer = setTimeout(() => {
+                reconnectTimer = null;
+                reconnectLobby();
+            }, delay);
+        }
+
+        function destroyPeerOnly() {
+            try { if (hostConnection) hostConnection.close(); } catch (e) {}
+            try { if (peer) peer.destroy(); } catch (e) {}
+            hostConnection = null;
+            peer = null;
+            clientConnections = [];
+        }
+
+// ==============================================================================
+// 13. SPIELABLAUF: LOBBY ERSTELLEN & BEITRETEN
+// ==============================================================================
+        async function hostGame(options = {}) {
+            const restoring = !!options.restoring;
+            restoringLobby = restoring;
+            leavingLobbyManually = false;
+            stopReconnectTimer();
+
+            if (!myName || !myEmail) {
+                if (!restoring) alert(currentLang === "de" ? "Bitte zuerst einloggen." : "Please log in first.");
+                return;
+            }
+
+            isHost = true;
+
+            if (!restoring || !activeLobbyCode) {
+                activeLobbyCode = "vibe" + Math.random().toString(36).slice(2, 8);
+                players = [{ name: getUserDisplayName({name: myName}, "Spieler"), accessory: equippedAccessory || "", eliminated: false }];
+            } else {
+                const savedPlayers = loadLobbyPlayers();
+                players = Array.isArray(savedPlayers) && savedPlayers.length ? savedPlayers : [];
+                if (!players.some(p => p.name === myName)) {
+                    players.unshift({ name: myName, accessory: equippedAccessory || "", eliminated: false });
+                }
+            }
+
+            destroyPeerOnly();
+            stopFirestoreLobbyTransport();
+            saveLobbySession();
+            saveLobbyPlayers();
+            updateOnlineStatus(true);
+
+            try {
+                await setLobbyPresence({
+                    lobbyMessage: firebase.firestore.FieldValue.delete(),
+                    hostMessage: firebase.firestore.FieldValue.delete()
+                });
+                showLobbyUI(activeLobbyCode, false);
+                updatePlayerList();
+                if (restoring) {
+                    try {
+                        const ownDoc = await db.collection("users").doc(myEmail).get();
+                        const savedState = ownDoc.exists ? ownDoc.data().gameState : null;
+                        if (savedState) {
+                            lastAppliedGameStateVersion = Number(savedState.version || 0);
+                            hasRestoredCloudGameState = true;
+                            applySavedGameState(savedState);
+                        }
+                    } catch (restoreError) { console.warn("Spielstand konnte nicht geladen werden", restoreError); }
+                }
+                // Erst nach dem Wiederherstellen den Presence-Listener starten.
+                startHostFirestoreLobby();
+                const gameAlreadyStarted = localStorage.getItem(LOBBY_STORAGE_KEY + "_gameStarted") === "1";
+                document.getElementById("start-btn").classList.toggle("hidden", gameAlreadyStarted);
+                restoringLobby = false;
+            } catch (e) {
+                if (!restoring) {
+                    alert(currentLang === "de"
+                        ? "Lobby konnte nicht erstellt werden. Bitte erneut versuchen."
+                        : "Could not create the lobby. Please try again.");
+                }
+            }
+        }
+
+        function clearLobbyJoinTimeout() {
+            if (lobbyJoinTimeout) {
+                clearTimeout(lobbyJoinTimeout);
+                lobbyJoinTimeout = null;
+            }
+        }
+
+        function normalizeLobbyCode(value) {
+            return String(value || "")
+                .trim()
+                .replace(/\s+/g, "")
+                .toLowerCase();
+        }
+
+        async function joinGame(options = {}) {
+            const restoring = !!options.restoring;
+            const input = document.getElementById("lobby-code-input");
+            const rawCode = restoring ? String(activeLobbyCode || "") : (input ? input.value : "");
+            const code = normalizeLobbyCode(rawCode);
+
+            if (!code) {
+                if (!restoring) alert(currentLang === "de" ? "Bitte gib einen Lobby-Code ein." : "Please enter a lobby code.");
+                return;
+            }
+
+            if (!myName || !myEmail) {
+                if (!restoring) alert(currentLang === "de" ? "Bitte zuerst einloggen." : "Please log in first.");
+                return;
+            }
+
+            restoringLobby = restoring;
+            leavingLobbyManually = false;
+            stopReconnectTimer();
+            if (!restoring) { hasRestoredCloudGameState = false; lastAppliedGameStateVersion = 0; }
+            activeLobbyCode = code;
+            isHost = false;
+            clearLobbyJoinTimeout();
+            destroyPeerOnly();
+            stopFirestoreLobbyTransport();
+
+            try {
+                const snap = await db.collection("users")
+                    .where("currentLobby", "==", code)
+                    .get();
+
+                let hostEmail = "";
+                snap.forEach(doc => {
+                    const d = doc.data() || {};
+                    if (!hostEmail && (d.lobbyRole === "host" || doc.id === d.lobbyHostEmail)) {
+                        hostEmail = doc.id;
+                    }
+                });
+
+                if (!hostEmail) {
+                    if (!restoring) {
+                        alert(currentLang === "de"
+                            ? "Lobby nicht gefunden. Prüfe den Lobby-Code."
+                            : "Lobby not found. Check the lobby code.");
+                    }
+                    return;
+                }
+
+                // Lobby-Beitritt: Mit gültigem Code beitreten
+                lobbyHostEmail = hostEmail;
+
+                await setLobbyPresence({
+                    lobbyMessage: firebase.firestore.FieldValue.delete()
+                });
+
+                startClientFirestoreLobby(hostEmail);
+                showLobbyUI(code, true);
+                document.getElementById("display-code").innerText = code.toUpperCase();
+                document.getElementById("client-wait-msg").classList.remove("hidden");
+                restoringLobby = false;
+            } catch (e) {
+                if (!restoring) {
+                    alert(currentLang === "de"
+                        ? "Lobby konnte nicht beigetreten werden. Bitte Code prüfen."
+                        : "Could not join the lobby. Please check the code.");
+                }
+            }
+        }
+
+        function reconnectLobby() {
+            if (leavingLobbyManually || !activeLobbyCode) return;
+
+            const saved = getSavedLobbySession();
+            const role = saved?.role || (isHost ? "host" : "client");
+
+            if (role === "host") hostGame({ restoring: true });
+            else joinGame({ restoring: true });
+        }
+
+        function leaveLobby() {
+            if (confirm(currentLang === 'de' ? "Möchtest du die Lobby wirklich verlassen?" : "Do you really want to leave the lobby?")) {
+                leavingLobbyManually = true;
+                stopReconnectTimer();
+
+                try { sendData({ type: 'LEAVE_LOBBY', playerName: myName }); } catch (e) {}
+
+                clearSavedLobbySession();
+                cleanupAndResetLobby(true);
+            }
+        }
+
+        function cleanupAndResetLobby(manual = false) {
+            clearTimeout(window.__autoNextTurnTimer);
+            window.__autoNextTurnTimer = null;
+            if (manual) leavingLobbyManually = true;
+            stopReconnectTimer();
+            clearLobbyJoinTimeout();
+            stopFirestoreLobbyTransport();
+            clearLobbyPresence();
+
+            if (peer) {
+                try { peer.destroy(); } catch(e) {}
+                peer = null;
+            }
+
+            hostConnection = null;
+            clientConnections = [];
+            isHost = false;
+            players = [];
+            currentPlayerIndex = 0;
+            activeLobbyCode = "";
+            hasRestoredCloudGameState = false;
+            lastAppliedGameStateVersion = 0;
+            if (gameStateSaveTimer) { clearTimeout(gameStateSaveTimer); gameStateSaveTimer = null; }
+
+            if (manual) { clearSavedLobbySession(); try { localStorage.removeItem(LOBBY_STORAGE_KEY + "_gameStarted"); } catch (e) {} }
+
+            updateOnlineStatus(true);
+
+            document.getElementById("lobby-wait-box").classList.add("hidden");
+            document.getElementById("woP-phase").classList.add("hidden");
+            document.getElementById("wheel-phase").classList.add("hidden");
+            document.getElementById("emergency-box").classList.add("hidden");
+            document.getElementById("chat-box-container").classList.add("hidden");
+            document.getElementById("leave-lobby-btn").classList.add("hidden");
+            document.getElementById("start-btn").classList.add("hidden");
+            document.getElementById("client-wait-msg").classList.add("hidden");
+            document.getElementById("setup").classList.remove("hidden");
+            document.getElementById("chat-messages").innerHTML = "";
+        }
+
+        function sendData(data) {
+            if (!data) return;
+
+            if (isHost) {
+                handleIncomingData(data);
+                broadcastLobbyData(data);
+            } else {
+                sendClientLobbyData(data);
+                                }
+        }
+
+        // Legacy PeerJS hooks bleiben als No-Op erhalten.
+        function setupHostConnectionEvents(c) {}
+        function setupClientConnectionEvents(c) {}
+
+        function handlePlayerLeaving(leftName) {
+            players = players.filter(p => p.name !== leftName);
+            updatePlayerList();
+            saveLobbyPlayers();
+            appendChat("System", currentLang === 'de' ? `${leftName} hat die Lobby verlassen.` : `${leftName} has left the lobby.`);
+
+            if (isHost) {
+                broadcastLobbyData({ type: 'UPDATE_PLAYERS', players: players });
+            }
+        }
+
+        function getSerializableGameState() {
+            return {
+                started: localStorage.getItem(LOBBY_STORAGE_KEY + "_gameStarted") === "1",
+                players: Array.isArray(players) ? players : [],
+                currentPlayerIndex,
+                pendingChoice,
+                currentTaskText,
+                currentSharedResult,
+                currentSharedResultKey,
+                nextTurnVotedPlayers,
+                nextRoundVotedPlayers,
+                taskCompleted,
+                currentRotation,
+                wheelVisible: !document.getElementById("wheel-phase")?.classList.contains("hidden"),
+                creatorHistoryByTarget,
+                creatorRecentHistory,
+                playerStatusByName,
+                version: Date.now()
+            };
+        }
+
+        function scheduleSaveGameState() {
+            if (!isHost || !myEmail || !activeLobbyCode || leavingLobbyManually) return;
+            clearTimeout(gameStateSaveTimer);
+            gameStateSaveTimer = setTimeout(async () => {
+                try {
+                    const state = getSerializableGameState();
+                    lastAppliedGameStateVersion = state.version;
+                    await db.collection("users").doc(myEmail).set({
+                        gameState: state,
+                        currentLobby: activeLobbyCode,
+                        lobbyRole: "host",
+                        lobbyHostEmail: myEmail,
+                        lastActive: firebase.firestore.FieldValue.serverTimestamp()
+                    }, { merge: true });
+                } catch (e) { console.warn("Spielstand konnte nicht gespeichert werden", e); }
+            }, 180);
+        }
+
+        function applySavedGameState(state) {
+            if (!state || !activeLobbyCode) return;
+            if (Array.isArray(state.players) && state.players.length) players = state.players;
+            currentPlayerIndex = Math.max(0, Number(state.currentPlayerIndex) || 0);
+            pendingChoice = state.pendingChoice || "";
+            currentTaskText = state.currentTaskText || "";
+            currentSharedResult = state.currentSharedResult || null;
+            currentSharedResultKey = state.currentSharedResultKey || "";
+            nextTurnVotedPlayers = Array.isArray(state.nextTurnVotedPlayers) ? state.nextTurnVotedPlayers : [];
+            nextRoundVotedPlayers = Array.isArray(state.nextRoundVotedPlayers) ? state.nextRoundVotedPlayers : [];
+            taskCompleted = !!state.taskCompleted;
+            currentRotation = Number(state.currentRotation) || 0;
+            creatorHistoryByTarget = state.creatorHistoryByTarget || {};
+            creatorRecentHistory = Array.isArray(state.creatorRecentHistory) ? state.creatorRecentHistory : [];
+            playerStatusByName = state.playerStatusByName || {};
+            updatePlayerList();
+            renderPlayerStatuses();
+            if (state.started) {
+                try { localStorage.setItem(LOBBY_STORAGE_KEY + "_gameStarted", "1"); } catch (e) {}
+                startGameUI();
+                if (state.wheelVisible) {
+                    document.getElementById("woP-phase").classList.add("hidden");
+                    document.getElementById("wheel-phase").classList.remove("hidden");
+                } else if (currentSharedResult) {
+                    showFeedbackScreen(currentSharedResult.targetPlayer, currentSharedResult.choice, currentSharedResult.taskText, currentSharedResult.resultText);
+                } else if (currentTaskText && pendingChoice && players[currentPlayerIndex]) {
+                    displayTaskScreen(players[currentPlayerIndex].name, pendingChoice, currentTaskText, "");
+                } else {
+                    updateWopTurn();
+                }
+                const startBtn = document.getElementById("start-btn");
+                if (startBtn) startBtn.classList.add("hidden");
+            } else {
+                try { localStorage.removeItem(LOBBY_STORAGE_KEY + "_gameStarted"); } catch (e) {}
+                const startBtn = document.getElementById("start-btn");
+                if (startBtn && isHost) startBtn.classList.remove("hidden");
+            }
+        }
+
+        function handleIncomingData(data) {
+            if (data.type === 'UPDATE_PLAYERS') {
+                players = data.players;
+                updatePlayerList();
+            } else if (data.type === 'LEAVE_LOBBY') {
+                handlePlayerLeaving(data.playerName);
+            } else if (data.type === 'START_GAME') {
+                players = data.players;
+                try { localStorage.setItem(LOBBY_STORAGE_KEY + "_gameStarted", "1"); } catch (e) {}
+                startGameUI();
+            } else if (data.type === 'SUBMIT_CHOICE') {
+                pendingChoice = data.choice;
+                // Die Zuteilung darf ausschließlich der Host durchführen, sonst würfelt
+                // jeder Client einen anderen Ersteller und überschreibt den Ablauf.
+                if (isHost) assignTaskCreator(data.playerName, data.choice);
+            } else if (data.type === 'ASSIGN_CREATOR') {
+                setupCreatorUI(data.targetPlayer, data.choice, data.creatorName);
+            } else if (data.type === 'SHOW_TASK') {
+                currentTaskText = data.taskText;
+                displayTaskScreen(data.targetPlayer, data.choice, data.taskText, data.creator);
+            } else if (data.type === 'SHOW_RESULT') {
+                currentSharedResult = {
+                    targetPlayer: data.targetPlayer,
+                    choice: data.choice,
+                    taskText: data.taskText,
+                    resultText: data.resultText
+                };
+                showFeedbackScreen(
+                    data.targetPlayer,
+                    data.choice,
+                    data.taskText,
+                    data.resultText
+                );
+            } else if (data.type === 'VOTE_NEXT_TURN') {
+                handleNextTurnVote(data.playerName);
+            } else if (data.type === 'EXECUTE_NEXT_TURN') {
+                executeProceedToNextTurn();
+            } else if (data.type === 'START_WHEEL') {
+                document.getElementById("woP-phase").classList.add("hidden");
+                document.getElementById("wheel-phase").classList.remove("hidden");
+                const spinBtn = document.getElementById("spin-btn");
+                if (spinBtn) spinBtn.disabled = false;
+                const wheelResult = document.getElementById("wheel-result-box");
+                if (wheelResult) wheelResult.classList.add("hidden");
+            } else if (data.type === 'SPIN_WHEEL') {
+                runWheelAnimation(data.sector, data.rotation);
+            } else if (data.type === 'VOTE_NEXT_ROUND') {
+                handleNextRoundVote(data.playerName);
+            } else if (data.type === 'NEXT_ROUND') {
+                nextRound();
+            } else if (data.type === 'ELIMINATE') {
+                players = data.players;
+                updatePlayerList();
+            } else if (data.type === 'PLAYER_STATUS') {
+                playerStatusByName[data.playerName] = { toilet: Number(data.toilet) || 0, vibe: Number(data.vibe) || 0 };
+                renderPlayerStatuses();
+            } else if (data.type === 'CHAT_MSG') {
+                // Eigene Nachricht wird beim Absenden sofort lokal angezeigt.
+                // Bei weitergeleiteten Nachrichten nur anzeigen, wenn sie von
+                // einem anderen Spieler stammt, damit der Absender keine Duplikate sieht.
+                if (data.sender !== myName) {
+                    appendChat(data.sender, data.text);
+                }
+            }
+            scheduleSaveGameState();
+        }
+
+        function updatePlayerList() {
+            const list = document.getElementById("player-list");
+            if (!list) return;
+            list.innerHTML = "";
+            players.forEach((p, index) => {
+                const playerName = getUserDisplayName(p);
+                const accessory = String(p.accessory || "");
+                list.innerHTML += `<li><b>${index + 1}.</b> ${accessory} ${playerName} ${p.eliminated ? '❌' : ''}</li>`;
+            });
+            if (isHost && players.length >= 1) {
+                const started = localStorage.getItem(LOBBY_STORAGE_KEY + "_gameStarted") === "1";
+                document.getElementById("start-btn").classList.toggle("hidden", started);
+            }
+        }
+
+        function startOnlineGame() {
+            if (!isHost || localStorage.getItem(LOBBY_STORAGE_KEY + "_gameStarted") === "1") return;
+            try { localStorage.setItem(LOBBY_STORAGE_KEY + "_gameStarted", "1"); } catch (e) {}
+            sendData({ type: 'START_GAME', players: players });
+            startGameUI();
+        }
+
+        function startGameUI() {
+            try { if (activeLobbyCode) localStorage.setItem(LOBBY_STORAGE_KEY + "_gameStarted", "1"); } catch (e) {}
+            const startBtn = document.getElementById("start-btn"); if (startBtn) startBtn.classList.add("hidden");
+            document.getElementById("auth-modal").classList.add("hidden");
+            document.getElementById("account-modal").classList.add("hidden");
+            document.getElementById("setup").classList.add("hidden");
+            document.getElementById("lobby-wait-box").classList.add("hidden");
+            document.getElementById("woP-phase").classList.remove("hidden");
+            document.getElementById("emergency-box").classList.remove("hidden");
+            document.getElementById("chat-box-container").classList.remove("hidden");
+            const statusPanel = document.getElementById("player-status-panel"); if (statusPanel) statusPanel.classList.remove("hidden");
+            document.getElementById("leave-lobby-btn").classList.remove("hidden");
+            updateWopTurn();
+            scheduleSaveGameState();
+        }
+
+// ==============================================================================
+// 14. SPIELABLAUF: WAHRHEIT ODER PFLICHT RUNDENLOGIK
+// ==============================================================================
+        function updateWopTurn() {
+            if (currentSharedResult) {
+                showFeedbackScreen(
+                    currentSharedResult.targetPlayer,
+                    currentSharedResult.choice,
+                    currentSharedResult.taskText,
+                    currentSharedResult.resultText
+                );
+                return;
+            }
+
+            while (currentPlayerIndex < players.length && players[currentPlayerIndex].eliminated) {
+                currentPlayerIndex++;
+            }
+            if (currentPlayerIndex >= players.length) {
+                if (isHost) {
+                    sendData({ type: 'START_WHEEL' });
+                    document.getElementById("woP-phase").classList.add("hidden");
+                    document.getElementById("wheel-phase").classList.remove("hidden");
+                }
+                return;
+            }
+
+            let currentP = players[currentPlayerIndex];
+            const currentPlayerName = getUserDisplayName(currentP, "Spieler");
+            document.getElementById("wop-turn-title").innerHTML = translations[currentLang].turnTitle + `<span style="color: var(--primary-color);">${currentPlayerName}</span>`;
+
+            document.getElementById("wop-choice-area").classList.add("hidden");
+            document.getElementById("creator-input-area").classList.add("hidden");
+            document.getElementById("active-task-area").classList.add("hidden");
+            document.getElementById("result-feedback-area").classList.add("hidden");
+            document.getElementById("waiting-for-player-box").classList.add("hidden");
+
+            if (currentPlayerName === myName) {
+                document.getElementById("ui-select-btn").disabled = false;
+                document.getElementById("wop-choice-area").classList.remove("hidden");
+            } else {
+                document.getElementById("waiting-for-player-box").classList.remove("hidden");
+                document.getElementById("waiting-info-text").innerText = (currentLang === 'de' ? `Warte, bis ${currentPlayerName} wählt...` : `Waiting for ${currentPlayerName} to choose...`);
+            }
+        }
+
+        function submitWopChoice() {
+            if (players[currentPlayerIndex]?.name !== myName) return;
+
+            const button = document.getElementById("ui-select-btn");
+            if (button.disabled) return;
+
+            const choice = document.getElementById("wop-choice").value;
+            pendingChoice = choice;
+            button.disabled = true;
+            sendData({ type: 'SUBMIT_CHOICE', playerName: myName, choice: choice });
+        }
+
+        function assignTaskCreator(targetName, choice) {
+            const activeOthers = players.filter(p => !p.eliminated && getUserDisplayName(p, "Spieler") !== targetName)
+                .map(p => getUserDisplayName(p, "Spieler"));
+            let creatorName = targetName;
+
+            if (activeOthers.length) {
+                // Nur die letzten Runden zählen: jeder soll ungefähr gleich oft drankommen,
+                // aber innerhalb dieser fairen Gruppe wird zufällig ausgewählt.
+                const historyWindow = Math.max(6, activeOthers.length * 3);
+                const recent = creatorRecentHistory.slice(-historyWindow);
+                const counts = new Map(activeOthers.map(name => [name, recent.filter(n => n === name).length]));
+                const lowestCount = Math.min(...counts.values());
+                let candidates = activeOthers.filter(name => counts.get(name) === lowestCount);
+
+                const lastCreator = creatorRecentHistory[creatorRecentHistory.length - 1];
+                if (candidates.length > 1 && candidates.includes(lastCreator)) {
+                    candidates = candidates.filter(name => name !== lastCreator);
+                }
+
+                // Zufällige Auswahl unter den aktuell am wenigsten eingesetzten Spielern.
+                creatorName = candidates[Math.floor(Math.random() * candidates.length)];
+                creatorRecentHistory.push(creatorName);
+                creatorRecentHistory = creatorRecentHistory.slice(-Math.max(12, activeOthers.length * 6));
+
+                // Alte per Ziel gespeicherte Historie kompatibel halten.
+                creatorHistoryByTarget[targetName] = [
+                    ...(creatorHistoryByTarget[targetName] || []), creatorName
+                ].slice(-Math.max(6, activeOthers.length * 3));
+            }
+
+            scheduleSaveGameState();
+            sendData({ type: 'ASSIGN_CREATOR', targetPlayer: targetName, choice: choice, creatorName: creatorName });
+        }
+
+        function setupCreatorUI(targetPlayer, choice, creatorName) {
+            targetPlayer = getUserDisplayName({ name: targetPlayer }, "Spieler");
+            creatorName = getUserDisplayName({ name: creatorName }, "Spieler");
+            const isTruth = choice === "truth";
+            const instruction = currentLang === 'de'
+                ? (isTruth ? `Wähle eine Wahrheitsfrage für ${targetPlayer}:` : `Wähle eine Pflicht-Aufgabe für ${targetPlayer}:`)
+                : (isTruth ? `Choose a truth question for ${targetPlayer}:` : `Choose a dare for ${targetPlayer}:`);
+
+            document.getElementById("wop-choice-area").classList.add("hidden");
+            document.getElementById("waiting-for-player-box").classList.add("hidden");
+            document.getElementById("creator-input-area").classList.add("hidden");
+            document.getElementById("creator-instruction-title").innerText = instruction;
+            document.getElementById("creator-target-info").innerText = currentLang === 'de'
+                ? `${isTruth ? "Wahrheit" : "Pflicht"} für ${targetPlayer}`
+                : `${isTruth ? "Truth" : "Dare"} for ${targetPlayer}`;
+
+            if (creatorName === myName) {
+                document.getElementById("creator-input-area").classList.remove("hidden");
+                document.getElementById("custom-task-input").placeholder = currentLang === 'de'
+                    ? (isTruth ? `Wahrheitsfrage für ${targetPlayer} eingeben...` : `Pflicht-Aufgabe für ${targetPlayer} eingeben...`)
+                    : (isTruth ? `Enter a truth question for ${targetPlayer}...` : `Enter a dare for ${targetPlayer}...`);
+            } else {
+                document.getElementById("waiting-for-player-box").classList.add("hidden");
+                document.getElementById("waiting-for-player-box").classList.remove("hidden");
+                document.getElementById("waiting-info-text").innerText = (currentLang === 'de' ? `Warte auf ${creatorName}...` : `Waiting for ${creatorName}...`);
+            }
+        }
+
+        function sendCustomTask() {
+            let taskText = document.getElementById("custom-task-input").value.trim();
+            if (!taskText) { alert(translations[currentLang].alertTask); return; }
+            let targetPlayer = players[currentPlayerIndex].name;
+            currentTaskText = taskText;
+            document.getElementById("creator-input-area").classList.add("hidden");
+            document.getElementById("custom-task-input").value = "";
+            sendData({ type: 'SHOW_TASK', targetPlayer: targetPlayer, choice: pendingChoice, taskText: taskText, creator: myName });
+        }
+
+        function displayTaskScreen(targetPlayer, choice, taskText, creator) {
+            pendingChoice = choice;
+            currentTaskText = taskText;
+            taskCompleted = false;
+
+            document.getElementById("ui-submit-answer-btn").disabled = false;
+            document.getElementById("ui-dare-done-btn").disabled = false;
+            document.getElementById("wop-choice-area").classList.add("hidden");
+            document.getElementById("creator-input-area").classList.add("hidden");
+            document.getElementById("waiting-for-player-box").classList.add("hidden");
+
+            if (targetPlayer === myName) {
+                document.getElementById("active-task-area").classList.remove("hidden");
+                document.getElementById("task-title-text").innerText = choice === "truth" ? (currentLang === 'de' ? "💡 WAHRHEIT" : "💡 TRUTH") : (currentLang === 'de' ? "🔥 PFLICHT" : "🔥 DARE");
+                document.getElementById("task-assigner-info").innerText = (currentLang === 'de' ? "Von: " : "From: ") + creator;
+                document.getElementById("task-content-desc").innerText = taskText;
+
+                if (choice === "truth") {
+                    document.getElementById("answer-box").classList.remove("hidden");
+                    document.getElementById("dare-box").classList.add("hidden");
+                    document.getElementById("player-answer-input").value = "";
+                } else {
+                    document.getElementById("answer-box").classList.add("hidden");
+                    document.getElementById("dare-box").classList.remove("hidden");
+                }
+            } else {
+                document.getElementById("waiting-for-player-box").classList.remove("hidden");
+                document.getElementById("waiting-info-text").innerText = (currentLang === 'de' ? `${targetPlayer} ist dran...` : `${targetPlayer}'s turn...`);
+            }
+        }
+
+        function submitAnswer() {
+            if (taskCompleted) return;
+
+            const ans = document.getElementById("player-answer-input").value.trim();
+            if (!ans) { alert(translations[currentLang].alertAnswer); return; }
+
+            taskCompleted = true;
+            document.getElementById("ui-submit-answer-btn").disabled = true;
+            document.getElementById("ui-dare-done-btn").disabled = true;
+
+            finishTaskAndReward(pendingChoice);
+
+            const resultData = {
+                type: 'SHOW_RESULT',
+                targetPlayer: players[currentPlayerIndex].name,
+                choice: pendingChoice,
+                taskText: currentTaskText,
+                resultText: (currentLang === 'de' ? `Antwort: "${ans}"` : `Answer: "${ans}"`)
+            };
+
+            // Der Antwortende sieht sein eigenes Ergebnis SOFORT.
+            handleIncomingData(resultData);
+
+            // Danach wird es über den Host an alle anderen verteilt.
+            if (!isHost) {
+                sendClientLobbyData(resultData);
+            } else {
+                broadcastLobbyData(resultData);
+            }
+        }
+
+        function submitDareDone() {
+            if (taskCompleted) return;
+
+            taskCompleted = true;
+            document.getElementById("ui-submit-answer-btn").disabled = true;
+            document.getElementById("ui-dare-done-btn").disabled = true;
+
+            finishTaskAndReward(pendingChoice);
+
+            const resultData = {
+                type: 'SHOW_RESULT',
+                targetPlayer: players[currentPlayerIndex].name,
+                choice: pendingChoice,
+                taskText: currentTaskText,
+                resultText: (currentLang === 'de' ? "Erfolgreich erfüllt! ✅" : "Successfully completed! ✅")
+            };
+
+            // Auch der Spieler, der die Pflicht bestätigt, sieht das Ergebnis selbst.
+            handleIncomingData(resultData);
+
+            if (!isHost) {
+                sendClientLobbyData(resultData);
+            } else {
+                broadcastLobbyData(resultData);
+            }
+        }
+
+        function finishTaskAndReward(choice) {
+            const currentPlayer = players[currentPlayerIndex];
+            if (!currentPlayer || currentPlayer.name !== myName) return;
+
+            addRewards(choice === "dare");
+        }
+
+        function showFeedbackScreen(targetPlayer, choice, taskText, resultText) {
+            const resultKey = [
+                String(targetPlayer || ""),
+                String(choice || ""),
+                String(taskText || ""),
+                String(resultText || "")
+            ].join("|");
+
+            const isNewResult = resultKey !== currentSharedResultKey;
+            currentSharedResult = {
+                targetPlayer,
+                choice,
+                taskText,
+                resultText
+            };
+            currentSharedResultKey = resultKey;
+
+            document.getElementById("active-task-area").classList.add("hidden");
+            document.getElementById("creator-input-area").classList.add("hidden");
+            document.getElementById("wop-choice-area").classList.add("hidden");
+            document.getElementById("waiting-for-player-box").classList.add("hidden");
+            document.getElementById("result-feedback-area").classList.remove("hidden");
+
+            if (isNewResult) {
+                nextTurnVotedPlayers = [];
+            }
+
+            const nextBtn = document.getElementById("next-turn-btn");
+            nextBtn.disabled = nextTurnVotedPlayers.includes(myName);
+
+            document.getElementById("feedback-player-name").innerText =
+                currentLang === 'de'
+                    ? `${targetPlayer} hat abgeschlossen!`
+                    : `${targetPlayer} finished!`;
+
+            document.getElementById("feedback-task-info").innerText =
+                currentLang === 'de'
+                    ? `Aufgabe: "${taskText}"`
+                    : `Task: "${taskText}"`;
+
+            document.getElementById("feedback-result-box").innerText = resultText;
+
+            const activeCount = players.filter(p => !p.eliminated).length;
+            document.getElementById("next-votes-count").innerText = String(nextTurnVotedPlayers.length);
+            document.getElementById("next-votes-total").innerText = String(activeCount);
+        }
+
+        function voteNextTurn() {
+            if (!currentSharedResult) return;
+
+            const me = players.find(p => p.name === myName);
+            if (!me || me.eliminated) return;
+            if (nextTurnVotedPlayers.includes(myName)) return;
+
+            document.getElementById("next-turn-btn").disabled = true;
+
+            const voteData = { type: 'VOTE_NEXT_TURN', playerName: myName };
+
+            // Eigene Bestätigung sofort lokal registrieren.
+            handleIncomingData(voteData);
+
+            // Host verarbeitet/broadcastet sie; Client sendet sie nur an den Host.
+            if (!isHost) {
+                sendClientLobbyData(voteData);
+            } else {
+                broadcastLobbyData(voteData);
+            }
+        }
+
+        function handleNextTurnVote(pName) {
+            const activePlayers = players.filter(p => !p.eliminated);
+            const activeNames = activePlayers.map(p => p.name);
+            if (!activeNames.includes(pName)) return;
+            if (!nextTurnVotedPlayers.includes(pName)) {
+                nextTurnVotedPlayers.push(pName);
+            }
+
+            document.getElementById("next-votes-count").innerText = nextTurnVotedPlayers.length;
+            document.getElementById("next-votes-total").innerText = activePlayers.length;
+
+            if (pName === myName) {
+                document.getElementById("next-turn-btn").disabled = true;
+            }
+
+            // Erst wenn wirklich jeder aktive Spieler bestätigt hat, geht es weiter.
+            if (isHost && nextTurnVotedPlayers.length >= activePlayers.length) {
+                const nextData = { type: 'EXECUTE_NEXT_TURN' };
+
+                // Auf dem Host sofort weiter.
+                handleIncomingData(nextData);
+
+                // Danach an alle Clients.
+                broadcastLobbyData(nextData);
+
+                
+                // executeProceedToNextTurn() setzt den Vote-Status wieder zurück.
+            }
+        }
+
+        function executeProceedToNextTurn() {
+            currentSharedResult = null;
+            currentSharedResultKey = "";
+            document.getElementById("result-feedback-area").classList.add("hidden");
+            document.getElementById("active-task-area").classList.add("hidden");
+            document.getElementById("creator-input-area").classList.add("hidden");
+            document.getElementById("waiting-for-player-box").classList.add("hidden");
+            document.getElementById("next-turn-btn").disabled = false;
+            nextTurnVotedPlayers = [];
+            currentPlayerIndex++;
+            updateWopTurn();
+            scheduleSaveGameState();
+        }
+
+// ==============================================================================
+// 15. GLÜCKSRAD-PHASE (ANIMATION & ABSTIMMUNG)
+// ==============================================================================
+        function spinWheel() {
+            const button = document.getElementById("spin-btn");
+            if (button.disabled) return;
+
+            let sectors = translations[currentLang].wheelSectors;
+            let idx = Math.floor(Math.random() * sectors.length);
+            currentRotation += 1800 + (idx * (360 / sectors.length));
+            button.disabled = true;
+            sendData({ type: 'SPIN_WHEEL', sector: idx, rotation: currentRotation });
+        }
+
+        function runWheelAnimation(sectorIndex, rotationVal) {
+            document.getElementById("spin-btn").disabled = true;
+            let wheel = document.getElementById("wheel-container");
+            wheel.style.transform = `rotate(-${rotationVal}deg)`;
+            setTimeout(() => {
+                document.getElementById("spin-btn").disabled = false;
+                let selected = translations[currentLang].wheelSectors[sectorIndex];
+                wheel.innerText = (currentLang === 'de' ? "ERGEBNIS!" : "RESULT!");
+                document.getElementById("wheel-action-title").innerText = selected.title;
+                document.getElementById("wheel-action-desc").innerText = selected.desc;
+                document.getElementById("wheel-result-box").classList.remove("hidden");
+                document.getElementById("next-round-btn").disabled = false;
+                userXP += 25;
+                userCoins += 12;
+                addMonthlyCoins(12);
+                calculateLevel();
+                updateHUD();
+                updateProfileModal();
+                saveUserDataToCloud();
+            }, 3000);
+        }
+
+        function voteNextRound() {
+            document.getElementById("next-round-btn").disabled = true;
+            sendData({ type: 'VOTE_NEXT_ROUND', playerName: myName });
+        }
+
+        function handleNextRoundVote(pName) {
+            if (!nextRoundVotedPlayers.includes(pName)) nextRoundVotedPlayers.push(pName);
+            let activeCount = players.filter(p => !p.eliminated).length;
+
+            const countEl = document.getElementById("round-votes-count");
+            const totalEl = document.getElementById("round-votes-total");
+            if (countEl) countEl.innerText = nextRoundVotedPlayers.length;
+            if (totalEl) totalEl.innerText = activeCount;
+
+            if (isHost && nextRoundVotedPlayers.length >= activeCount) {
+                sendData({ type: 'NEXT_ROUND' });
+            }
+        }
+
+        function nextRound() {
+            currentPlayerIndex = 0;
+            nextRoundVotedPlayers = [];
+            document.getElementById("wheel-result-box").classList.add("hidden");
+            document.getElementById("wheel-phase").classList.add("hidden");
+            document.getElementById("woP-phase").classList.remove("hidden");
+            updateWopTurn();
+        }
+
+        async function triggerLeak() {
+            const targetName = prompt(currentLang === 'de' ? "Wer hat geleakt / aufgegeben?" : "Who leaked / gave up?");
+            const normalized = targetName?.trim().toLowerCase();
+            const target = players.find(p => p.name.toLowerCase() === normalized);
+
+            if (!target) return;
+
+            target.eliminated = true;
+
+            // Nur der tatsächlich ausgeschiedene Spieler verliert seinen Streak.
+            if (target.name === myName) {
+                userStreak = 0;
+                await saveUserDataToCloud();
+                updateHUD();
+                updateProfileModal();
+            }
+
+            sendData({ type: 'ELIMINATE', players: players });
+        }
+
+        function updateMyStatusPreview() {
+            const toilet = document.getElementById("my-toilet-level");
+            const vibe = document.getElementById("my-vibe-level");
+            if (toilet) document.getElementById("my-toilet-value").innerText = toilet.value + "%";
+            if (vibe) document.getElementById("my-vibe-value").innerText = vibe.value + "%";
+        }
+
+        function publishMyStatus() {
+            if (!myName || !activeLobbyCode) return;
+            const toilet = Number(document.getElementById("my-toilet-level")?.value || 0);
+            const vibe = Number(document.getElementById("my-vibe-level")?.value || 50);
+            const payload = { type: "PLAYER_STATUS", playerName: myName, toilet, vibe };
+            playerStatusByName[myName] = { toilet, vibe };
+            renderPlayerStatuses();
+            sendData(payload);
+        }
+
+        function renderPlayerStatuses() {
+            const container = document.getElementById("player-status-list");
+            if (!container) return;
+            container.innerHTML = "";
+            players.forEach(p => {
+                const status = playerStatusByName[p.name] || { toilet: 0, vibe: 50 };
+                const row = document.createElement("div");
+                row.style.cssText = "padding:8px;margin:6px 0;background:rgba(0,0,0,.2);border-radius:8px;";
+                const name = document.createElement("strong"); name.textContent = p.name;
+                const toiletLabel = document.createElement("div"); toiletLabel.style.fontSize = "12px";
+                toiletLabel.textContent = "🚻 " + (currentLang === "de" ? "Klo-Dringlichkeit" : "Restroom urgency") + ": " + status.toilet + "%";
+                const toiletBar = document.createElement("div"); toiletBar.style.cssText = "height:6px;background:#444;border-radius:5px;overflow:hidden;";
+                const toiletFill = document.createElement("div"); toiletFill.style.cssText = "height:100%;width:" + Math.max(0,Math.min(100,status.toilet)) + "%;background:#f59e0b;";
+                toiletBar.appendChild(toiletFill);
+                                    const vibeLabel = document.createElement("div");
+                vibeLabel.style.fontSize = "12px";
+                vibeLabel.textContent = "🎉 " + (currentLang === "de" ? "Feuer-Level" : "Fire level") + ": " + status.vibe + "%";
+
+                const vibeBar = document.createElement("div");
+                vibeBar.style.cssText = "height:6px;background:#444;border-radius:5px;overflow:hidden;";
+
+                const vibeFill = document.createElement("div");
+                vibeFill.style.cssText = "height:100%;width:" + Math.max(0, Math.min(100, status.vibe)) + "%;background:#38bdf8;";
+
+                vibeBar.appendChild(vibeFill);
+                row.append(name, toiletLabel, toiletBar, vibeLabel, vibeBar);
+                container.appendChild(row);
+            });
+        }
+
+        function appendChat(sender, text) {
+            let box = document.getElementById("chat-messages");
+            box.innerHTML += `<div class="chat-msg"><b>${sender}:</b> ${text}</div>`;
+            box.scrollTop = box.scrollHeight;
+        }
+
+        function sendChatMessage() {
+            let input = document.getElementById("chat-input");
+            let text = input.value.trim();
+            if (!text) return;
+
+            // Nachricht sofort lokal anzeigen.
+            appendChat(myName, text);
+            sendData({ type: 'CHAT_MSG', sender: myName, text: text });
+            input.value = "";
+        }
