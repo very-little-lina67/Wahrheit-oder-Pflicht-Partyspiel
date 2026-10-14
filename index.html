@@ -324,6 +324,7 @@
             <div>🔥 <span id="ui-hud-streak-text">Streak</span>: <span id="hud-streak" style="color: #ffcc00; font-weight:bold;">0</span></div>
             <div>✨ XP: <span id="hud-xp" style="color: #00bfff; font-weight:bold;">0</span></div>
             <div>💰 <span id="ui-hud-coins-text">Coins</span>: <span id="hud-coins" style="color: #ffcc00; font-weight:bold;">0</span></div>
+            <span id="hud-spectator-badge" class="hidden" style="background:#6200ea; color:#fff; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:bold;">👁️ ZUSCHAUER</span>
             <div style="display:flex; gap:3px; flex-wrap:wrap; width: 100%; justify-content: flex-end; margin-top: 4px;">
                 <button id="btn-admin-panel" class="btn-danger hidden" onclick="openAdminModal()" style="padding:2px 5px; font-size:10px; width:auto; margin:0;">🛡️ Admin</button>
                 <button id="ui-btn-leaderboard" class="btn-green" onclick="openLeaderboard()" style="padding:2px 5px; font-size:10px; width:auto; margin:0;">🏆 Rangliste</button>
@@ -357,6 +358,7 @@
             <hr style="border-color: rgba(255,255,255,0.1); margin: 10px 0;">
             <input type="text" id="lobby-code-input" placeholder="Lobby-Code eingeben..." style="font-size: 14px; padding: 10px;">
             <button class="btn-blue" onclick="joinGame()" id="ui-join-btn" style="font-size: 14px; padding: 10px;">Lobby beitreten 🚀</button>
+            <button class="btn-purple hidden" onclick="joinGame({ asSpectator: true })" id="ui-spectate-btn" style="font-size: 13px; padding: 8px; margin-top: 6px; width: 100%;">Als Zuschauer beitreten (Admin/Master) 👁️</button>
         </div>
 
         <!-- LOBBY WARTESAAL -->

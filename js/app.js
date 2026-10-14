@@ -338,6 +338,13 @@
                 alertNeedLobbyHost: "Du musst zuerst eine Lobby erstellen (Host), um jemanden einzuladen!",
                 alertInviteSent: "Einladung gesendet! 🚀",
                 alertInviteError: "Fehler beim Senden der Einladung.",
+                spectateBtn: "Als Zuschauer beitreten (Admin/Master) 👁️",
+                spectatorBadge: "👁️ ZUSCHAUER",
+                spectator: "Zuschauer",
+                lastOnline: "Zuletzt online: ",
+                onlineNow: "Jetzt online",
+                neverOnline: "Noch nie online",
+                justNow: "Gerade eben",
                 statusPanelTitle: "📊 Spieler-Status",
                 statusSettingsBtn: "⚙️ Status einstellen",
                 statusSettingsTitle: "⚙️ Mein Status einstellen",
@@ -519,6 +526,13 @@
                 alertNeedLobbyHost: "You must first create a lobby (Host) to invite someone!",
                 alertInviteSent: "Invite sent! 🚀",
                 alertInviteError: "Error sending invite.",
+                spectateBtn: "Join as Spectator (Admin/Master) 👁️",
+                spectatorBadge: "👁️ SPECTATOR",
+                spectator: "Spectator",
+                lastOnline: "Last online: ",
+                onlineNow: "Online now",
+                neverOnline: "Never online",
+                justNow: "Just now",
                 statusPanelTitle: "📊 Player Status",
                 statusSettingsBtn: "⚙️ Set Status",
                 statusSettingsTitle: "⚙️ Set my status",
@@ -721,6 +735,8 @@
             const hostBtn = document.getElementById("ui-host-btn"); if (hostBtn) hostBtn.innerText = t.hostBtn;
             const lobbyInp = document.getElementById("lobby-code-input"); if (lobbyInp) lobbyInp.placeholder = t.lobbyCodeInputPlaceholder;
             const joinBtn = document.getElementById("ui-join-btn"); if (joinBtn) joinBtn.innerText = t.joinBtn;
+            const spectateBtn = document.getElementById("ui-spectate-btn"); if (spectateBtn) spectateBtn.innerText = t.spectateBtn;
+            const specBadge = document.getElementById("hud-spectator-badge"); if (specBadge) specBadge.innerText = t.spectatorBadge;
 
             // Lobby Wartesaal
             const lobbyCodeTitle = document.getElementById("ui-lobby-code-title");
@@ -852,6 +868,83 @@
         let unlockedBadges = [];
         let truthCount = 0;
         let dareCount = 0;
+        let isSpectator = false;
+        let currentTaskCreator = "";
+
+        // --- IN-MEMORY CACHES ZUR PERFORMANCE-STEIGERUNG & FIREBASE-ENTLASTUNG ---
+        let leaderboardCache = null;
+        let leaderboardCacheTime = 0;
+        const LEADERBOARD_CACHE_TTL = 45000; // 45s Cache
+
+        let adminUserListCache = null;
+        let adminUserListCacheTime = 0;
+        const ADMIN_USER_CACHE_TTL = 30000; // 30s Cache
+
+        let friendsListCache = null;
+        let friendsListCacheTime = 0;
+        const FRIENDS_CACHE_TTL = 20000; // 20s Cache
+
+        function getLastActiveMillis(timestamp) {
+            if (!timestamp) return 0;
+            if (typeof timestamp.toMillis === "function") return timestamp.toMillis();
+            if (typeof timestamp.toDate === "function") return timestamp.toDate().getTime();
+            if (timestamp instanceof Date) return timestamp.getTime();
+            if (typeof timestamp === "number") return timestamp;
+            if (typeof timestamp.seconds === "number") return timestamp.seconds * 1000;
+            return 0;
+        }
+
+        function formatLastOnline(lastActive, isOnlineFlag) {
+            const ms = getLastActiveMillis(lastActive);
+            const now = Date.now();
+            const isOnline = !!isOnlineFlag && ms > 0 && (now - ms < ONLINE_TIMEOUT_MS);
+            
+            if (isOnline) {
+                return {
+                    isOnline: true,
+                    text: currentLang === "de" ? "Jetzt online" : "Online now",
+                    color: "#28a745"
+                };
+            }
+            
+            if (!ms) {
+                return {
+                    isOnline: false,
+                    text: currentLang === "de" ? "Noch nie online" : "Never online",
+                    color: "#888888"
+                };
+            }
+            
+            const diffSec = Math.floor((now - ms) / 1000);
+            const diffMin = Math.floor(diffSec / 60);
+            const diffHours = Math.floor(diffMin / 60);
+            const diffDays = Math.floor(diffHours / 24);
+            
+            let timeStr = "";
+            if (diffMin < 1) {
+                timeStr = currentLang === "de" ? "Gerade eben" : "Just now";
+            } else if (diffMin < 60) {
+                timeStr = currentLang === "de" ? `vor ${diffMin} Min.` : `${diffMin}m ago`;
+            } else if (diffHours < 24) {
+                timeStr = currentLang === "de" ? `vor ${diffHours} Std.` : `${diffHours}h ago`;
+            } else if (diffDays === 1) {
+                const d = new Date(ms);
+                const t = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+                timeStr = currentLang === "de" ? `gestern um ${t}` : `yesterday at ${t}`;
+            } else if (diffDays < 7) {
+                timeStr = currentLang === "de" ? `vor ${diffDays} Tagen` : `${diffDays}d ago`;
+            } else {
+                const d = new Date(ms);
+                const dateStr = `${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth()+1).padStart(2, "0")}.${d.getFullYear()}`;
+                timeStr = currentLang === "de" ? `am ${dateStr}` : `on ${dateStr}`;
+            }
+            
+            return {
+                isOnline: false,
+                text: (currentLang === "de" ? "Zuletzt online: " : "Last online: ") + timeStr,
+                color: "#aaaaaa"
+            };
+        }
 
 // ==============================================================================
 // 5. CLOUD-SYNCHRONISATION & ONLINE-STATUS (HEARTBEAT)
@@ -1003,8 +1096,8 @@
         // Online-Status mit Heartbeat: Ein Spieler bleibt nicht dauerhaft
         // als online markiert, wenn die Seite geschlossen oder beendet wurde.
         // Das hat keinen Einfluss auf die Lobby-Session oder den Reconnect.
-        const ONLINE_HEARTBEAT_MS = 30000;
-        const ONLINE_TIMEOUT_MS = 90000;
+        const ONLINE_HEARTBEAT_MS = 60000;
+        const ONLINE_TIMEOUT_MS = 150000;
         let onlineHeartbeatTimer = null;
         let lobbyJoinTimeout = null;
 
@@ -1015,6 +1108,15 @@
                     updateOnlineStatus(true);
                 }
             }, ONLINE_HEARTBEAT_MS);
+        }
+
+        // Bei Rückkehr zum Tab sofort Status auffrischen
+        if (typeof document !== "undefined") {
+            document.addEventListener("visibilitychange", () => {
+                if (!document.hidden && myEmail) {
+                    updateOnlineStatus(true);
+                }
+            });
         }
 
         function stopOnlineHeartbeat() {
@@ -1039,21 +1141,27 @@
             if (friendsBtn) friendsBtn.className = currentLbTab === "friends" ? "btn-green" : "btn-blue";
 
             try {
-                const snapshot = await db.collection("users").get();
                 let users = [];
-                snapshot.forEach(doc => {
-                    const data = doc.data() || {};
-                    let m = Number(data.monthlyCoins) || 0;
-                    const mm = data.monthlyCoinsMonth || "";
-                    if (mm !== getCurrentMonthKey()) m = 0;
-                    users.push({
-                        email: doc.id,
-                        name: (typeof data.name === "string" && data.name.trim()) ? data.name.trim() : (currentLang === "de" ? "Party-Spieler" : "Party Player"),
-                        accessory: data.accessory || "",
-                        coins: Number(data.coins) || 0,
-                        monthlyCoins: m
+                if (leaderboardCache && (Date.now() - leaderboardCacheTime < LEADERBOARD_CACHE_TTL)) {
+                    users = leaderboardCache;
+                } else {
+                    const snapshot = await db.collection("users").get();
+                    snapshot.forEach(doc => {
+                        const data = doc.data() || {};
+                        let m = Number(data.monthlyCoins) || 0;
+                        const mm = data.monthlyCoinsMonth || "";
+                        if (mm !== getCurrentMonthKey()) m = 0;
+                        users.push({
+                            email: doc.id,
+                            name: (typeof data.name === "string" && data.name.trim()) ? data.name.trim() : (currentLang === "de" ? "Party-Spieler" : "Party Player"),
+                            accessory: data.accessory || "",
+                            coins: Number(data.coins) || 0,
+                            monthlyCoins: m
+                        });
                     });
-                });
+                    leaderboardCache = users;
+                    leaderboardCacheTime = Date.now();
+                }
 
                 // Filter for friends tab
                 if (currentLbTab === "friends") {
@@ -1144,9 +1252,13 @@
                         const safeName = playerName.replace(/'/g, "\\'");
                         const safeDisplayName = playerName.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
                         const safeAccessory = String(data.accessory || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+                        const spectateBtnHtml = (data.currentLobby && (myRole === "master" || myRole === "admin"))
+                            ? `<button class="btn-purple" style="padding:4px 6px; font-size:10px; margin:0; width:auto; background:#6200ea;" onclick="joinLobbyAsSpectator('${data.currentLobby}')" title="${currentLang === 'de' ? 'Als Zuschauer beitreten' : 'Join as Spectator'}">👁️</button>`
+                            : "";
                         container.innerHTML += `<div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.05); padding:8px; border-radius:6px; margin-bottom:6px; font-size:12px;">
                             <div><b>${safeAccessory} ${safeDisplayName}</b> <br><span style="color:#28a745; font-size:10px;">${lobbyInfo}</span></div>
                             <div style="display:flex;gap:3px;">
+                                ${spectateBtnHtml}
                                 <button class="btn-blue" style="padding:4px 6px; font-size:10px; margin:0; width:auto;" onclick="sendFriendRequest('${safeEmail}', '${safeName}')">👥</button>
                                 <button class="btn-green" style="padding:4px 8px; font-size:11px; margin:0; width:auto;" onclick="sendGameInvite('${safeEmail}', '${safeName}')">${currentLang === "de" ? "Einladen 📨" : "Invite 📨"}</button>
                             </div>
@@ -1260,6 +1372,11 @@
             document.getElementById("hud-streak").innerText = userStreak;
             document.getElementById("hud-xp").innerText = userXP;
             document.getElementById("hud-coins").innerText = userCoins;
+            const badge = document.getElementById("hud-spectator-badge");
+            if (badge) {
+                badge.classList.toggle("hidden", !isSpectator);
+                badge.innerText = currentLang === "de" ? "👁️ ZUSCHAUER" : "👁️ SPECTATOR";
+            }
         }
 
         function checkAdminPermissions() {
@@ -1268,6 +1385,14 @@
                 adminBtn.classList.remove("hidden");
             } else {
                 adminBtn.classList.add("hidden");
+            }
+            let spectateBtn = document.getElementById("ui-spectate-btn");
+            if (spectateBtn) {
+                if (myRole === "master" || myRole === "admin") {
+                    spectateBtn.classList.remove("hidden");
+                } else {
+                    spectateBtn.classList.add("hidden");
+                }
             }
         }
 
@@ -1740,19 +1865,42 @@
             let container = document.getElementById("admin-user-list");
             container.innerHTML = currentLang === "de" ? "Lade Benutzer..." : "Loading users...";
             try {
-                let snapshot = await db.collection("users").get();
+                let users = [];
+                if (adminUserListCache && (Date.now() - adminUserListCacheTime < ADMIN_USER_CACHE_TTL)) {
+                    users = adminUserListCache;
+                } else {
+                    let snapshot = await db.collection("users").get();
+                    snapshot.forEach(doc => {
+                        users.push({ id: doc.id, ...doc.data() });
+                    });
+                    adminUserListCache = users;
+                    adminUserListCacheTime = Date.now();
+                }
+
                 container.innerHTML = "";
-                snapshot.forEach(doc => {
-                    let email = doc.id;
-                    let u = doc.data();
+                users.forEach(u => {
+                    let email = u.id;
                     let isMaster = isMasterAccount(email) || u.role === "master";
                     let maskedMail = maskEmail(email);
-                    // Anzeige-Rolle: Master-Account immer als master anzeigen
                     const displayRole = isMasterAccount(email) ? "master" : (u.role || "user");
                     const roleLabel = currentLang === "de" ? "Rolle: " : "Role: ";
-                    
+                    const statusInfo = formatLastOnline(u.lastActive, u.isOnline);
+                    const lobbyCode = u.currentLobby ? String(u.currentLobby).toUpperCase() : "";
+                    const lobbyText = lobbyCode ? ` · Lobby ${lobbyCode}` : "";
+                    const statusHtml = statusInfo.isOnline
+                        ? `<span style="color:#28a745; font-size:11px; font-weight:bold;">● ${statusInfo.text}${lobbyText}</span>`
+                        : `<span style="color:#888; font-size:11px;">○ ${statusInfo.text}</span>`;
+
+                    let spectateBtnHtml = "";
+                    if (lobbyCode && (myRole === "master" || myRole === "admin")) {
+                        spectateBtnHtml = `<button class="btn-purple" style="padding:2px 6px; font-size:10px; margin-left:6px; background:#6200ea;" onclick="joinLobbyAsSpectator('${u.currentLobby}')">👁️ ${currentLang === 'de' ? 'Zuschauen' : 'Spectate'}</button>`;
+                    }
+
                     let html = `<div style="background:rgba(255,255,255,0.05); padding:6px; border-radius:6px; margin-bottom:5px; display:flex; justify-content:space-between; align-items:center; font-size:12px;">
-                        <div><b>${u.name}</b> (${maskedMail}) <br><span style="color:#00bfff;">${roleLabel}${displayRole}</span></div>`;
+                        <div>
+                            <b>${u.name || 'Spieler'}</b> (${maskedMail}) ${spectateBtnHtml}<br>
+                            <span style="color:#00bfff;">${roleLabel}${displayRole}</span> · ${statusHtml}
+                        </div>`;
                     
                     let canModify = (myRole === "master" || (myRole === "admin" && !isMaster && u.role !== "admin"));
 
@@ -1811,6 +1959,7 @@
             // Master-Account-Rolle ist unveränderlich
             if (isMasterAccount(email)) return;
             if (newRole === "master") return; // master-Rolle kann nicht vergeben werden
+            adminUserListCache = null;
             await db.collection("users").doc(email).update({ role: newRole });
             renderAdminUserList();
         }
@@ -1818,6 +1967,7 @@
         async function deleteUser(email) {
             if (myRole !== "master" && myRole !== "admin") return;
             if (isMasterAccount(email)) return;
+            adminUserListCache = null;
             await db.collection("users").doc(email).delete();
             renderAdminUserList();
         }
@@ -1951,37 +2101,53 @@
             }
 
             try {
-                const now = Date.now();
-                let html = "";
-                // Batch get friends (Firestore limit ~10 for getAll, so sequential for simplicity)
-                for (const email of myFriends) {
-                    try {
-                        const doc = await db.collection("users").doc(email).get();
-                        if (!doc.exists) continue;
-                        const d = doc.data() || {};
-                        const name = getUserDisplayName(d, "Spieler");
-                        const accessory = d.accessory || "";
-                        const isOnline = !!d.isOnline && d.lastActive &&
-                            (d.lastActive.toMillis ? (now - d.lastActive.toMillis() < ONLINE_TIMEOUT_MS) : true);
-                        const lobby = d.currentLobby ? String(d.currentLobby).toUpperCase() : "";
-                        const statusColor = isOnline ? "#28a745" : "#888";
-                        const statusText = isOnline
-                            ? (lobby ? `Online · Lobby ${lobby}` : (currentLang === "de" ? "Online · Bereit" : "Online · Ready"))
-                            : (currentLang === "de" ? "Offline" : "Offline");
-                        const safeEmail = email.replace(/'/g, "\\'");
-                        const safeName = name.replace(/'/g, "\\'").replace(/"/g, "&quot;");
+                let friendsData = [];
+                if (friendsListCache && (Date.now() - friendsListCacheTime < FRIENDS_CACHE_TTL)) {
+                    friendsData = friendsListCache;
+                } else {
+                    const docs = await Promise.all(myFriends.map(email => 
+                        db.collection("users").doc(email).get().catch(() => null)
+                    ));
+                    friendsData = docs.filter(doc => doc && doc.exists).map(doc => ({
+                        email: doc.id,
+                        data: doc.data() || {}
+                    }));
+                    friendsListCache = friendsData;
+                    friendsListCacheTime = Date.now();
+                }
 
-                        html += `<div style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,0.05);padding:8px;border-radius:6px;margin-bottom:6px;font-size:12px;">
-                            <div>
-                                <b>${accessory} ${name.replace(/</g,"&lt;")}</b><br>
-                                <span style="color:${statusColor};font-size:10px;">● ${statusText}</span>
-                            </div>
-                            <div style="display:flex;gap:4px;">
-                                ${isOnline && activeLobbyCode && isHost ? `<button class="btn-green" style="padding:3px 6px;font-size:10px;width:auto;margin:0;" onclick="sendGameInvite('${safeEmail}', '${safeName}')">${currentLang === "de" ? "Einladen" : "Invite"}</button>` : ""}
-                                <button class="btn-danger" style="padding:3px 6px;font-size:10px;width:auto;margin:0;" onclick="removeFriend('${safeEmail}')">✕</button>
-                            </div>
-                        </div>`;
-                    } catch (e) {}
+                let html = "";
+                for (const item of friendsData) {
+                    const email = item.email;
+                    const d = item.data;
+                    const name = getUserDisplayName(d, "Spieler");
+                    const accessory = d.accessory || "";
+                    const statusInfo = formatLastOnline(d.lastActive, d.isOnline);
+                    const lobby = d.currentLobby ? String(d.currentLobby).toUpperCase() : "";
+                    
+                    const statusHtml = statusInfo.isOnline
+                        ? `<span style="color:#28a745;font-size:10px;font-weight:bold;">● ${lobby ? `Online · Lobby ${lobby}` : (currentLang === "de" ? "Online · Bereit" : "Online · Ready")}</span>`
+                        : `<span style="color:#888;font-size:10px;">○ ${statusInfo.text}</span>`;
+                    
+                    const safeEmail = email.replace(/'/g, "\\'");
+                    const safeName = name.replace(/'/g, "\\'").replace(/"/g, "&quot;");
+
+                    let spectateBtn = "";
+                    if (lobby && (myRole === "master" || myRole === "admin")) {
+                        spectateBtn = `<button class="btn-purple" style="padding:3px 6px;font-size:10px;width:auto;margin:0;background:#6200ea;" onclick="joinLobbyAsSpectator('${lobby}')" title="${currentLang === 'de' ? 'Als Zuschauer beitreten' : 'Join as Spectator'}">👁️</button>`;
+                    }
+
+                    html += `<div style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,0.05);padding:8px;border-radius:6px;margin-bottom:6px;font-size:12px;">
+                        <div>
+                            <b>${accessory} ${name.replace(/</g,"&lt;")}</b><br>
+                            ${statusHtml}
+                        </div>
+                        <div style="display:flex;gap:4px;">
+                            ${spectateBtn}
+                            ${statusInfo.isOnline && activeLobbyCode && isHost ? `<button class="btn-green" style="padding:3px 6px;font-size:10px;width:auto;margin:0;" onclick="sendGameInvite('${safeEmail}', '${safeName}')">${currentLang === "de" ? "Einladen" : "Invite"}</button>` : ""}
+                            <button class="btn-danger" style="padding:3px 6px;font-size:10px;width:auto;margin:0;" onclick="removeFriend('${safeEmail}')">✕</button>
+                        </div>
+                    </div>`;
                 }
                 container.innerHTML = html || `<span style="font-size:12px;color:#888;">${currentLang === "de" ? "Keine Freunde gefunden." : "No friends found."}</span>`;
             } catch (e) {
@@ -2020,16 +2186,15 @@
             }
             results.innerHTML = currentLang === "de" ? "Suche..." : "Searching...";
             try {
-                const snap = await db.collection("users").get();
-                let found = false;
                 let html = "";
-                snap.forEach(doc => {
-                    const email = doc.id;
-                    if (email === myEmail) return;
-                    const d = doc.data() || {};
-                    const name = (d.name || "").toLowerCase();
-                    if (email === q || name.includes(q) || email.includes(q)) {
+                let found = false;
+
+                if (q.includes("@")) {
+                    const doc = await db.collection("users").doc(q).get();
+                    if (doc.exists && doc.id !== myEmail) {
                         found = true;
+                        const d = doc.data() || {};
+                        const email = doc.id;
                         const displayName = getUserDisplayName(d, "Spieler");
                         const alreadyFriend = myFriends.includes(email);
                         const safeEmail = email.replace(/'/g, "\\'");
@@ -2041,7 +2206,30 @@
                                 : `<button class="btn-green" style="padding:4px 8px;font-size:11px;width:auto;margin:0;" onclick="sendFriendRequest('${safeEmail}', '${safeName}')">${currentLang === "de" ? "Anfrage" : "Request"}</button>`}
                         </div>`;
                     }
-                });
+                }
+
+                if (!found) {
+                    const snap = await db.collection("users").limit(30).get();
+                    snap.forEach(doc => {
+                        const email = doc.id;
+                        if (email === myEmail) return;
+                        const d = doc.data() || {};
+                        const name = (d.name || "").toLowerCase();
+                        if (email === q || name.includes(q) || email.includes(q)) {
+                            found = true;
+                            const displayName = getUserDisplayName(d, "Spieler");
+                            const alreadyFriend = myFriends.includes(email);
+                            const safeEmail = email.replace(/'/g, "\\'");
+                            const safeName = displayName.replace(/'/g, "\\'");
+                            html += `<div style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,0.05);padding:8px;border-radius:6px;margin-bottom:6px;font-size:12px;">
+                                <div><b>${displayName.replace(/</g,"&lt;")}</b><br><span style="font-size:10px;color:#888;">${maskEmail(email)}</span></div>
+                                ${alreadyFriend
+                                    ? `<span style="color:#28a745;font-size:11px;">${currentLang === "de" ? "✓ Freund" : "✓ Friend"}</span>`
+                                    : `<button class="btn-green" style="padding:4px 8px;font-size:11px;width:auto;margin:0;" onclick="sendFriendRequest('${safeEmail}', '${safeName}')">${currentLang === "de" ? "Anfrage" : "Request"}</button>`}
+                            </div>`;
+                        }
+                    });
+                }
                 results.innerHTML = found ? html : `<span style="font-size:12px;color:#888;">${currentLang === "de" ? "Niemand gefunden." : "Nobody found."}</span>`;
             } catch (e) {
                 results.innerHTML = currentLang === "de" ? "Fehler bei der Suche." : "Error searching.";
@@ -2233,9 +2421,11 @@
 
         async function setLobbyPresence(fields = {}) {
             if (!myEmail || !activeLobbyCode) return;
+            const role = isHost ? "host" : (isSpectator ? "spectator" : "client");
             await db.collection("users").doc(myEmail).set({
                 currentLobby: activeLobbyCode,
-                lobbyRole: isHost ? "host" : "client",
+                lobbyRole: role,
+                isSpectator: !!isSpectator,
                 lobbyHostEmail: isHost ? myEmail : (lobbyHostEmail || ""),
                 lobbyPrivate: false,
                 ...fields,
@@ -2250,6 +2440,7 @@
                 await db.collection("users").doc(myEmail).set({
                     currentLobby: "",
                     lobbyRole: "",
+                    isSpectator: false,
                     lobbyHostEmail: "",
                     lobbyMessage: firebase.firestore.FieldValue.delete(),
                     hostMessage: firebase.firestore.FieldValue.delete()
@@ -2273,25 +2464,37 @@
 
                         if (d.currentLobby === activeLobbyCode && name) {
                             const oldPlayer = players.find(p => p.name === name);
+                            const playerIsSpec = !!d.isSpectator || d.lobbyRole === "spectator";
                             nextPlayers.push({
                                 name,
                                 accessory: d.accessory || "",
-                                eliminated: !!oldPlayer?.eliminated
+                                eliminated: !!oldPlayer?.eliminated,
+                                isSpectator: playerIsSpec
                             });
 
                             if (doc.id !== myEmail) {
                                 const msg = d.lobbyMessage;
                                 const seq = Number(msg && msg.seq) || 0;
+                                const lastSeq = lobbyProcessedClientSeq[doc.id] || 0;
 
-                                if (seq > (lobbyProcessedClientSeq[doc.id] || 0)) {
+                                if (seq > lastSeq) {
                                     lobbyProcessedClientSeq[doc.id] = seq;
-                                    if (msg && msg.data) {
-                                        handleIncomingData(msg.data);
-
-                                        // Client-Nachrichten werden nach der Verarbeitung
-                                        // vom Host an ALLE Spieler weitergeleitet.
-                                        broadcastLobbyData(msg.data);
+                                    const queue = [];
+                                    if (Array.isArray(msg.recent) && msg.recent.length) {
+                                        const sorted = [...msg.recent].sort((a, b) => (a.seq || 0) - (b.seq || 0));
+                                        sorted.forEach(m => {
+                                            if (m && m.seq > lastSeq && m.seq <= seq && m.data) {
+                                                queue.push(m.data);
+                                            }
+                                        });
+                                    } else if (msg && msg.data) {
+                                        queue.push(msg.data);
                                     }
+
+                                    queue.forEach(itemData => {
+                                        handleIncomingData(itemData);
+                                        broadcastLobbyData(itemData);
+                                    });
                                 }
                             }
                         }
@@ -2327,23 +2530,48 @@
 
                     const msg = d.hostMessage;
                     const seq = Number(msg && msg.seq) || 0;
+                    const prevSeq = lobbyLastHostSeq;
 
-                    if (seq > lobbyLastHostSeq) {
+                    if (seq > prevSeq) {
                         lobbyLastHostSeq = seq;
-                        if (msg && msg.data) handleIncomingData(msg.data);
+                        const queue = [];
+                        if (Array.isArray(msg.recent) && msg.recent.length) {
+                            const sorted = [...msg.recent].sort((a, b) => (a.seq || 0) - (b.seq || 0));
+                            sorted.forEach(m => {
+                                if (m && m.seq > prevSeq && m.seq <= seq && m.data) {
+                                    queue.push(m.data);
+                                }
+                            });
+                        } else if (msg && msg.data) {
+                            queue.push(msg.data);
+                        }
+
+                        queue.forEach(itemData => {
+                            handleIncomingData(itemData);
+                        });
                     }
                 }, () => {
                     if (!leavingLobbyManually) scheduleLobbyReconnect();
                 });
         }
 
+        let hostMessageBuffer = [];
         async function broadcastLobbyData(data) {
             if (!myEmail || !activeLobbyCode || !isHost) return;
 
             lobbyMessageSeq++;
+            const item = { seq: lobbyMessageSeq, data, sentAt: Date.now() };
+            hostMessageBuffer.push(item);
+            if (hostMessageBuffer.length > 8) hostMessageBuffer.shift();
+
             try {
                 await db.collection("users").doc(myEmail).set({
-                    hostMessage: { seq: lobbyMessageSeq, data, sentAt: Date.now() },
+                    hostMessage: {
+                        seq: lobbyMessageSeq,
+                        data,
+                        recent: hostMessageBuffer,
+                        sentAt: Date.now()
+                    },
                     currentLobby: activeLobbyCode,
                     lobbyRole: "host",
                     lobbyHostEmail: myEmail,
@@ -2352,15 +2580,26 @@
             } catch (e) {}
         }
 
+        let clientMessageBuffer = [];
         async function sendClientLobbyData(data) {
             if (!myEmail || !activeLobbyCode || isHost) return;
 
             lobbyMessageSeq++;
+            const item = { seq: lobbyMessageSeq, data, sentAt: Date.now() };
+            clientMessageBuffer.push(item);
+            if (clientMessageBuffer.length > 8) clientMessageBuffer.shift();
+
             try {
                 await db.collection("users").doc(myEmail).set({
-                    lobbyMessage: { seq: lobbyMessageSeq, data, sentAt: Date.now() },
+                    lobbyMessage: {
+                        seq: lobbyMessageSeq,
+                        data,
+                        recent: clientMessageBuffer,
+                        sentAt: Date.now()
+                    },
                     currentLobby: activeLobbyCode,
-                    lobbyRole: "client",
+                    lobbyRole: isSpectator ? "spectator" : "client",
+                    isSpectator: !!isSpectator,
                     lobbyHostEmail: lobbyHostEmail,
                     lastActive: firebase.firestore.FieldValue.serverTimestamp()
                 }, { merge: true });
@@ -2395,7 +2634,8 @@
             if (!activeLobbyCode || leavingLobbyManually) return;
             const payload = {
                 code: activeLobbyCode,
-                role: isHost ? "host" : "client",
+                role: isHost ? "host" : (isSpectator ? "spectator" : "client"),
+                isSpectator: !!isSpectator,
                 name: myName,
                 savedAt: Date.now()
             };
@@ -2472,6 +2712,7 @@
                 currentPlayerIndex: Number(currentPlayerIndex) || 0,
                 pendingChoice: pendingChoice || "",
                 currentTaskText: currentTaskText || "",
+                currentTaskCreator: currentTaskCreator || "",
                 currentRotation: Number(currentRotation) || 0,
                 nextTurnVotedPlayers: Array.isArray(nextTurnVotedPlayers) ? nextTurnVotedPlayers : [],
                 nextRoundVotedPlayers: Array.isArray(nextRoundVotedPlayers) ? nextRoundVotedPlayers : [],
@@ -2502,9 +2743,11 @@
                 currentPlayerIndex: payload.currentPlayerIndex,
                 pendingChoice: payload.pendingChoice,
                 currentTaskText: payload.currentTaskText,
+                currentTaskCreator: payload.currentTaskCreator,
                 nextTurnVotedPlayers: payload.nextTurnVotedPlayers,
                 nextRoundVotedPlayers: payload.nextRoundVotedPlayers,
-                currentSharedResult: payload.currentSharedResult
+                currentSharedResult: payload.currentSharedResult,
+                playerStatuses: payload.playerStatuses
             });
             if (hash === lastSavedStateHash) return;
             lastSavedStateHash = hash;
@@ -2543,6 +2786,14 @@
         function applyGameStateFromFirebase(data) {
             if (!data || typeof data !== "object") return;
 
+            const prevPhase = gamePhase;
+            const prevIndex = currentPlayerIndex;
+            const prevPendingChoice = pendingChoice;
+            const prevTaskText = currentTaskText;
+            const prevCreator = currentTaskCreator;
+            const prevSharedKey = currentSharedResultKey;
+            const prevStarted = gameStarted;
+
             if (Array.isArray(data.players) && data.players.length) {
                 players = data.players;
                 updatePlayerList();
@@ -2566,6 +2817,7 @@
             currentPlayerIndex = Number(data.currentPlayerIndex) || 0;
             pendingChoice = data.pendingChoice || "";
             currentTaskText = data.currentTaskText || "";
+            currentTaskCreator = data.currentTaskCreator || "";
             currentRotation = Number(data.currentRotation) || 0;
             currentSharedResult = data.currentSharedResult || null;
             if (currentSharedResult) {
@@ -2582,6 +2834,14 @@
             gamePhase = phase;
             gameStarted = started;
 
+            const turnStateChanged = (prevPhase !== phase)
+                || (prevIndex !== currentPlayerIndex)
+                || (prevPendingChoice !== pendingChoice)
+                || (prevTaskText !== currentTaskText)
+                || (prevCreator !== currentTaskCreator)
+                || (prevSharedKey !== currentSharedResultKey)
+                || (prevStarted !== started);
+
             if (started && (phase === "wop" || phase === "wheel")) {
                 // UI in die laufende Runde bringen (auch nach Reload / Mid-Game-Join)
                 document.getElementById("setup")?.classList.add("hidden");
@@ -2594,12 +2854,14 @@
                 if (phase === "wop") {
                     document.getElementById("woP-phase")?.classList.remove("hidden");
                     document.getElementById("wheel-phase")?.classList.add("hidden");
-                    updateWopTurn();
+                    if (turnStateChanged) {
+                        updateWopTurn();
+                    }
                 } else if (phase === "wheel") {
                     document.getElementById("woP-phase")?.classList.add("hidden");
                     document.getElementById("wheel-phase")?.classList.remove("hidden");
                     const spinBtn = document.getElementById("spin-btn");
-                    if (spinBtn) spinBtn.disabled = false;
+                    if (spinBtn) spinBtn.disabled = isSpectator ? true : false;
                 }
             } else if (!started) {
                 // Noch Lobby-Wartezustand
@@ -2748,8 +3010,23 @@
                 .toLowerCase();
         }
 
+        async function joinLobbyAsSpectator(code) {
+            if (myRole !== "admin" && myRole !== "master") {
+                alert(currentLang === "de"
+                    ? "Nur Admins und Master können als Zuschauer beitreten."
+                    : "Only Admins and Masters can join as spectators.");
+                return;
+            }
+            if (code) {
+                const input = document.getElementById("lobby-code-input");
+                if (input) input.value = code;
+            }
+            await joinGame({ asSpectator: true });
+        }
+
         async function joinGame(options = {}) {
             const restoring = !!options.restoring;
+            const asSpectator = !!options.asSpectator;
             const input = document.getElementById("lobby-code-input");
             const rawCode = restoring ? String(activeLobbyCode || "") : (input ? input.value : "");
             const code = normalizeLobbyCode(rawCode);
@@ -2763,6 +3040,21 @@
                 if (!restoring) alert(currentLang === "de" ? "Bitte zuerst einloggen." : "Please log in first.");
                 return;
             }
+
+            if (asSpectator) {
+                if (myRole !== "admin" && myRole !== "master") {
+                    if (!restoring) {
+                        alert(currentLang === "de"
+                            ? "Nur Admins und Master dürfen als Zuschauer beitreten."
+                            : "Only Admins and Masters can join as spectators.");
+                    }
+                    return;
+                }
+                isSpectator = true;
+            } else {
+                isSpectator = false;
+            }
+            updateHUD();
 
             restoringLobby = restoring;
             leavingLobbyManually = false;
@@ -2843,10 +3135,11 @@
             if (leavingLobbyManually || !activeLobbyCode) return;
 
             const saved = getSavedLobbySession();
-            const role = saved?.role || (isHost ? "host" : "client");
+            const role = saved?.role || (isHost ? "host" : (isSpectator ? "spectator" : "client"));
+            const wasSpectator = !!saved?.isSpectator || role === "spectator";
 
             if (role === "host") hostGame({ restoring: true });
-            else joinGame({ restoring: true });
+            else joinGame({ restoring: true, asSpectator: wasSpectator });
         }
 
         function leaveLobby() {
@@ -2883,6 +3176,10 @@
             hostConnection = null;
             clientConnections = [];
             isHost = false;
+            isSpectator = false;
+            currentTaskCreator = "";
+            hostMessageBuffer = [];
+            clientMessageBuffer = [];
             players = [];
             currentPlayerIndex = 0;
             activeLobbyCode = "";
@@ -2897,6 +3194,7 @@
 
             if (manual) clearSavedLobbySession();
 
+            updateHUD();
             updateOnlineStatus(true);
 
             document.getElementById("lobby-wait-box").classList.add("hidden");
@@ -2949,8 +3247,12 @@
                 startGameUI();
             } else if (data.type === 'SUBMIT_CHOICE') {
                 pendingChoice = data.choice;
-                assignTaskCreator(data.playerName, data.choice);
+                if (isHost) {
+                    assignTaskCreator(data.playerName, data.choice);
+                }
             } else if (data.type === 'ASSIGN_CREATOR') {
+                currentTaskCreator = data.creatorName;
+                pendingChoice = data.choice;
                 setupCreatorUI(data.targetPlayer, data.choice, data.creatorName);
             } else if (data.type === 'SHOW_TASK') {
                 currentTaskText = data.taskText;
@@ -2977,7 +3279,7 @@
                 document.getElementById("woP-phase").classList.add("hidden");
                 document.getElementById("wheel-phase").classList.remove("hidden");
                 const spinBtn = document.getElementById("spin-btn");
-                if (spinBtn) spinBtn.disabled = false;
+                if (spinBtn) spinBtn.disabled = isSpectator ? true : false;
                 const wheelResult = document.getElementById("wheel-result-box");
                 if (wheelResult) wheelResult.classList.add("hidden");
                 if (isHost) scheduleSaveGameState();
@@ -3019,13 +3321,19 @@
             const list = document.getElementById("player-list");
             if (!list) return;
             list.innerHTML = "";
+            let nonSpectatorCount = 0;
             players.forEach((p, index) => {
                 const playerName = getUserDisplayName(p);
                 const accessory = String(p.accessory || "");
-                list.innerHTML += `<li><b>${index + 1}.</b> ${accessory} ${playerName} ${p.eliminated ? '❌' : ''}</li>`;
+                const isSpec = !!p.isSpectator;
+                if (!isSpec) nonSpectatorCount++;
+                const specBadge = isSpec ? ` <span style="font-size:10px;color:#b388ff;font-weight:normal;">[${currentLang === "de" ? "Zuschauer" : "Spectator"}]</span>` : "";
+                list.innerHTML += `<li><b>${index + 1}.</b> ${accessory} ${playerName} ${p.eliminated ? '❌' : ''}${specBadge}</li>`;
             });
-            if (isHost && players.length >= 1) {
+            if (isHost && nonSpectatorCount >= 1) {
                 document.getElementById("start-btn").classList.remove("hidden");
+            } else if (isHost) {
+                document.getElementById("start-btn").classList.add("hidden");
             }
             renderPlayerStatuses();
         }
@@ -3055,6 +3363,7 @@
             });
         }
 
+        let publishStatusDebounceTimer = null;
         function publishOwnStatus() {
             const read = id => Number(document.getElementById(id)?.value || 0);
             const toilet = read("toilet-level");
@@ -3064,7 +3373,12 @@
             const energy = read("energy-level");
             playerStatuses[myName] = { toilet, horny, alcohol, thirst, energy };
             renderPlayerStatuses();
-            sendData({ type: "PLAYER_STATUS", playerName: myName, toilet, horny, alcohol, thirst, energy });
+
+            if (publishStatusDebounceTimer) clearTimeout(publishStatusDebounceTimer);
+            publishStatusDebounceTimer = setTimeout(() => {
+                publishStatusDebounceTimer = null;
+                sendData({ type: "PLAYER_STATUS", playerName: myName, toilet, horny, alcohol, thirst, energy });
+            }, 250);
         }
 
         function renderPlayerStatuses() {
@@ -3139,7 +3453,8 @@
                 return;
             }
 
-            while (currentPlayerIndex < players.length && players[currentPlayerIndex].eliminated) {
+            // Skip eliminated players and spectators for turns!
+            while (currentPlayerIndex < players.length && (players[currentPlayerIndex].eliminated || players[currentPlayerIndex].isSpectator)) {
                 currentPlayerIndex++;
             }
             if (currentPlayerIndex >= players.length) {
@@ -3165,25 +3480,39 @@
 
             // Zwischenzustand: Aufgabe bereits zugewiesen → Task-Screen wiederherstellen
             if (currentTaskText && pendingChoice) {
-                displayTaskScreen(currentPlayerName, pendingChoice, currentTaskText, "");
+                displayTaskScreen(currentPlayerName, pendingChoice, currentTaskText, currentTaskCreator || "");
                 return;
             }
 
             // Zwischenzustand: Wahl bereits getroffen, Creator erstellt noch die Aufgabe
             if (pendingChoice) {
+                if (currentTaskCreator && namesEqual(currentTaskCreator, myName) && !isSpectator) {
+                    setupCreatorUI(currentPlayerName, pendingChoice, currentTaskCreator);
+                    return;
+                }
                 document.getElementById("waiting-for-player-box").classList.remove("hidden");
+                const creatorHint = currentTaskCreator ? ` (${currentTaskCreator})` : "";
                 document.getElementById("waiting-info-text").innerText = currentLang === "de"
-                    ? (namesEqual(currentPlayerName, myName)
-                        ? "Warte auf die Aufgabe von einem Mitspieler…"
-                        : `Warte, bis die Aufgabe für ${currentPlayerName} erstellt wird…`)
-                    : (namesEqual(currentPlayerName, myName)
-                        ? "Waiting for a task from another player…"
-                        : `Waiting for a task to be created for ${currentPlayerName}…`);
+                    ? (isSpectator
+                        ? `[Zuschauer] Warte auf Aufgabe für ${currentPlayerName}${creatorHint}…`
+                        : (namesEqual(currentPlayerName, myName)
+                            ? `Warte auf die Aufgabe von ${currentTaskCreator || "einem Mitspieler"}…`
+                            : `Warte, bis die Aufgabe für ${currentPlayerName} erstellt wird…`))
+                    : (isSpectator
+                        ? `[Spectating] Waiting for task for ${currentPlayerName}${creatorHint}…`
+                        : (namesEqual(currentPlayerName, myName)
+                            ? `Waiting for a task from ${currentTaskCreator || "another player"}…`
+                            : `Waiting for a task to be created for ${currentPlayerName}…`));
                 return;
             }
 
             // Frischer Zug: Wahrheits-/Pflicht-Auswahl
-            if (namesEqual(currentPlayerName, myName)) {
+            if (isSpectator) {
+                document.getElementById("waiting-for-player-box").classList.remove("hidden");
+                document.getElementById("waiting-info-text").innerText = (currentLang === 'de'
+                    ? `[Zuschauer] Warte, bis ${currentPlayerName} wählt...`
+                    : `[Spectating] Waiting for ${currentPlayerName} to choose...`);
+            } else if (namesEqual(currentPlayerName, myName)) {
                 const selectBtn = document.getElementById("ui-select-btn");
                 if (selectBtn) selectBtn.disabled = false;
                 document.getElementById("wop-choice-area").classList.remove("hidden");
@@ -3194,6 +3523,7 @@
         }
 
         function submitWopChoice() {
+            if (isSpectator) return;
             const currentP = players[currentPlayerIndex];
             if (!currentP || !namesEqual(currentP, myName)) return;
 
@@ -3217,25 +3547,38 @@
         }
 
         function assignTaskCreator(targetName, choice) {
-            let activeOthers = players.filter(p => !p.eliminated && !namesEqual(p, targetName));
-            // Vermeidet, dass bei mehreren Spielern ständig dieselbe Person Fragen/Aufgaben erstellt.
-            let eligible = activeOthers.filter(p => {
-                const n = getUserDisplayName(p, "");
-                return !recentTaskCreators.slice(-Math.max(1, activeOthers.length - 1)).some(r => namesEqual(r, n));
-            });
-            if (!eligible.length) eligible = activeOthers;
-            const creatorName = eligible.length
-                ? getUserDisplayName(eligible[Math.floor(Math.random() * eligible.length)])
+            let activeOthers = players.filter(p => !p.eliminated && !p.isSpectator && !namesEqual(p, targetName));
+            let eligible = activeOthers;
+            // Wenn 3 oder mehr Kandidaten da sind, schließen wir nur den allerletzten Ersteller aus,
+            // damit nicht 2x hintereinander dieselbe Person drankommt, aber echte Zufallsauswahl bleibt!
+            if (activeOthers.length >= 3 && recentTaskCreators.length > 0) {
+                const lastCreator = recentTaskCreators[recentTaskCreators.length - 1];
+                eligible = activeOthers.filter(p => !namesEqual(p, lastCreator));
+                if (!eligible.length) eligible = activeOthers;
+            }
+            const chosenPlayer = eligible.length
+                ? eligible[Math.floor(Math.random() * eligible.length)]
+                : (activeOthers.length ? activeOthers[0] : null);
+
+            const creatorName = chosenPlayer
+                ? getUserDisplayName(chosenPlayer)
                 : getUserDisplayName({ name: targetName }, targetName);
+
+            currentTaskCreator = creatorName;
+            pendingChoice = choice;
+
             if (activeOthers.length > 1) {
                 recentTaskCreators.push(creatorName);
-                recentTaskCreators = recentTaskCreators.slice(-Math.max(3, players.length));
+                if (recentTaskCreators.length > 10) recentTaskCreators.shift();
             }
+
             sendData({ type: 'ASSIGN_CREATOR', targetPlayer: targetName, choice: choice, creatorName: creatorName });
             if (isHost) scheduleSaveGameState();
         }
 
         function setupCreatorUI(targetPlayer, choice, creatorName) {
+            currentTaskCreator = creatorName;
+            pendingChoice = choice;
             targetPlayer = getUserDisplayName({ name: targetPlayer }, "Spieler");
             creatorName = getUserDisplayName({ name: creatorName }, "Spieler");
             const isTruth = choice === "truth";
@@ -3251,19 +3594,21 @@
                 ? `${isTruth ? "Wahrheit" : "Pflicht"} für ${targetPlayer}`
                 : `${isTruth ? "Truth" : "Dare"} for ${targetPlayer}`;
 
-            if (creatorName === myName) {
+            if (namesEqual(creatorName, myName) && !isSpectator) {
                 document.getElementById("creator-input-area").classList.remove("hidden");
                 document.getElementById("custom-task-input").placeholder = currentLang === 'de'
                     ? (isTruth ? `Wahrheitsfrage für ${targetPlayer} eingeben...` : `Pflicht-Aufgabe für ${targetPlayer} eingeben...`)
                     : (isTruth ? `Enter a truth question for ${targetPlayer}...` : `Enter a dare for ${targetPlayer}...`);
             } else {
-                document.getElementById("waiting-for-player-box").classList.add("hidden");
                 document.getElementById("waiting-for-player-box").classList.remove("hidden");
-                document.getElementById("waiting-info-text").innerText = (currentLang === 'de' ? `Warte auf ${creatorName}...` : `Waiting for ${creatorName}...`);
+                document.getElementById("waiting-info-text").innerText = (currentLang === 'de'
+                    ? (isSpectator ? `[Zuschauer] Warte auf ${creatorName}...` : `Warte auf ${creatorName}...`)
+                    : (isSpectator ? `[Spectating] Waiting for ${creatorName}...` : `Waiting for ${creatorName}...`));
             }
         }
 
         function sendCustomTask() {
+            if (isSpectator) return;
             let taskText = document.getElementById("custom-task-input").value.trim();
             if (!taskText) { alert(translations[currentLang].alertTask); return; }
             const currentP = players[currentPlayerIndex];
@@ -3279,19 +3624,20 @@
         function displayTaskScreen(targetPlayer, choice, taskText, creator) {
             pendingChoice = choice || pendingChoice || "";
             currentTaskText = taskText || currentTaskText || "";
+            currentTaskCreator = creator || currentTaskCreator || "";
             taskCompleted = false;
 
             const ansBtn = document.getElementById("ui-submit-answer-btn");
             const dareBtn = document.getElementById("ui-dare-done-btn");
-            if (ansBtn) ansBtn.disabled = false;
-            if (dareBtn) dareBtn.disabled = false;
+            if (ansBtn) ansBtn.disabled = isSpectator;
+            if (dareBtn) dareBtn.disabled = isSpectator;
 
             document.getElementById("wop-choice-area").classList.add("hidden");
             document.getElementById("creator-input-area").classList.add("hidden");
             document.getElementById("waiting-for-player-box").classList.add("hidden");
             document.getElementById("result-feedback-area")?.classList.add("hidden");
 
-            if (namesEqual(targetPlayer, myName)) {
+            if (namesEqual(targetPlayer, myName) && !isSpectator) {
                 document.getElementById("active-task-area").classList.remove("hidden");
                 document.getElementById("task-title-text").innerText = choice === "truth" ? (currentLang === 'de' ? "💡 WAHRHEIT" : "💡 TRUTH") : (currentLang === 'de' ? "🔥 PFLICHT" : "🔥 DARE");
                 document.getElementById("task-assigner-info").innerText = creator
@@ -3312,12 +3658,15 @@
                 document.getElementById("active-task-area").classList.add("hidden");
                 document.getElementById("waiting-for-player-box").classList.remove("hidden");
                 const tp = getUserDisplayName({ name: targetPlayer }, targetPlayer);
-                document.getElementById("waiting-info-text").innerText = (currentLang === 'de' ? `${tp} ist dran...` : `${tp}'s turn...`);
+                const rolePrefix = isSpectator ? "[Zuschauer] " : "";
+                document.getElementById("waiting-info-text").innerText = currentLang === 'de'
+                    ? `${rolePrefix}${tp} führt aus: „${taskText}“`
+                    : `${rolePrefix}${tp}'s task: "${taskText}"`;
             }
         }
 
         function submitAnswer() {
-            if (taskCompleted) return;
+            if (isSpectator || taskCompleted) return;
             const currentP = players[currentPlayerIndex];
             if (!currentP || !namesEqual(currentP, myName)) return;
             if (!pendingChoice || pendingChoice !== "truth") return;
@@ -3354,7 +3703,7 @@
         }
 
         function submitDareDone() {
-            if (taskCompleted) return;
+            if (isSpectator || taskCompleted) return;
             const currentP = players[currentPlayerIndex];
             if (!currentP || !namesEqual(currentP, myName)) return;
             if (!pendingChoice || pendingChoice !== "dare") return;
@@ -3420,9 +3769,6 @@
                 nextTurnVotedPlayers = [];
             }
 
-            const nextBtn = document.getElementById("next-turn-btn");
-            nextBtn.disabled = nextTurnVotedPlayers.some(n => namesEqual(n, myName));
-
             document.getElementById("feedback-player-name").innerText =
                 currentLang === 'de'
                     ? `${targetPlayer} hat abgeschlossen!`
@@ -3435,16 +3781,30 @@
 
             document.getElementById("feedback-result-box").innerText = resultText;
 
-            const activeCount = players.filter(p => !p.eliminated).length;
+            const nextBtn = document.getElementById("next-turn-btn");
+            if (isSpectator) {
+                if (nextBtn) {
+                    nextBtn.disabled = true;
+                    nextBtn.innerText = currentLang === 'de' ? "👁️ [Zuschauer]" : "👁️ [Spectator]";
+                }
+            } else {
+                if (nextBtn) {
+                    nextBtn.disabled = nextTurnVotedPlayers.some(n => namesEqual(n, myName));
+                    nextBtn.innerText = currentLang === 'de' ? "Weiter" : "Next";
+                }
+            }
+
+            const activeCount = players.filter(p => !p.eliminated && !p.isSpectator).length;
             document.getElementById("next-votes-count").innerText = String(nextTurnVotedPlayers.length);
             document.getElementById("next-votes-total").innerText = String(activeCount);
         }
 
         function voteNextTurn() {
+            if (isSpectator) return;
             if (!currentSharedResult) return;
 
             const me = players.find(p => namesEqual(p, myName));
-            if (!me || me.eliminated) return;
+            if (!me || me.eliminated || me.isSpectator) return;
             if (nextTurnVotedPlayers.some(n => namesEqual(n, myName))) return;
 
             document.getElementById("next-turn-btn").disabled = true;
@@ -3463,7 +3823,7 @@
         }
 
         function handleNextTurnVote(pName) {
-            const activePlayers = players.filter(p => !p.eliminated);
+            const activePlayers = players.filter(p => !p.eliminated && !p.isSpectator);
             const activeNames = activePlayers.map(p => getUserDisplayName(p));
             if (!activeNames.some(n => namesEqual(n, pName))) return;
             if (!nextTurnVotedPlayers.some(n => namesEqual(n, pName))) {
@@ -3479,7 +3839,7 @@
             }
 
             // Erst wenn wirklich jeder aktive Spieler bestätigt hat, geht es weiter.
-            if (isHost && nextTurnVotedPlayers.length >= activePlayers.length) {
+            if (isHost && activePlayers.length > 0 && nextTurnVotedPlayers.length >= activePlayers.length) {
                 const nextData = { type: 'EXECUTE_NEXT_TURN' };
 
                 // Auf dem Host sofort weiter.
@@ -3504,7 +3864,10 @@
             document.getElementById("waiting-for-player-box").classList.add("hidden");
             document.getElementById("wop-choice-area")?.classList.add("hidden");
             const nextBtn = document.getElementById("next-turn-btn");
-            if (nextBtn) nextBtn.disabled = false;
+            if (nextBtn) {
+                nextBtn.disabled = false;
+                nextBtn.innerText = currentLang === 'de' ? "Weiter" : "Next";
+            }
             const selectBtn = document.getElementById("ui-select-btn");
             if (selectBtn) selectBtn.disabled = false;
             nextTurnVotedPlayers = [];
@@ -3517,6 +3880,7 @@
 // 15. GLÜCKSRAD-PHASE (ANIMATION & ABSTIMMUNG)
 // ==============================================================================
         function spinWheel() {
+            if (isSpectator) return;
             const button = document.getElementById("spin-btn");
             if (button.disabled) return;
 
@@ -3532,38 +3896,45 @@
             let wheel = document.getElementById("wheel-container");
             wheel.style.transform = `rotate(-${rotationVal}deg)`;
             setTimeout(() => {
-                document.getElementById("spin-btn").disabled = false;
+                document.getElementById("spin-btn").disabled = isSpectator ? true : false;
                 let selected = translations[currentLang].wheelSectors[sectorIndex];
                 wheel.innerText = (currentLang === 'de' ? "ERGEBNIS!" : "RESULT!");
                 document.getElementById("wheel-action-title").innerText = selected.title;
                 document.getElementById("wheel-action-desc").innerText = selected.desc;
                 document.getElementById("wheel-result-box").classList.remove("hidden");
-                document.getElementById("next-round-btn").disabled = false;
-                userXP += 25;
-                userCoins += 12;
-                addMonthlyCoins(12);
-                calculateLevel();
-                updateHUD();
-                updateProfileModal();
-                saveUserDataToCloud();
+                const nextRoundBtn = document.getElementById("next-round-btn");
+                if (nextRoundBtn) nextRoundBtn.disabled = isSpectator ? true : false;
+                if (!isSpectator) {
+                    userXP += 25;
+                    userCoins += 12;
+                    addMonthlyCoins(12);
+                    calculateLevel();
+                    updateHUD();
+                    updateProfileModal();
+                    saveUserDataToCloud();
+                }
             }, 3000);
         }
 
         function voteNextRound() {
+            if (isSpectator) return;
             document.getElementById("next-round-btn").disabled = true;
             sendData({ type: 'VOTE_NEXT_ROUND', playerName: myName });
         }
 
         function handleNextRoundVote(pName) {
-            if (!nextRoundVotedPlayers.includes(pName)) nextRoundVotedPlayers.push(pName);
-            let activeCount = players.filter(p => !p.eliminated).length;
+            const activePlayers = players.filter(p => !p.eliminated && !p.isSpectator);
+            const activeNames = activePlayers.map(p => getUserDisplayName(p));
+            if (!activeNames.some(n => namesEqual(n, pName))) return;
+            if (!nextRoundVotedPlayers.some(n => namesEqual(n, pName))) nextRoundVotedPlayers.push(pName);
+            let activeCount = activePlayers.length;
             
             const countEl = document.getElementById("round-votes-count");
             const totalEl = document.getElementById("round-votes-total");
             if (countEl) countEl.innerText = nextRoundVotedPlayers.length;
             if (totalEl) totalEl.innerText = activeCount;
 
-            if (isHost && nextRoundVotedPlayers.length >= activeCount) {
+            if (isHost && activeCount > 0 && nextRoundVotedPlayers.length >= activeCount) {
                 sendData({ type: 'NEXT_ROUND' });
             }
         }
@@ -3640,7 +4011,7 @@
                 if (gameStarted && gamePhase === "wop") {
                     updateWopTurn();
                 } else if (gameStarted && gamePhase === "wheel") {
-                    const activeCount = players.filter(p => !p.eliminated).length;
+                    const activeCount = players.filter(p => !p.eliminated && !p.isSpectator).length;
                     const countEl = document.getElementById("round-votes-count");
                     const totalEl = document.getElementById("round-vote-total");
                     if (countEl) countEl.innerText = String(nextRoundVotedPlayers.length);
@@ -3650,7 +4021,7 @@
                     }
                 }
                 if (gameStarted && gamePhase === "wop" && isHost) {
-                    const activePlayers = players.filter(p => !p.eliminated);
+                    const activePlayers = players.filter(p => !p.eliminated && !p.isSpectator);
                     if (currentSharedResult && nextTurnVotedPlayers.length >= activePlayers.length && activePlayers.length > 0) {
                         const nextData = { type: "EXECUTE_NEXT_TURN" };
                         handleIncomingData(nextData);
@@ -3747,8 +4118,9 @@
         }
 
         async function triggerLeak() {
+            if (isSpectator) return;
             const activeNames = players
-                .filter(p => !p.eliminated)
+                .filter(p => !p.eliminated && !p.isSpectator)
                 .map(p => getUserDisplayName(p))
                 .filter(Boolean);
 

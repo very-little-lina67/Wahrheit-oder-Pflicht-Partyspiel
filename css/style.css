@@ -227,6 +227,8 @@
         .btn-green { background-color: #28a745; color: white; box-shadow: 0 4px 15px rgba(40,167,69,0.4); }
         .btn-green:hover { background-color: #218838; }
         .btn-danger { background-color: #ff3300; box-shadow: 0 4px 15px rgba(255,51,0,0.5); }
+        .btn-purple { background-color: #6200ea; color: white; box-shadow: 0 4px 15px rgba(98,0,234,0.4); }
+        .btn-purple:hover { background-color: #7c4dff; }
         .hidden { display: none !important; }
         
         /* MODALS */
