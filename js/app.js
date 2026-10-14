@@ -1389,12 +1389,9 @@
             } else {
                 adminBtn.classList.add("hidden");
             }
-            // Support: Moderator, Admin, Master
+            // Support-Button entfernt – Feedback & Nutzerzeiten nur im Admin-Panel
             const supportBtn = document.getElementById("btn-support-panel");
-            if (supportBtn) {
-                if (canAccessSupport()) supportBtn.classList.remove("hidden");
-                else supportBtn.classList.add("hidden");
-            }
+            if (supportBtn) supportBtn.classList.add("hidden");
             // Lobby-Moderation: nur Admin/Master (sichtbar wenn in Lobby oder Zuschauer)
             updateLobbyModButtonVisibility();
             // Zuschauen nur für Admin/Master
