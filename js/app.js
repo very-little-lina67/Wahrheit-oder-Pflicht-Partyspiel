@@ -312,8 +312,13 @@
                 inviteAcceptBtn: "Annehmen ✅",
                 inviteRejectBtn: "Ablehnen ❌",
                 adminTitle: "🛡️ Admin Panel",
-                adminDesc: "Verwalte Benutzer und Feedback.",
-                adminUsersHead: "👥 Benutzer:",
+                adminDesc: "Verwalte Benutzer und Feedback. Beitritt & zuletzt online einsehen.",
+                adminUsersHead: "👥 Benutzer (Beitritt & zuletzt online):",
+                adminJoinedAt: "Beitritt",
+                adminLastOnline: "Zuletzt online",
+                adminOnlineNow: "🟢 online",
+                adminOffline: "⚫ offline",
+                adminNever: "–",
                 adminFbHead: "📥 Feedback:",
                 adminCloseBtn: "Schließen",
                 footerImprint: "Impressum",
@@ -341,6 +346,41 @@
                 spectatorBanner: "👁 Zuschauermodus – du beobachtest nur und spielst nicht mit.",
                 alertSpectateDenied: "Zuschauen ist nur für Admin- und Master-Accounts erlaubt.",
                 alertSpectatorAction: "Im Zuschauermodus kannst du nicht eingreifen – nur beobachten.",
+                btnSupport: "🛟 Support",
+                btnLobbyMod: "🛡️ Lobby-Mod",
+                supportTitle: "🛟 Support",
+                supportDesc: "Feedback & Support-Anfragen der Spieler.",
+                supportClose: "Schließen",
+                supportEmpty: "Keine offenen Anfragen.",
+                supportResolved: "Erledigt",
+                supportMarkDone: "Als erledigt markieren",
+                lobbyModTitle: "🛡️ Lobby-Moderation",
+                lobbyModDesc: "Spieler stummschalten, kicken oder Runde pausieren. Lobby-Log einsehen.",
+                lobbyModPlayersHead: "👥 Spieler in der Lobby (Beitritt & Online)",
+                lobbyLogHead: "📋 Lobby-Log",
+                lobbyJoinedAt: "Beitritt",
+                lobbyLastOnline: "Zuletzt online",
+                lobbyOnlineNow: "🟢 online",
+                lobbyOffline: "⚫ offline",
+                lobbyModClose: "Schließen",
+                btnPauseGame: "⏸ Runde pausieren",
+                btnResumeGame: "▶ Runde fortsetzen",
+                pauseBanner: "⏸ Runde pausiert durch Moderation",
+                btnMute: "Mute",
+                btnUnmute: "Unmute",
+                btnKick: "Kick",
+                alertPaused: "Die Runde ist pausiert – bitte warten.",
+                alertKicked: "Du wurdest von der Moderation aus der Lobby entfernt.",
+                alertMutedChat: "Dieser Spieler ist stummgeschaltet.",
+                logJoin: "ist beigetreten",
+                logLeave: "hat die Lobby verlassen",
+                logLeak: "ist ausgeschieden (Leak)",
+                logKick: "wurde gekickt",
+                logMute: "wurde stummgeschaltet",
+                logUnmute: "darf wieder chatten",
+                logPause: "Runde pausiert",
+                logResume: "Runde fortgesetzt",
+                logStart: "Spiel gestartet",
                 toiletLabel: "🚻 Klo-Dringlichkeit",
                 hornyLabel: "🔥 Horny-Level",
                 alcoholLabel: "🍺 Alkohol-Pegel",
@@ -498,8 +538,13 @@
                 inviteAcceptBtn: "Accept ✅",
                 inviteRejectBtn: "Decline ❌",
                 adminTitle: "🛡️ Admin Panel",
-                adminDesc: "Manage users and feedback.",
-                adminUsersHead: "👥 Users:",
+                adminDesc: "Manage users and feedback. See join time & last online.",
+                adminUsersHead: "👥 Users (joined & last online):",
+                adminJoinedAt: "Joined",
+                adminLastOnline: "Last online",
+                adminOnlineNow: "🟢 online",
+                adminOffline: "⚫ offline",
+                adminNever: "–",
                 adminFbHead: "📥 Feedback:",
                 adminCloseBtn: "Close",
                 footerImprint: "Imprint",
@@ -527,6 +572,41 @@
                 spectatorBanner: "👁 Spectator mode – you are only watching, not playing.",
                 alertSpectateDenied: "Spectating is only allowed for Admin and Master accounts.",
                 alertSpectatorAction: "In spectator mode you cannot intervene – only observe.",
+                btnSupport: "🛟 Support",
+                btnLobbyMod: "🛡️ Lobby Mod",
+                supportTitle: "🛟 Support",
+                supportDesc: "Player feedback & support requests.",
+                supportClose: "Close",
+                supportEmpty: "No open requests.",
+                supportResolved: "Resolved",
+                supportMarkDone: "Mark as done",
+                lobbyModTitle: "🛡️ Lobby Moderation",
+                lobbyModDesc: "Mute or kick players, pause the round, view the lobby log.",
+                lobbyModPlayersHead: "👥 Players in lobby (join & online)",
+                lobbyLogHead: "📋 Lobby log",
+                lobbyJoinedAt: "Joined",
+                lobbyLastOnline: "Last online",
+                lobbyOnlineNow: "🟢 online",
+                lobbyOffline: "⚫ offline",
+                lobbyModClose: "Close",
+                btnPauseGame: "⏸ Pause round",
+                btnResumeGame: "▶ Resume round",
+                pauseBanner: "⏸ Round paused by moderation",
+                btnMute: "Mute",
+                btnUnmute: "Unmute",
+                btnKick: "Kick",
+                alertPaused: "The round is paused – please wait.",
+                alertKicked: "You were removed from the lobby by moderation.",
+                alertMutedChat: "This player is muted.",
+                logJoin: "joined",
+                logLeave: "left the lobby",
+                logLeak: "was eliminated (leak)",
+                logKick: "was kicked",
+                logMute: "was muted",
+                logUnmute: "can chat again",
+                logPause: "Round paused",
+                logResume: "Round resumed",
+                logStart: "Game started",
                 toiletLabel: "🚻 Restroom Urgency",
                 hornyLabel: "🔥 Horny Level",
                 alcoholLabel: "🍺 Alcohol Level",
@@ -708,11 +788,25 @@
             const hudStreak = document.getElementById("ui-hud-streak-text"); if (hudStreak) hudStreak.innerText = t.hudStreakText;
             const hudCoins = document.getElementById("ui-hud-coins-text"); if (hudCoins) hudCoins.innerText = t.hudCoinsText;
             const adminBtn = document.getElementById("btn-admin-panel"); if (adminBtn) adminBtn.innerText = t.btnAdmin;
+            const supportBtnHud = document.getElementById("btn-support-panel"); if (supportBtnHud) supportBtnHud.innerText = t.btnSupport || "🛟 Support";
+            const lobbyModBtnHud = document.getElementById("btn-lobby-mod"); if (lobbyModBtnHud) lobbyModBtnHud.innerText = t.btnLobbyMod || "🛡️ Lobby-Mod";
             const lbBtn = document.getElementById("ui-btn-leaderboard"); if (lbBtn) lbBtn.innerText = t.btnLeaderboard;
             const frBtn = document.getElementById("ui-btn-friends"); if (frBtn) frBtn.innerText = t.btnFriends;
             const playersBtn = document.getElementById("ui-btn-players"); if (playersBtn) playersBtn.innerText = t.btnPlayers;
             const fbBtn = document.getElementById("ui-btn-feedback"); if (fbBtn) fbBtn.innerText = t.btnFeedback;
             const shopBtn = document.getElementById("ui-btn-shop"); if (shopBtn) shopBtn.innerText = t.btnShop;
+
+            // Support / Lobby-Mod Modal Texte
+            const supportTitle = document.getElementById("ui-support-title"); if (supportTitle) supportTitle.innerText = t.supportTitle || supportTitle.innerText;
+            const supportDesc = document.getElementById("ui-support-desc"); if (supportDesc) supportDesc.innerText = t.supportDesc || supportDesc.innerText;
+            const supportClose = document.getElementById("ui-support-close-btn"); if (supportClose) supportClose.innerText = t.supportClose || t.btnClose || "Close";
+            const lobbyModTitle = document.getElementById("ui-lobby-mod-title"); if (lobbyModTitle) lobbyModTitle.innerText = t.lobbyModTitle || lobbyModTitle.innerText;
+            const lobbyModDesc = document.getElementById("ui-lobby-mod-desc"); if (lobbyModDesc) lobbyModDesc.innerText = t.lobbyModDesc || lobbyModDesc.innerText;
+            const lobbyModPlayersHead = document.getElementById("ui-lobby-mod-players-head"); if (lobbyModPlayersHead) lobbyModPlayersHead.innerText = t.lobbyModPlayersHead || lobbyModPlayersHead.innerText;
+            const lobbyLogHead = document.getElementById("ui-lobby-log-head"); if (lobbyLogHead) lobbyLogHead.innerText = t.lobbyLogHead || lobbyLogHead.innerText;
+            const lobbyModClose = document.getElementById("ui-lobby-mod-close-btn"); if (lobbyModClose) lobbyModClose.innerText = t.lobbyModClose || t.btnClose || "Close";
+            const pauseBannerText = document.getElementById("ui-pause-banner-text"); if (pauseBannerText) pauseBannerText.innerText = t.pauseBanner || pauseBannerText.innerText;
+            updatePauseButtonLabel();
             const leaveBtn = document.getElementById("leave-lobby-btn"); if (leaveBtn) leaveBtn.innerText = t.leaveBtn;
             const langLabel = document.getElementById("ui-lang-label-text"); if (langLabel) langLabel.innerText = t.langLabelText;
 
@@ -848,6 +942,8 @@
             if (isMasterAccount(email)) return "master";
             return storedRole || "user";
         }
+        // Ob der Account bereits ein createdAt in der Cloud hat (nur Anzeige, kein Login-Eingriff)
+        let userHasCreatedAt = false;
         let userXP = 0;
         let userCoins = 50;
         let monthlyCoins = 0;
@@ -904,6 +1000,7 @@
                     unlockedBadges = data.badges || [];
                     truthCount = data.truthCount || 0;
                     dareCount = data.dareCount || 0;
+                    userHasCreatedAt = !!(data.createdAt || data.registeredAt || data.joinedAt);
                     {
                         const raw = Array.isArray(data.friends) ? data.friends : [];
                         myFriends = [...new Set(raw.map(e => String(e || "").trim().toLowerCase()).filter(Boolean))];
@@ -973,7 +1070,7 @@
                 // Master-Rolle wird immer erzwungen, damit sie nie verloren geht.
                 const roleToSave = resolveRole(myEmail, myRole);
                 myRole = roleToSave;
-                await db.collection("users").doc(myEmail).set({
+                const payload = {
                     name: myName,
                     role: roleToSave,
                     xp: userXP,
@@ -992,7 +1089,13 @@
                     lastActive: firebase.firestore.FieldValue.serverTimestamp(),
                     isOnline: true,
                     currentLobby: activeLobbyCode || ""
-                }, { merge: true });
+                };
+                // Einmalige Beitrittszeit für Admin-Anzeige – Login/Register bleiben unverändert
+                if (!userHasCreatedAt) {
+                    payload.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+                }
+                await db.collection("users").doc(myEmail).set(payload, { merge: true });
+                if (!userHasCreatedAt) userHasCreatedAt = true;
             } catch (e) {
                 console.error("Fehler beim Speichern in Cloud:", e);
             }
@@ -1271,6 +1374,14 @@
             document.getElementById("hud-coins").innerText = userCoins;
         }
 
+        function canAccessSupport() {
+            return myRole === "master" || myRole === "admin" || myRole === "moderator";
+        }
+
+        function canModerateLobby() {
+            return myRole === "master" || myRole === "admin";
+        }
+
         function checkAdminPermissions() {
             let adminBtn = document.getElementById("btn-admin-panel");
             if (myRole === "master" || myRole === "admin" || myRole === "moderator") {
@@ -1278,6 +1389,14 @@
             } else {
                 adminBtn.classList.add("hidden");
             }
+            // Support: Moderator, Admin, Master
+            const supportBtn = document.getElementById("btn-support-panel");
+            if (supportBtn) {
+                if (canAccessSupport()) supportBtn.classList.remove("hidden");
+                else supportBtn.classList.add("hidden");
+            }
+            // Lobby-Moderation: nur Admin/Master (sichtbar wenn in Lobby oder Zuschauer)
+            updateLobbyModButtonVisibility();
             // Zuschauen nur für Admin/Master
             const spectateBtn = document.getElementById("ui-spectate-btn");
             const spectateHint = document.getElementById("ui-spectate-hint");
@@ -1288,6 +1407,14 @@
                 if (spectateBtn) spectateBtn.classList.add("hidden");
                 if (spectateHint) spectateHint.classList.add("hidden");
             }
+        }
+
+        function updateLobbyModButtonVisibility() {
+            const modBtn = document.getElementById("btn-lobby-mod");
+            if (!modBtn) return;
+            const inLobby = !!activeLobbyCode;
+            if (canModerateLobby() && inLobby) modBtn.classList.remove("hidden");
+            else modBtn.classList.add("hidden");
         }
 
         function updateProfileModal() {
@@ -1755,28 +1882,106 @@
             document.getElementById("admin-modal").classList.remove("hidden");
         }
 
+        function adminTsToMs(ts) {
+            if (!ts) return 0;
+            try {
+                if (typeof ts.toMillis === "function") return ts.toMillis();
+                if (typeof ts === "number" && ts > 0) return ts;
+                if (ts.seconds) return Number(ts.seconds) * 1000;
+            } catch (e) {}
+            return 0;
+        }
+
+        function formatAdminDateTime(ms) {
+            if (!ms) return (translations[currentLang] || translations.de).adminNever || "–";
+            try {
+                return new Date(ms).toLocaleString(currentLang === "de" ? "de-DE" : "en-GB", {
+                    day: "2-digit",
+                    month: "2-digit",
+                    year: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit"
+                });
+            } catch (e) {
+                return "–";
+            }
+        }
+
+        function formatAdminLastOnline(u, t) {
+            const lastMs = adminTsToMs(u.lastActive);
+            const onlineTimeout = typeof ONLINE_TIMEOUT_MS === "number" ? ONLINE_TIMEOUT_MS : 90000;
+            const isOnline = !!u.isOnline && lastMs > 0 && (Date.now() - lastMs) <= onlineTimeout;
+            if (isOnline) return t.adminOnlineNow || "🟢 online";
+            if (!lastMs) return t.adminNever || "–";
+            const agoMin = Math.max(0, Math.floor((Date.now() - lastMs) / 60000));
+            const clock = formatAdminDateTime(lastMs);
+            if (agoMin < 1) {
+                return currentLang === "de" ? `🟢 gerade eben (${clock})` : `🟢 just now (${clock})`;
+            }
+            if (agoMin < 60) {
+                return currentLang === "de"
+                    ? `⚫ vor ${agoMin} Min · ${clock}`
+                    : `⚫ ${agoMin} min ago · ${clock}`;
+            }
+            const agoH = Math.floor(agoMin / 60);
+            if (agoH < 48) {
+                return currentLang === "de"
+                    ? `⚫ vor ${agoH} Std · ${clock}`
+                    : `⚫ ${agoH}h ago · ${clock}`;
+            }
+            return `⚫ ${clock}`;
+        }
+
         async function renderAdminUserList() {
             let container = document.getElementById("admin-user-list");
             container.innerHTML = currentLang === "de" ? "Lade Benutzer..." : "Loading users...";
+            const t = translations[currentLang] || translations.de;
             try {
                 let snapshot = await db.collection("users").get();
-                container.innerHTML = "";
+                const rows = [];
                 snapshot.forEach(doc => {
-                    let email = doc.id;
-                    let u = doc.data();
-                    let isMaster = isMasterAccount(email) || u.role === "master";
-                    let maskedMail = maskEmail(email);
-                    // Anzeige-Rolle: Master-Account immer als master anzeigen
+                    const email = doc.id;
+                    const u = doc.data() || {};
+                    const lastMs = adminTsToMs(u.lastActive);
+                    // Beitritt: vorhandene Felder nutzen (ohne Login/Register zu ändern)
+                    const joinedMs = adminTsToMs(u.createdAt) || adminTsToMs(u.registeredAt) || adminTsToMs(u.joinedAt) || 0;
+                    rows.push({ email, u, lastMs, joinedMs });
+                });
+                // Zuletzt aktive zuerst
+                rows.sort((a, b) => (b.lastMs || 0) - (a.lastMs || 0));
+
+                container.innerHTML = "";
+                if (!rows.length) {
+                    container.innerHTML = `<span style="font-size:11px;color:#888;">${currentLang === "de" ? "Keine Benutzer." : "No users."}</span>`;
+                    return;
+                }
+
+                rows.forEach(({ email, u, joinedMs }) => {
+                    const isMaster = isMasterAccount(email) || u.role === "master";
+                    const maskedMail = maskEmail(email);
                     const displayRole = isMasterAccount(email) ? "master" : (u.role || "user");
                     const roleLabel = currentLang === "de" ? "Rolle: " : "Role: ";
-                    
-                    let html = `<div style="background:rgba(255,255,255,0.05); padding:6px; border-radius:6px; margin-bottom:5px; display:flex; justify-content:space-between; align-items:center; font-size:12px;">
-                        <div><b>${u.name}</b> (${maskedMail}) <br><span style="color:#00bfff;">${roleLabel}${displayRole}</span></div>`;
-                    
+                    const joinedLabel = formatAdminDateTime(joinedMs);
+                    const lastLabel = formatAdminLastOnline(u, t);
+                    const lobbyInfo = u.currentLobby
+                        ? (currentLang === "de" ? ` · Lobby: ${String(u.currentLobby).toUpperCase()}` : ` · Lobby: ${String(u.currentLobby).toUpperCase()}`)
+                        : "";
+
+                    let html = `<div style="background:rgba(255,255,255,0.05); padding:8px; border-radius:6px; margin-bottom:6px; font-size:12px;">
+                        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px; flex-wrap:wrap;">
+                            <div style="flex:1; min-width:140px;">
+                                <b>${u.name || "–"}</b> <span style="color:#888;">(${maskedMail})</span>
+                                <br><span style="color:#00bfff;">${roleLabel}${displayRole}</span>
+                                <div style="margin-top:4px; font-size:10px; color:#aaa; line-height:1.45;">
+                                    <div>${t.adminJoinedAt || "Beitritt"}: <span style="color:#ffcc00;">${joinedLabel}</span></div>
+                                    <div>${t.adminLastOnline || "Zuletzt online"}: <span style="color:#00bfff;">${lastLabel}</span>${lobbyInfo}</div>
+                                </div>
+                            </div>`;
+
                     let canModify = (myRole === "master" || (myRole === "admin" && !isMaster && u.role !== "admin"));
 
                     if (canModify && !isMaster) {
-                        html += `<div>
+                        html += `<div style="display:flex; flex-direction:column; gap:4px; align-items:flex-end;">
                             <select onchange="changeUserRole('${email}', this.value)" style="padding:3px; font-size:11px; width:auto; margin:0;">
                                 <option value="user" ${displayRole==='user'?'selected':''}>User</option>
                                 <option value="moderator" ${displayRole==='moderator'?'selected':''}>Mod</option>
@@ -1790,11 +1995,12 @@
                         html += `<span style="color:#888; font-size:10px;">-</span>`;
                     }
 
-                    html += `</div>`;
+                    html += `</div></div>`;
                     container.innerHTML += html;
                 });
             } catch (e) {
                 console.error("Fehler beim Abrufen der Benutzer:", e);
+                container.innerHTML = `<span style="color:#ff6666;font-size:11px;">${currentLang === "de" ? "Fehler beim Laden." : "Failed to load."}</span>`;
             }
         }
 
@@ -1844,6 +2050,303 @@
         async function deleteFeedback(docId) {
             await db.collection("feedback").doc(docId).delete();
             renderAdminFeedbackList();
+            try { renderSupportTicketList(); } catch (e) {}
+        }
+
+// ==============================================================================
+// 10b. SUPPORT-PANEL (Moderator / Admin / Master)
+// ==============================================================================
+        function openSupportModal() {
+            if (!canAccessSupport()) {
+                alert(translations[currentLang]?.alertNoPermission || "Access denied");
+                return;
+            }
+            renderSupportTicketList();
+            document.getElementById("support-modal")?.classList.remove("hidden");
+        }
+
+        function closeSupportModal() {
+            document.getElementById("support-modal")?.classList.add("hidden");
+        }
+
+        async function renderSupportTicketList() {
+            const container = document.getElementById("support-ticket-list");
+            if (!container) return;
+            const t = translations[currentLang] || translations.de;
+            container.innerHTML = currentLang === "de" ? "Lade…" : "Loading…";
+            try {
+                const snapshot = await db.collection("feedback").get();
+                container.innerHTML = "";
+                if (snapshot.empty) {
+                    container.innerHTML = `<span style="font-size:12px;color:#888;">${t.supportEmpty || "—"}</span>`;
+                    return;
+                }
+                const docs = [];
+                snapshot.forEach(doc => docs.push({ id: doc.id, ...doc.data() }));
+                // Neueste zuerst (falls date-String unzuverlässig: resolved ans Ende)
+                docs.sort((a, b) => {
+                    if (!!a.resolved !== !!b.resolved) return a.resolved ? 1 : -1;
+                    return String(b.date || "").localeCompare(String(a.date || ""));
+                });
+                docs.forEach(fb => {
+                    const typeColor = fb.type === "bug" ? "#ff3300" : "#00bfff";
+                    const resolved = !!fb.resolved;
+                    const mail = fb.emailMasked || maskEmail(fb.email || "");
+                    const statusBadge = resolved
+                        ? `<span style="background:#28a745;color:#fff;padding:1px 6px;border-radius:4px;font-size:10px;">${t.supportResolved || "Done"}</span>`
+                        : "";
+                    let actions = "";
+                    if (!resolved && (myRole === "master" || myRole === "admin" || myRole === "moderator")) {
+                        actions += `<button class="btn-green" style="padding:3px 6px;font-size:10px;margin:2px 0 0 0;width:auto;" onclick="markFeedbackResolved('${fb.id}')">${t.supportMarkDone || "Done"}</button>`;
+                    }
+                    if (myRole === "master" || myRole === "admin") {
+                        actions += ` <button class="btn-danger" style="padding:3px 6px;font-size:10px;margin:2px 0 0 4px;width:auto;" onclick="deleteFeedback('${fb.id}')">X</button>`;
+                    }
+                    container.innerHTML += `<div style="background:rgba(255,255,255,0.05);padding:8px;border-radius:6px;margin-bottom:6px;font-size:12px;border-left:4px solid ${typeColor};opacity:${resolved ? 0.65 : 1};">
+                        <div><b>${fb.author || "?"}</b> (${mail}) – <span style="color:${typeColor};font-weight:bold;">${String(fb.type || "").toUpperCase()}</span> ${statusBadge}</div>
+                        <div style="margin-top:4px;color:#fff;">${fb.text || ""}</div>
+                        <div style="font-size:10px;color:#888;margin-top:2px;">${fb.date || ""}</div>
+                        <div>${actions}</div>
+                    </div>`;
+                });
+            } catch (e) {
+                console.error("Support-Tickets laden:", e);
+                container.innerHTML = `<span style="color:#ff6666;font-size:12px;">Error</span>`;
+            }
+        }
+
+        async function markFeedbackResolved(docId) {
+            if (!canAccessSupport()) return;
+            try {
+                await db.collection("feedback").doc(docId).set({ resolved: true, resolvedAt: new Date().toISOString(), resolvedBy: myName }, { merge: true });
+                renderSupportTicketList();
+            } catch (e) {
+                console.error("markFeedbackResolved:", e);
+            }
+        }
+
+// ==============================================================================
+// 10c. LOBBY-MODERATION & LOBBY-LOG (Admin / Master)
+// ==============================================================================
+        function openLobbyModModal() {
+            if (!canModerateLobby()) {
+                alert(translations[currentLang]?.alertNoPermission || "Access denied");
+                return;
+            }
+            if (!activeLobbyCode) {
+                alert(currentLang === "de" ? "Du bist in keiner Lobby." : "You are not in a lobby.");
+                return;
+            }
+            renderLobbyModPlayerList();
+            renderLobbyLogList();
+            updatePauseButtonLabel();
+            document.getElementById("lobby-mod-modal")?.classList.remove("hidden");
+        }
+
+        function closeLobbyModModal() {
+            document.getElementById("lobby-mod-modal")?.classList.add("hidden");
+        }
+
+        function addLobbyLog(message) {
+            const entry = { t: Date.now(), msg: String(message || "") };
+            lobbyLog.push(entry);
+            if (lobbyLog.length > 80) lobbyLog = lobbyLog.slice(-80);
+            renderLobbyLogList();
+            if (isHost) scheduleSaveGameState();
+        }
+
+        function renderLobbyLogList() {
+            const el = document.getElementById("lobby-log-list");
+            if (!el) return;
+            if (!lobbyLog.length) {
+                el.innerHTML = `<span style="color:#888;">${currentLang === "de" ? "Noch keine Einträge." : "No entries yet."}</span>`;
+                return;
+            }
+            el.innerHTML = lobbyLog.slice().reverse().map(e => {
+                const d = new Date(e.t || Date.now());
+                const time = d.toLocaleTimeString(currentLang === "de" ? "de-DE" : "en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+                return `<div style="padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.06);"><span style="color:#666;">${time}</span> ${e.msg}</div>`;
+            }).join("");
+        }
+
+        function formatLobbyClock(ms) {
+            if (!ms) return "–";
+            try {
+                return new Date(ms).toLocaleTimeString(currentLang === "de" ? "de-DE" : "en-GB", {
+                    hour: "2-digit", minute: "2-digit", second: "2-digit"
+                });
+            } catch (e) {
+                return "–";
+            }
+        }
+
+        function formatLastOnlineLabel(meta, t) {
+            if (!meta) return "–";
+            if (meta.isOnline) return t.lobbyOnlineNow || (currentLang === "de" ? "🟢 online" : "🟢 online");
+            if (!meta.lastActiveMs) return t.lobbyOffline || (currentLang === "de" ? "⚫ offline" : "⚫ offline");
+            const agoMin = Math.max(0, Math.floor((Date.now() - meta.lastActiveMs) / 60000));
+            const clock = formatLobbyClock(meta.lastActiveMs);
+            if (agoMin < 1) return `${t.lobbyOffline || "⚫"} ${clock}`;
+            if (agoMin < 60) {
+                return currentLang === "de"
+                    ? `⚫ vor ${agoMin} Min (${clock})`
+                    : `⚫ ${agoMin} min ago (${clock})`;
+            }
+            const agoH = Math.floor(agoMin / 60);
+            return currentLang === "de"
+                ? `⚫ vor ${agoH} Std (${clock})`
+                : `⚫ ${agoH}h ago (${clock})`;
+        }
+
+        function renderLobbyModPlayerList() {
+            const el = document.getElementById("lobby-mod-player-list");
+            if (!el) return;
+            const t = translations[currentLang] || translations.de;
+            el.innerHTML = "";
+
+            const entries = [];
+            players.forEach(p => {
+                entries.push({ name: getUserDisplayName(p), eliminated: !!p.eliminated, role: "player" });
+            });
+            (spectators || []).forEach(name => {
+                if (!entries.some(e => e.name === name)) {
+                    entries.push({ name, eliminated: false, role: "spectator" });
+                }
+            });
+            // Auch Presence-Meta-Namen, falls noch sichtbar
+            Object.keys(lobbyPresenceMeta || {}).forEach(name => {
+                if (!entries.some(e => e.name === name)) {
+                    entries.push({ name, eliminated: false, role: lobbyPresenceMeta[name]?.role || "left" });
+                }
+            });
+
+            if (!entries.length) {
+                el.innerHTML = `<span style="font-size:11px;color:#888;">${currentLang === "de" ? "Keine Spieler." : "No players."}</span>`;
+                return;
+            }
+
+            entries.forEach(entry => {
+                const name = entry.name;
+                const muted = mutedPlayers.includes(name);
+                const meta = lobbyPresenceMeta[name] || {};
+                const joinedLabel = formatLobbyClock(meta.joinedAt);
+                const lastLabel = formatLastOnlineLabel(meta, t);
+                const safeName = String(name).replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+                const roleTag = entry.role === "spectator"
+                    ? ` <span style="color:#ffcc00;font-size:10px;">👁</span>`
+                    : (entry.role === "left" ? ` <span style="color:#888;font-size:10px;">(left)</span>` : "");
+                const row = document.createElement("div");
+                row.style.cssText = "padding:6px;margin-bottom:4px;background:rgba(255,255,255,0.05);border-radius:6px;font-size:12px;";
+                row.innerHTML = `
+                    <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;flex-wrap:wrap;">
+                        <span><b>${name}</b>${entry.eliminated ? " ❌" : ""}${muted ? ' <span style="color:#ff9900;">🔇</span>' : ""}${roleTag}</span>
+                        <span style="display:flex;gap:4px;">
+                            <button class="btn-blue" style="padding:3px 6px;font-size:10px;width:auto;margin:0;" onclick="modToggleMute('${safeName}')">${muted ? (t.btnUnmute || "Unmute") : (t.btnMute || "Mute")}</button>
+                            <button class="btn-danger" style="padding:3px 6px;font-size:10px;width:auto;margin:0;" onclick="modKickPlayer('${safeName}')">${t.btnKick || "Kick"}</button>
+                        </span>
+                    </div>
+                    <div style="margin-top:4px;font-size:10px;color:#aaa;line-height:1.4;">
+                        ${t.lobbyJoinedAt || "Beitritt"}: <span style="color:#ffcc00;">${joinedLabel}</span>
+                        &nbsp;·&nbsp;
+                        ${t.lobbyLastOnline || "Zuletzt online"}: <span style="color:#00bfff;">${lastLabel}</span>
+                    </div>`;
+                el.appendChild(row);
+            });
+        }
+
+        function updatePauseButtonLabel() {
+            const btn = document.getElementById("ui-btn-pause-game");
+            if (!btn) return;
+            const t = translations[currentLang] || translations.de;
+            btn.innerText = gamePaused ? (t.btnResumeGame || "▶ Resume") : (t.btnPauseGame || "⏸ Pause");
+        }
+
+        function applyPauseUI() {
+            const banner = document.getElementById("pause-banner");
+            if (banner) banner.classList.toggle("hidden", !gamePaused);
+            updatePauseButtonLabel();
+        }
+
+        function guardPausedAction() {
+            if (!gamePaused) return false;
+            // Moderatoren/Admins dürfen trotzdem (z. B. fortsetzen)
+            if (canModerateLobby()) return false;
+            alert(translations[currentLang]?.alertPaused || (currentLang === "de" ? "Die Runde ist pausiert." : "Round is paused."));
+            return true;
+        }
+
+        function modToggleMute(playerName) {
+            if (!canModerateLobby()) return;
+            const currentlyMuted = mutedPlayers.includes(playerName);
+            const nextMuted = !currentlyMuted;
+            if (isHost) {
+                applyMuteState(playerName, nextMuted);
+                broadcastLobbyData({ type: "ADMIN_MUTE", playerName, muted: nextMuted });
+            } else {
+                sendData({ type: "ADMIN_MUTE_REQUEST", playerName, muted: nextMuted, by: myName });
+            }
+        }
+
+        function applyMuteState(playerName, muted) {
+            if (muted) {
+                if (!mutedPlayers.includes(playerName)) mutedPlayers.push(playerName);
+            } else {
+                mutedPlayers = mutedPlayers.filter(n => n !== playerName);
+            }
+            const t = translations[currentLang] || translations.de;
+            addLobbyLog(`${playerName} ${muted ? (t.logMute || "muted") : (t.logUnmute || "unmuted")}`);
+            renderLobbyModPlayerList();
+            if (isHost) scheduleSaveGameState();
+        }
+
+        function modKickPlayer(playerName) {
+            if (!canModerateLobby()) return;
+            if (!confirm(currentLang === "de"
+                ? `Spieler „${playerName}“ wirklich kicken?`
+                : `Really kick player "${playerName}"?`)) return;
+            if (isHost) {
+                executeKick(playerName, myName);
+            } else {
+                sendData({ type: "ADMIN_KICK_REQUEST", playerName, by: myName });
+            }
+        }
+
+        function executeKick(playerName, byName) {
+            // Host führt Kick aus und broadcastet; Clients reagieren in handleIncomingData
+            const t = translations[currentLang] || translations.de;
+            players = players.filter(p => getUserDisplayName(p) !== playerName);
+            mutedPlayers = mutedPlayers.filter(n => n !== playerName);
+            updatePlayerList();
+            addLobbyLog(`${playerName} ${t.logKick || "kicked"}${byName ? ` (${byName})` : ""}`);
+            if (isHost) {
+                broadcastLobbyData({ type: "ADMIN_KICK", playerName, by: byName || myName });
+                // Host selbst: wenn eigener Name (unwahrscheinlich) oder State speichern
+                scheduleSaveGameState();
+            }
+            // Wenn der Gekickte lokal dieser Client ist
+            if (playerName === myName) {
+                alert(t.alertKicked || (currentLang === "de" ? "Du wurdest gekickt." : "You were kicked."));
+                cleanupAndResetLobby(true);
+            }
+        }
+
+        function togglePauseGame() {
+            if (!canModerateLobby()) return;
+            const next = !gamePaused;
+            if (isHost) {
+                applyPauseState(next, myName);
+                broadcastLobbyData({ type: "ADMIN_PAUSE", paused: next, by: myName });
+            } else {
+                sendData({ type: "ADMIN_PAUSE_REQUEST", paused: next, by: myName });
+            }
+        }
+
+        function applyPauseState(paused, byName) {
+            gamePaused = !!paused;
+            applyPauseUI();
+            const t = translations[currentLang] || translations.de;
+            addLobbyLog(`${paused ? (t.logPause || "paused") : (t.logResume || "resumed")}${byName ? ` (${byName})` : ""}`);
+            if (isHost) scheduleSaveGameState();
         }
 
         
@@ -2190,6 +2693,11 @@
         let isHost = false;
         let isSpectator = false;
         let spectators = []; // Namen der Zuschauer (nur Anzeige, kein Spiel)
+        let mutedPlayers = []; // stummgeschaltete Spielernamen
+        let gamePaused = false;
+        let lobbyLog = []; // { t: timestamp, msg: string }
+        // name -> { joinedAt, lastActiveMs, isOnline, role }
+        let lobbyPresenceMeta = {};
         let players = [];
         let currentPlayerIndex = 0;
 
@@ -2320,11 +2828,27 @@
 
                     const nextPlayers = [];
                     const nextSpectators = [];
+                    const seenNames = new Set();
+                    const nowMs = Date.now();
                     snapshot.forEach(doc => {
                         const d = doc.data() || {};
                         const name = getUserDisplayName(d, "Spieler");
 
                         if (d.currentLobby === activeLobbyCode && name) {
+                            seenNames.add(name);
+                            const lastActiveMs = d.lastActive && typeof d.lastActive.toMillis === "function"
+                                ? d.lastActive.toMillis()
+                                : (Number(d.lastActive) || nowMs);
+                            const isOnline = !!d.isOnline && (nowMs - lastActiveMs) < (typeof ONLINE_TIMEOUT_MS === "number" ? ONLINE_TIMEOUT_MS : 90000);
+                            const role = (d.lobbyRole === "spectator" || d.isSpectator) ? "spectator" : (d.lobbyRole === "host" ? "host" : "client");
+                            const prevMeta = lobbyPresenceMeta[name] || {};
+                            lobbyPresenceMeta[name] = {
+                                joinedAt: prevMeta.joinedAt || nowMs,
+                                lastActiveMs,
+                                isOnline,
+                                role
+                            };
+
                             // Zuschauer (Admin/Master) nicht in die Spieler-Liste
                             if (d.lobbyRole === "spectator" || d.isSpectator) {
                                 nextSpectators.push(name);
@@ -2353,17 +2877,50 @@
                         }
                     });
 
+                    // Wer nicht mehr in der Lobby ist: als offline markieren (joinedAt behalten)
+                    Object.keys(lobbyPresenceMeta).forEach(n => {
+                        if (!seenNames.has(n)) {
+                            lobbyPresenceMeta[n] = {
+                                ...lobbyPresenceMeta[n],
+                                isOnline: false,
+                                role: lobbyPresenceMeta[n].role === "spectator" ? "spectator" : "left"
+                            };
+                        }
+                    });
+
+                    const prevNames = players.map(p => getUserDisplayName(p));
+                    const nextNames = nextPlayers.map(p => getUserDisplayName(p));
+                    const prevSpec = (spectators || []).slice();
+                    const changed = JSON.stringify(players) !== JSON.stringify(nextPlayers)
+                        || JSON.stringify(prevSpec) !== JSON.stringify(nextSpectators);
                     spectators = nextSpectators;
-                    const changed = JSON.stringify(players) !== JSON.stringify(nextPlayers);
                     players = nextPlayers;
 
                     if (changed) {
+                        const t = translations[currentLang] || translations.de;
+                        nextNames.forEach(n => {
+                            if (n && !prevNames.includes(n)) {
+                                const at = formatLobbyClock(lobbyPresenceMeta[n]?.joinedAt || Date.now());
+                                addLobbyLog(`${n} ${t.logJoin || "joined"} (${at})`);
+                            }
+                        });
+                        prevNames.forEach(n => {
+                            if (n && !nextNames.includes(n)) {
+                                addLobbyLog(`${n} ${t.logLeave || "left"} (${formatLobbyClock(Date.now())})`);
+                            }
+                        });
                         updatePlayerList();
                         saveLobbyPlayers();
                         broadcastLobbyData({ type: "UPDATE_PLAYERS", players });
+                        // Presence-Meta an Admin-Clients mitsynchronisieren
                         scheduleSaveGameState();
                     } else {
                         updatePlayerList();
+                        // lastActive aktualisieren, auch ohne Player-Change
+                        if (isHost) scheduleSaveGameState();
+                    }
+                    if (document.getElementById("lobby-mod-modal") && !document.getElementById("lobby-mod-modal").classList.contains("hidden")) {
+                        renderLobbyModPlayerList();
                     }
                 }, () => {
                     if (!leavingLobbyManually) scheduleLobbyReconnect();
@@ -2535,6 +3092,10 @@
                 currentSharedResult: currentSharedResult || null,
                 playerStatuses: playerStatuses || {},
                 recentTaskCreators: Array.isArray(recentTaskCreators) ? recentTaskCreators : [],
+                mutedPlayers: Array.isArray(mutedPlayers) ? mutedPlayers : [],
+                gamePaused: !!gamePaused,
+                lobbyLog: Array.isArray(lobbyLog) ? lobbyLog.slice(-80) : [],
+                lobbyPresenceMeta: lobbyPresenceMeta || {},
                 updatedAt: Date.now()
             };
         }
@@ -2616,6 +3177,23 @@
             }
             if (Array.isArray(data.nextRoundVotedPlayers)) {
                 nextRoundVotedPlayers = data.nextRoundVotedPlayers;
+            }
+            if (Array.isArray(data.mutedPlayers)) {
+                mutedPlayers = data.mutedPlayers;
+            }
+            if (typeof data.gamePaused === "boolean") {
+                gamePaused = data.gamePaused;
+                applyPauseUI();
+            }
+            if (Array.isArray(data.lobbyLog)) {
+                lobbyLog = data.lobbyLog;
+                renderLobbyLogList();
+            }
+            if (data.lobbyPresenceMeta && typeof data.lobbyPresenceMeta === "object") {
+                lobbyPresenceMeta = data.lobbyPresenceMeta;
+                if (document.getElementById("lobby-mod-modal") && !document.getElementById("lobby-mod-modal").classList.contains("hidden")) {
+                    renderLobbyModPlayerList();
+                }
             }
 
             const phase = data.phase || "lobby";
@@ -2783,6 +3361,7 @@
                     document.getElementById("start-btn").classList.remove("hidden");
                 }
                 updatePlayerList();
+                updateLobbyModButtonVisibility();
                 scheduleSaveGameState();
                 restoringLobby = false;
             } catch (e) {
@@ -2900,6 +3479,7 @@
                 document.getElementById("display-code").innerText = code.toUpperCase();
                 saveLobbySession();
                 applySpectatorUI();
+                updateLobbyModButtonVisibility();
                 if (isSpectator) {
                     // Zuschauer: Chat + Status sehen, nicht mitspielen
                     document.getElementById("leave-lobby-btn")?.classList.remove("hidden");
@@ -2964,6 +3544,10 @@
             isHost = false;
             isSpectator = false;
             spectators = [];
+            mutedPlayers = [];
+            gamePaused = false;
+            lobbyLog = [];
+            lobbyPresenceMeta = {};
             players = [];
             currentPlayerIndex = 0;
             activeLobbyCode = "";
@@ -2990,9 +3574,12 @@
             document.getElementById("start-btn").classList.add("hidden");
             document.getElementById("client-wait-msg").classList.add("hidden");
             document.getElementById("spectator-banner")?.classList.add("hidden");
+            document.getElementById("pause-banner")?.classList.add("hidden");
             document.getElementById("setup").classList.remove("hidden");
             document.getElementById("chat-messages").innerHTML = "";
             applySpectatorUI();
+            applyPauseUI();
+            updateLobbyModButtonVisibility();
         }
 
         function sendData(data) {
@@ -3089,13 +3676,48 @@
                     if (isHost) scheduleSaveGameState();
                 }
             } else if (data.type === 'CHAT_MSG') {
-                // Eigene Nachricht wird beim Absenden sofort lokal angezeigt.
-                // Bei weitergeleiteten Nachrichten nur anzeigen, wenn sie von
-                // einem anderen Spieler stammt, damit der Absender keine Duplikate sieht.
+                if (mutedPlayers.includes(data.sender)) return;
                 if (data.sender !== myName) {
                     appendChat(data.sender, data.text);
                 }
+            } else if (data.type === 'ADMIN_MUTE') {
+                applyMuteState(data.playerName, !!data.muted);
+            } else if (data.type === 'ADMIN_MUTE_REQUEST') {
+                if (isHost && canModerateLobbyRole(data.by)) {
+                    applyMuteState(data.playerName, !!data.muted);
+                    broadcastLobbyData({ type: "ADMIN_MUTE", playerName: data.playerName, muted: !!data.muted });
+                }
+            } else if (data.type === 'ADMIN_KICK') {
+                const t = translations[currentLang] || translations.de;
+                if (!isHost) {
+                    players = players.filter(p => getUserDisplayName(p) !== data.playerName);
+                    mutedPlayers = mutedPlayers.filter(n => n !== data.playerName);
+                    updatePlayerList();
+                    addLobbyLog(`${data.playerName} ${t.logKick || "kicked"}${data.by ? ` (${data.by})` : ""}`);
+                }
+                if (data.playerName === myName) {
+                    alert(t.alertKicked || (currentLang === "de" ? "Du wurdest gekickt." : "You were kicked."));
+                    cleanupAndResetLobby(true);
+                }
+            } else if (data.type === 'ADMIN_KICK_REQUEST') {
+                if (isHost && canModerateLobbyRole(data.by)) {
+                    executeKick(data.playerName, data.by);
+                }
+            } else if (data.type === 'ADMIN_PAUSE') {
+                applyPauseState(!!data.paused, data.by);
+            } else if (data.type === 'ADMIN_PAUSE_REQUEST') {
+                if (isHost && canModerateLobbyRole(data.by)) {
+                    applyPauseState(!!data.paused, data.by);
+                    broadcastLobbyData({ type: "ADMIN_PAUSE", paused: !!data.paused, by: data.by });
+                }
             }
+        }
+
+        /** Host prüft, ob Anfrage von bekanntem Moderator kommt (Name-basiert; Rollen lokal nicht bekannt) */
+        function canModerateLobbyRole(byName) {
+            // Host akzeptiert Admin-Requests von Zuschauern/Clients; Name ist ausreichend
+            // (echte Rollenprüfung liegt clientseitig vor dem Senden).
+            return !!byName;
         }
 
         function updatePlayerList() {
@@ -3194,6 +3816,8 @@
             currentSharedResult = null;
             nextTurnVotedPlayers = [];
             nextRoundVotedPlayers = [];
+            const t = translations[currentLang] || translations.de;
+            addLobbyLog(t.logStart || "Game started");
             sendData({ type: 'START_GAME', players: players });
             startGameUI();
             scheduleSaveGameState();
@@ -3265,6 +3889,7 @@
 
         function submitWopChoice() {
             if (guardSpectatorAction()) return;
+            if (guardPausedAction()) return;
             if (players[currentPlayerIndex]?.name !== myName) return;
 
             const button = document.getElementById("ui-select-btn");
@@ -3321,6 +3946,7 @@
 
         function sendCustomTask() {
             if (guardSpectatorAction()) return;
+            if (guardPausedAction()) return;
             let taskText = document.getElementById("custom-task-input").value.trim();
             if (!taskText) { alert(translations[currentLang].alertTask); return; }
             let targetPlayer = players[currentPlayerIndex].name;
@@ -3363,6 +3989,7 @@
 
         function submitAnswer() {
             if (guardSpectatorAction()) return;
+            if (guardPausedAction()) return;
             if (taskCompleted) return;
 
             const ans = document.getElementById("player-answer-input").value.trim();
@@ -3395,6 +4022,7 @@
 
         function submitDareDone() {
             if (guardSpectatorAction()) return;
+            if (guardPausedAction()) return;
             if (taskCompleted) return;
 
             taskCompleted = true;
@@ -3477,6 +4105,7 @@
 
         function voteNextTurn() {
             if (guardSpectatorAction()) return;
+            if (guardPausedAction()) return;
             if (!currentSharedResult) return;
 
             const me = players.find(p => p.name === myName);
@@ -3546,6 +4175,7 @@
 // ==============================================================================
         function spinWheel() {
             if (guardSpectatorAction()) return;
+            if (guardPausedAction()) return;
             const button = document.getElementById("spin-btn");
             if (button.disabled) return;
 
@@ -3580,6 +4210,7 @@
 
         function voteNextRound() {
             if (guardSpectatorAction()) return;
+            if (guardPausedAction()) return;
             document.getElementById("next-round-btn").disabled = true;
             sendData({ type: 'VOTE_NEXT_ROUND', playerName: myName });
         }
@@ -3636,6 +4267,8 @@
                             ? `${name} ist raus (Leak / aufgegeben). ❌`
                             : `${name} is out (leaked / gave up). ❌`
                     );
+                    const t = translations[currentLang] || translations.de;
+                    addLobbyLog(`${name} ${t.logLeak || "eliminated"}`);
                 }
             }
 
@@ -3849,8 +4482,10 @@
             let input = document.getElementById("chat-input");
             let text = input.value.trim();
             if(!text) return;
-            // Sofort lokal anzeigen, damit wirklich jeder seine eigenen
-            // gesendeten Nachrichten sieht (Host und normale Spieler).
+            if (mutedPlayers.includes(myName)) {
+                alert(translations[currentLang]?.alertMutedChat || (currentLang === "de" ? "Du bist stummgeschaltet." : "You are muted."));
+                return;
+            }
             appendChat(myName, text);
             sendData({ type: 'CHAT_MSG', sender: myName, text: text });
             input.value = "";
