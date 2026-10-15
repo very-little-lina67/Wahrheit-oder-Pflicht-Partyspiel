@@ -243,6 +243,11 @@
                 lbLoading: "Rangliste wird geladen …",
                 lbError: "Die Rangliste konnte nicht geladen werden.",
                 btnLogout: "Logout",
+                btnDeleteAccount: "Konto löschen",
+                alertDeleteOwnConfirm: "Möchtest du dein Konto wirklich unwiderruflich löschen?\n\nAlle deine Daten (XP, Coins, Badges, Freunde, …) werden gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.",
+                alertDeleteOwnSuccess: "Dein Konto wurde erfolgreich gelöscht.",
+                alertDeleteOwnError: "Fehler beim Löschen des Kontos. Bitte versuche es später erneut.",
+                alertDeleteAdminConfirm: "Diesen Benutzer wirklich löschen?",
                 btnClose: "Schließen",
                 hudStreakText: "Streak",
                 hudCoinsText: "Coins",
@@ -431,6 +436,11 @@
                 lbLoading: "Loading leaderboard …",
                 lbError: "Could not load the leaderboard.",
                 btnLogout: "Logout",
+                btnDeleteAccount: "Delete Account",
+                alertDeleteOwnConfirm: "Do you really want to permanently delete your account?\n\nAll your data (XP, coins, badges, friends, …) will be deleted. This action cannot be undone.",
+                alertDeleteOwnSuccess: "Your account has been successfully deleted.",
+                alertDeleteOwnError: "Error deleting the account. Please try again later.",
+                alertDeleteAdminConfirm: "Really delete this user?",
                 btnClose: "Close",
                 hudStreakText: "Streak",
                 hudCoinsText: "Coins",
@@ -666,6 +676,7 @@
             const themesHead = document.getElementById("ui-themes-head"); if (themesHead) themesHead.innerText = t.themesHead;
             document.querySelectorAll(".theme-action-btn").forEach(el => el.innerText = t.unlockBtn);
             const btnLogout = document.getElementById("ui-btn-logout"); if (btnLogout) btnLogout.innerText = t.btnLogout;
+            const btnDeleteAccount = document.getElementById("ui-btn-delete-account"); if (btnDeleteAccount) btnDeleteAccount.innerText = t.btnDeleteAccount;
             const btnClose = document.getElementById("ui-btn-close"); if (btnClose) btnClose.innerText = t.btnClose;
 
             // Feedback Modal
@@ -1967,9 +1978,87 @@
         async function deleteUser(email) {
             if (myRole !== "master" && myRole !== "admin") return;
             if (isMasterAccount(email)) return;
+            const confirmMsg = translations[currentLang]?.alertDeleteAdminConfirm || (currentLang === "de" ? "Diesen Benutzer wirklich löschen?" : "Really delete this user?");
+            if (!confirm(confirmMsg)) return;
             adminUserListCache = null;
-            await db.collection("users").doc(email).delete();
-            renderAdminUserList();
+            try {
+                await db.collection("users").doc(email).delete();
+                renderAdminUserList();
+            } catch (e) {
+                console.error("deleteUser:", e);
+                alert(currentLang === "de" ? "Fehler beim Löschen." : "Error while deleting.");
+            }
+        }
+
+        /** Eigenes Konto löschen – nur der eingeloggte User selbst, mit Bestätigung */
+        async function deleteOwnAccount() {
+            if (!myEmail) {
+                alert(currentLang === "de" ? "Nicht eingeloggt." : "Not logged in.");
+                return;
+            }
+            // Master-Account darf sich nicht selbst löschen (Sicherheit)
+            if (isMasterAccount(myEmail)) {
+                alert(currentLang === "de"
+                    ? "Der Master-Account kann nicht gelöscht werden."
+                    : "The master account cannot be deleted.");
+                return;
+            }
+            const confirmMsg = translations[currentLang]?.alertDeleteOwnConfirm
+                || (currentLang === "de"
+                    ? "Möchtest du dein Konto wirklich unwiderruflich löschen?\n\nAlle deine Daten werden gelöscht. Diese Aktion kann nicht rückgängig gemacht werden."
+                    : "Do you really want to permanently delete your account?\n\nAll your data will be deleted. This action cannot be undone.");
+            if (!confirm(confirmMsg)) return;
+
+            // Zweite Bestätigung für zusätzliche Sicherheit
+            const confirm2 = currentLang === "de"
+                ? "Letzte Bestätigung: Konto endgültig löschen?"
+                : "Final confirmation: permanently delete account?";
+            if (!confirm(confirm2)) return;
+
+            try {
+                // Online-Status beenden & Listener stoppen
+                stopOnlineHeartbeat();
+                await updateOnlineStatus(false);
+                if (inviteUnsubscribe) {
+                    try { inviteUnsubscribe(); } catch (e) {}
+                    inviteUnsubscribe = null;
+                }
+                if (friendReqUnsubscribe) {
+                    try { friendReqUnsubscribe(); } catch (e) {}
+                    friendReqUnsubscribe = null;
+                }
+
+                // Eigenes User-Dokument löschen
+                await db.collection("users").doc(myEmail).delete();
+
+                // Lokale Session bereinigen
+                localStorage.removeItem("wop_user_email_v6");
+                localStorage.removeItem("wop_user_name_v6");
+                myEmail = "";
+                myName = "";
+                myRole = "user";
+                userXP = 0;
+                userCoins = 50;
+                userStreak = 0;
+                userLevel = 1;
+                equippedAccessory = "";
+                unlockedItems = [];
+                unlockedThemes = [];
+                unlockedBadges = [];
+                truthCount = 0;
+                dareCount = 0;
+
+                document.getElementById("account-modal")?.classList.add("hidden");
+                document.getElementById("auth-modal")?.classList.remove("hidden");
+                document.getElementById("setup")?.classList.add("hidden");
+
+                alert(translations[currentLang]?.alertDeleteOwnSuccess
+                    || (currentLang === "de" ? "Dein Konto wurde erfolgreich gelöscht." : "Your account has been successfully deleted."));
+            } catch (e) {
+                console.error("deleteOwnAccount:", e);
+                alert(translations[currentLang]?.alertDeleteOwnError
+                    || (currentLang === "de" ? "Fehler beim Löschen des Kontos." : "Error deleting the account."));
+            }
         }
 
         async function deleteFeedback(docId) {
