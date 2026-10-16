@@ -28,7 +28,21 @@
         if (!firebase.apps.length) {
             firebase.initializeApp(firebaseConfig);
         }
+
+        // Unnötige WebChannel-Warnungen unterdrücken (status: 1 = temporary transport error)
+        try {
+            firebase.firestore.setLogLevel("error");
+        } catch (e) {}
+
         const db = firebase.firestore();
+
+        // Stabilere Verbindung (besonders auf Mobile / instabilem Netz)
+        try {
+            db.settings({
+                experimentalAutoDetectLongPolling: true,
+                merge: true
+            });
+        } catch (e) {}
 
         let currentLang = "de";
         try {
