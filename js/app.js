@@ -305,6 +305,8 @@
                 hostBtnPrivate: "Lobby erstellen (Host) 🏠",
                 lbTabGlobal: "🌍 Global",
                 lbTabFriends: "👥 Freunde",
+                lbMetricTotal: "💰 Gesamt",
+                lbMetricMonthly: "📅 Monat",
                 lbClose: "Schließen",
                 langLabelText: "Sprache",
                 title: "Wahrheit oder Pflicht Partyspiel 🍻🚻",
@@ -521,6 +523,8 @@
                 hostBtnPrivate: "Create Lobby (Host) 🏠",
                 lbTabGlobal: "🌍 Global",
                 lbTabFriends: "👥 Friends",
+                lbMetricTotal: "💰 Total",
+                lbMetricMonthly: "📅 Month",
                 lbClose: "Close",
                 langLabelText: "Language",
                 title: "Truth or Dare Party Game 🍻🚻",
@@ -779,6 +783,8 @@
             const lbCloseEl = document.getElementById("ui-lb-close-btn"); if (lbCloseEl) lbCloseEl.innerText = t.lbClose;
             const lbTabGlob = document.getElementById("lb-tab-global"); if (lbTabGlob) lbTabGlob.innerText = t.lbTabGlobal;
             const lbTabFr = document.getElementById("lb-tab-friends"); if (lbTabFr) lbTabFr.innerText = t.lbTabFriends;
+            const lbMetricTotal = document.getElementById("lb-metric-total"); if (lbMetricTotal) lbMetricTotal.innerText = t.lbMetricTotal || (currentLang === "de" ? "💰 Gesamt" : "💰 Total");
+            const lbMetricMonthly = document.getElementById("lb-metric-monthly"); if (lbMetricMonthly) lbMetricMonthly.innerText = t.lbMetricMonthly || (currentLang === "de" ? "📅 Monat" : "📅 Month");
 
             // Online Players Modal
             const opTitleEl = document.getElementById("ui-op-title"); if (opTitleEl) opTitleEl.innerText = t.opTitle;
@@ -1237,6 +1243,10 @@
             const friendsBtn = document.getElementById("lb-tab-friends");
             if (globalBtn) globalBtn.className = currentLbTab === "global" ? "btn-green" : "btn-blue";
             if (friendsBtn) friendsBtn.className = currentLbTab === "friends" ? "btn-green" : "btn-blue";
+            const metricTotalBtn = document.getElementById("lb-metric-total");
+            const metricMonthlyBtn = document.getElementById("lb-metric-monthly");
+            if (metricTotalBtn) metricTotalBtn.className = currentLbMetric === "total" ? "btn-green" : "btn-blue";
+            if (metricMonthlyBtn) metricMonthlyBtn.className = currentLbMetric === "monthly" ? "btn-green" : "btn-blue";
 
             try {
                 let users = [];
@@ -1312,8 +1322,12 @@
                 const prefix = currentLbTab === "friends"
                     ? (currentLang === "de" ? "👥 Freunde – " : "👥 Friends – ")
                     : (currentLang === "de" ? "🌍 " : "🌍 ");
-                render(prefix + (t.lbGlobalTitle || "Allgemeine Coin-Rangliste"), "coins", "💰");
-                render(prefix + (t.lbMonthlyTitle || "Monatliche Coin-Rangliste"), "monthlyCoins", "🪙");
+                // Nur eine Liste: Gesamt ODER Monat – auswählbar, kein doppeltes Scrollen
+                if (currentLbMetric === "monthly") {
+                    render(prefix + (t.lbMonthlyTitle || (currentLang === "de" ? "Monatliche Coin-Rangliste" : "Monthly coin ranking")), "monthlyCoins", "🪙");
+                } else {
+                    render(prefix + (t.lbGlobalTitle || (currentLang === "de" ? "Allgemeine Coin-Rangliste" : "All-time coin ranking")), "coins", "💰");
+                }
             } catch(e) {
                 console.error(e);
                 container.innerHTML = t.lbError || "Fehler beim Laden der Ranglisten.";
@@ -2225,6 +2239,7 @@
         let myFriends = [];          // Array of friend emails
         let myFriendRequests = [];   // Incoming: [{fromEmail, fromName, id}]
         let currentLbTab = "global";
+        let currentLbMetric = "total"; // "total" | "monthly"
         let friendReqUnsubscribe = null;
 
         async function loadFriendsData() {
@@ -2601,6 +2616,15 @@
             const friendsBtn = document.getElementById("lb-tab-friends");
             if (globalBtn) globalBtn.className = tab === "global" ? "btn-green" : "btn-blue";
             if (friendsBtn) friendsBtn.className = tab === "friends" ? "btn-green" : "btn-blue";
+            openLeaderboard();
+        }
+
+        function switchLeaderboardMetric(metric) {
+            currentLbMetric = (metric === "monthly") ? "monthly" : "total";
+            const metricTotalBtn = document.getElementById("lb-metric-total");
+            const metricMonthlyBtn = document.getElementById("lb-metric-monthly");
+            if (metricTotalBtn) metricTotalBtn.className = currentLbMetric === "total" ? "btn-green" : "btn-blue";
+            if (metricMonthlyBtn) metricMonthlyBtn.className = currentLbMetric === "monthly" ? "btn-green" : "btn-blue";
             openLeaderboard();
         }
 
