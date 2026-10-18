@@ -212,7 +212,7 @@
                 authPasswordPlaceholder: "Dein sicheres Passwort",
                 btnRegister: "Registrieren",
                 btnLogin: "Einloggen",
-                shopHead: "👤 Profil & Vibe-Shop",
+                shopHead: "🛒 Vibe-Shop",
                 coinsText: "Coins",
                 badgesHead: "🏆 Deine Badges & Trophäen",
                 statsHead: "📊 Deine Statistiken",
@@ -428,7 +428,7 @@
                 authPasswordPlaceholder: "Your secure password",
                 btnRegister: "Register",
                 btnLogin: "Log In",
-                shopHead: "👤 Profile & Vibe Shop",
+                shopHead: "🛒 Vibe Shop",
                 coinsText: "Coins",
                 badgesHead: "🏆 Your Badges & Trophies",
                 statsHead: "📊 Your Statistics",
@@ -1504,27 +1504,16 @@
         }
 
         function updateProfileModal() {
-            document.getElementById("acc-display-name").innerText = myName;
-            let roleBadge = document.getElementById("acc-display-role");
-            roleBadge.innerText = myRole.toUpperCase();
-            if(myRole === "master") roleBadge.style.background = "#ff0055";
-            else if(myRole === "admin") roleBadge.style.background = "#ff3300";
-            else if(myRole === "moderator") roleBadge.style.background = "#00bfff";
-            else roleBadge.style.background = "#666";
+            // Shop: nur Coins anzeigen (Profil-Inhalte liegen im Profil-Modal)
+            const coinsEl = document.getElementById("acc-display-coins");
+            if (coinsEl) coinsEl.innerText = userCoins;
 
-            document.getElementById("acc-display-level").innerText = (currentLang === 'de' ? `Partystufe ${userLevel} (${userXP} XP)` : `Party Level ${userLevel} (${userXP} XP)`);
-            document.getElementById("acc-display-coins").innerText = userCoins;
-            const avatarDisplay = document.getElementById("avatar-display");
-            avatarDisplay.childNodes[0].textContent = avatarEmote || "😊";
-            document.getElementById("avatar-emote-select").value = avatarEmote || "😊";
+            const emoteSel = document.getElementById("avatar-emote-select");
+            if (emoteSel) emoteSel.value = avatarEmote || "😊";
             applyAccessoryStyle(equippedAccessory);
-            
-            let badgeBox = document.getElementById("badge-container");
-            badgeBox.innerHTML = unlockedBadges.length > 0 ? "" : `<span style='font-size:11px; color:#888;'>${currentLang === 'de' ? 'Noch keine Badges freigeschaltet.' : 'No badges unlocked yet.'}</span>`;
-            unlockedBadges.forEach(b => {
-                badgeBox.innerHTML += `<span class="badge-tag">${getBadgeDisplayName(b)}</span>`;
-            });
 
+            // Profil-Modal mit aktualisieren, falls offen oder für Konsistenz
+            fillProfileStats();
         }
 
         function fillProfileStats() {
@@ -1560,17 +1549,21 @@
                     ? `Partystufe ${userLevel} (${userXP} XP)`
                     : `Party Level ${userLevel} (${userXP} XP)`;
             }
+            const pCoins = document.getElementById("profile-display-coins");
+            if (pCoins) pCoins.innerText = userCoins;
+            const pCoinsTxt = document.getElementById("ui-profile-coins-text");
+            if (pCoinsTxt) pCoinsTxt.innerText = (translations[currentLang] || translations.de).coinsText || "Coins";
+            const emoteSel = document.getElementById("avatar-emote-select");
+            if (emoteSel) emoteSel.value = avatarEmote || "😊";
             const avatarEl = document.getElementById("profile-avatar-display");
             if (avatarEl) {
-                // Ersten Textknoten (Emoji) setzen
                 if (avatarEl.childNodes[0] && avatarEl.childNodes[0].nodeType === 3) {
                     avatarEl.childNodes[0].textContent = avatarEmote || "😊";
                 } else {
                     avatarEl.insertBefore(document.createTextNode(avatarEmote || "😊"), avatarEl.firstChild);
                 }
-                const accSpan = document.getElementById("profile-equipped-accessory");
-                if (accSpan) accSpan.innerText = equippedAccessory || "";
             }
+            applyAccessoryStyle(equippedAccessory);
             const badgeBox = document.getElementById("profile-badge-container");
             if (badgeBox) {
                 badgeBox.innerHTML = unlockedBadges.length > 0
@@ -1690,16 +1683,10 @@
         }
 
         function applyAccessoryStyle(symbol) {
-            const el = document.getElementById("equipped-accessory");
-            if (!el) return;
-
-            el.className = "";
-            el.innerText = symbol || "";
-
-            if (!symbol) {
-                el.classList.add("acc-default");
-                return;
-            }
+            const targets = [
+                document.getElementById("equipped-accessory"),
+                document.getElementById("profile-equipped-accessory")
+            ].filter(Boolean);
 
             const headItems = ["👑", "🎩", "🧢", "🦄"];
             const glassesItems = ["🕶️", "👓"];
@@ -1709,23 +1696,22 @@
             const sideItems = ["🦋", "✨", "⭐", "💎", "🌸"];
             const decorItems = ["🔥", "🌈"];
 
-            if (headphonesItems.includes(symbol)) {
-                el.classList.add("acc-headphones");
-            } else if (headItems.includes(symbol)) {
-                el.classList.add("acc-head");
-            } else if (glassesItems.includes(symbol)) {
-                el.classList.add("acc-glasses");
-            } else if (beardItems.includes(symbol)) {
-                el.classList.add("acc-beard");
-            } else if (maskItems.includes(symbol)) {
-                el.classList.add("acc-mask");
-            } else if (sideItems.includes(symbol)) {
-                el.classList.add("acc-side");
-            } else if (decorItems.includes(symbol)) {
-                el.classList.add("acc-decor");
-            } else {
-                el.classList.add("acc-default");
+            let cls = "acc-default";
+            if (symbol) {
+                if (headphonesItems.includes(symbol)) cls = "acc-headphones";
+                else if (headItems.includes(symbol)) cls = "acc-head";
+                else if (glassesItems.includes(symbol)) cls = "acc-glasses";
+                else if (beardItems.includes(symbol)) cls = "acc-beard";
+                else if (maskItems.includes(symbol)) cls = "acc-mask";
+                else if (sideItems.includes(symbol)) cls = "acc-side";
+                else if (decorItems.includes(symbol)) cls = "acc-decor";
+                else cls = "acc-default";
             }
+
+            targets.forEach(el => {
+                el.className = cls;
+                el.innerText = symbol || "";
+            });
         }
 
         async function buyItem(itemKey, cost, symbol) {
@@ -1978,14 +1964,16 @@
             localStorage.removeItem("wop_user_email_v6");
             localStorage.removeItem("wop_user_name_v6");
             myEmail = ""; myName = ""; myRole = "user";
-            document.getElementById("account-modal").classList.add("hidden");
+            document.getElementById("account-modal")?.classList.add("hidden");
+            document.getElementById("profile-modal")?.classList.add("hidden");
             document.getElementById("auth-modal").classList.remove("hidden");
             document.getElementById("setup").classList.add("hidden");
         }
 
         function showLoggedInState() {
             document.getElementById("auth-modal").classList.add("hidden");
-            document.getElementById("account-modal").classList.add("hidden");
+            document.getElementById("account-modal")?.classList.add("hidden");
+            document.getElementById("profile-modal")?.classList.add("hidden");
             document.getElementById("setup").classList.remove("hidden");
         }
 
@@ -2212,6 +2200,7 @@
                 dareCount = 0;
 
                 document.getElementById("account-modal")?.classList.add("hidden");
+                document.getElementById("profile-modal")?.classList.add("hidden");
                 document.getElementById("auth-modal")?.classList.remove("hidden");
                 document.getElementById("setup")?.classList.add("hidden");
 
