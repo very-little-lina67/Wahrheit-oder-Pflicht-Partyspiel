@@ -47,21 +47,10 @@
     <!-- SHOP & PROFILE MODAL -->
     <div id="account-modal" class="modal-overlay hidden">
         <div class="modal-content">
-            <h2 id="ui-shop-head" style="color: var(--accent-color); margin-top: 0; text-align: center; font-size: 1.2rem;">👤 Profile & Vibe Shop</h2>
+            <h2 id="ui-shop-head" style="color: var(--accent-color); margin-top: 0; text-align: center; font-size: 1.2rem;">🛒 Vibe Shop</h2>
             
-            <div style="text-align: center; margin-bottom: 10px;">
-                <div class="avatar-preview-box" id="avatar-display">😊<span id="equipped-accessory" class="acc-default"></span></div>
-                <label id="ui-avatar-emote-label" for="avatar-emote-select" style="font-size:12px;color:#ccc;">🙂 Eigenes Emote / Avatar auswählen</label>
-                <select id="avatar-emote-select" onchange="setAvatarEmote(this.value)" style="max-width:260px;margin:4px auto 8px;">
-                    <option id="ui-emote-happy" value="😊">😊 Fröhlich</option><option id="ui-emote-excited" value="🤩">🤩 Begeistert</option><option id="ui-emote-party" value="🥳">🥳 Party</option><option id="ui-emote-cheeky" value="😈">😈 Frech</option><option id="ui-emote-robot" value="🤖">🤖 Roboter</option><option id="ui-emote-ghost" value="👻">👻 Geist</option><option id="ui-emote-cat" value="🐱">🐱 Katze</option><option id="ui-emote-fox" value="🦊">🦊 Fuchs</option><option id="ui-emote-frog" value="🐸">🐸 Frosch</option><option id="ui-emote-skull" value="💀">💀 Totenkopf</option><option id="ui-emote-fire" value="🔥">🔥 Feuer</option>
-                </select>
-                <strong id="acc-display-name" style="color: #ffcc00; font-size: 16px;"></strong> <span id="acc-display-role" style="background:#ff3300; padding:2px 5px; border-radius:4px; font-size:10px; font-weight:bold;"></span><br>
-                <span id="acc-display-level" style="font-size: 12px; color: #00bfff;"></span> | 💰 <span id="acc-display-coins" style="color: #ffcc00;">0</span> <span id="ui-coins-text">Coins</span>
-            </div>
-
-            <div class="box-section" style="margin-top:0; padding:8px;">
-                <h4 id="ui-badges-head" style="margin: 0 0 6px 0; color: var(--primary-color); font-size: 13px;">🏆 Your Badges & Trophies</h4>
-                <div id="badge-container"></div>
+            <div style="text-align: center; margin-bottom: 10px; font-size: 13px;">
+                💰 <span id="acc-display-coins" style="color: #ffcc00; font-weight: bold;">0</span> <span id="ui-coins-text">Coins</span>
             </div>
 
             <div class="box-section" style="padding:8px;">
@@ -189,11 +178,7 @@
                 </div>
             </div>
 
-            <div style="display: flex; gap: 8px; margin-top: 12px;">
-                <button id="ui-btn-logout" class="btn-danger" onclick="logoutUser()" style="flex: 1; padding: 8px; font-size: 13px;">Logout</button>
-                <button id="ui-btn-close" class="btn-blue" onclick="closeAccountModal()" style="flex: 1; padding: 8px; font-size: 13px;">Close</button>
-            </div>
-            <button id="ui-btn-delete-account" class="btn-danger" onclick="deleteOwnAccount()" style="width: 100%; padding: 8px; font-size: 12px; margin-top: 8px; background: #8b0000; box-shadow: 0 4px 15px rgba(139,0,0,0.4);">Konto löschen</button>
+            <button id="ui-btn-close" class="btn-blue" onclick="closeAccountModal()" style="width: 100%; padding: 10px; font-size: 13px; margin-top: 12px;">Schließen</button>
         </div>
     </div>
 
@@ -205,9 +190,24 @@
 
             <div style="text-align: center; margin-bottom: 12px;">
                 <div class="avatar-preview-box" id="profile-avatar-display" style="margin: 0 auto 8px;">😊<span id="profile-equipped-accessory" class="acc-default"></span></div>
+                <label id="ui-avatar-emote-label" for="avatar-emote-select" style="font-size:12px;color:#ccc;display:block;">🙂 Eigenes Emote / Avatar auswählen</label>
+                <select id="avatar-emote-select" onchange="setAvatarEmote(this.value)" style="max-width:260px;margin:4px auto 8px;">
+                    <option id="ui-emote-happy" value="😊">😊 Fröhlich</option>
+                    <option id="ui-emote-excited" value="🤩">🤩 Begeistert</option>
+                    <option id="ui-emote-party" value="🥳">🥳 Party</option>
+                    <option id="ui-emote-cheeky" value="😈">😈 Frech</option>
+                    <option id="ui-emote-robot" value="🤖">🤖 Roboter</option>
+                    <option id="ui-emote-ghost" value="👻">👻 Geist</option>
+                    <option id="ui-emote-cat" value="🐱">🐱 Katze</option>
+                    <option id="ui-emote-fox" value="🦊">🦊 Fuchs</option>
+                    <option id="ui-emote-frog" value="🐸">🐸 Frosch</option>
+                    <option id="ui-emote-skull" value="💀">💀 Totenkopf</option>
+                    <option id="ui-emote-fire" value="🔥">🔥 Feuer</option>
+                </select>
                 <strong id="profile-display-name" style="color: #ffcc00; font-size: 16px;"></strong>
                 <span id="profile-display-role" style="background:#666; padding:2px 5px; border-radius:4px; font-size:10px; font-weight:bold; margin-left:4px;"></span>
                 <div id="profile-display-level" style="font-size: 12px; color: #00bfff; margin-top: 4px;"></div>
+                <div style="font-size: 13px; margin-top: 4px;">💰 <span id="profile-display-coins" style="color: #ffcc00; font-weight: bold;">0</span> <span id="ui-profile-coins-text">Coins</span></div>
             </div>
 
             <div class="box-section" style="padding:8px; margin-top:0;">
@@ -232,7 +232,11 @@
                 <div id="profile-badge-container"></div>
             </div>
 
-            <button id="ui-profile-close-btn" class="btn-blue" onclick="closeProfileModal()" style="width: 100%; padding: 10px; font-size: 13px; margin-top: 8px;">Schließen</button>
+            <div style="display: flex; gap: 8px; margin-top: 12px;">
+                <button id="ui-btn-logout" class="btn-danger" onclick="logoutUser()" style="flex: 1; padding: 8px; font-size: 13px;">Logout</button>
+                <button id="ui-profile-close-btn" class="btn-blue" onclick="closeProfileModal()" style="flex: 1; padding: 8px; font-size: 13px;">Schließen</button>
+            </div>
+            <button id="ui-btn-delete-account" class="btn-danger" onclick="deleteOwnAccount()" style="width: 100%; padding: 8px; font-size: 12px; margin-top: 8px; background: #8b0000; box-shadow: 0 4px 15px rgba(139,0,0,0.4);">Konto löschen</button>
         </div>
     </div>
 
