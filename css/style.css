@@ -107,7 +107,7 @@
             margin: 0 auto 10px auto !important;
             overflow: visible !important;
         }
-        #equipped-accessory {
+        #equipped-accessory, #profile-equipped-accessory {
             position: absolute;
             pointer-events: none;
             z-index: 2;
@@ -115,14 +115,14 @@
             transition: all 0.2s ease;
         }
         /* Kopfbedeckungen: Krone, Hut, Cap, Unicorn – oben auf dem Kopf */
-        #equipped-accessory.acc-head {
+        #equipped-accessory, #profile-equipped-accessory.acc-head {
             font-size: 34px;
             top: -20px;
             left: 50%;
             transform: translateX(-50%);
         }
         /* Kopfhörer – groß und um den Kopf */
-        #equipped-accessory.acc-headphones {
+        #equipped-accessory, #profile-equipped-accessory.acc-headphones {
             font-size: 48px;
             top: 4px;
             left: 50%;
@@ -130,14 +130,14 @@
             z-index: 1;
         }
         /* Brillen – über den Augen */
-        #equipped-accessory.acc-glasses {
+        #equipped-accessory, #profile-equipped-accessory.acc-glasses {
             font-size: 32px;
             top: 20px;
             left: 50%;
             transform: translateX(-50%);
         }
         /* Bart – unter dem Kinn */
-        #equipped-accessory.acc-beard {
+        #equipped-accessory, #profile-equipped-accessory.acc-beard {
             font-size: 28px;
             bottom: -8px;
             left: 50%;
@@ -145,14 +145,14 @@
             top: auto;
         }
         /* Maske – über dem Gesicht */
-        #equipped-accessory.acc-mask {
+        #equipped-accessory, #profile-equipped-accessory.acc-mask {
             font-size: 42px;
             top: 10px;
             left: 50%;
             transform: translateX(-50%);
         }
         /* Seitliche Accessoires */
-        #equipped-accessory.acc-side {
+        #equipped-accessory, #profile-equipped-accessory.acc-side {
             font-size: 26px;
             top: -2px;
             right: -8px;
@@ -160,7 +160,7 @@
             transform: none;
         }
         /* Dekorative (Feuer, Regenbogen) */
-        #equipped-accessory.acc-decor {
+        #equipped-accessory, #profile-equipped-accessory.acc-decor {
             font-size: 40px;
             top: -14px;
             left: 50%;
@@ -168,7 +168,7 @@
             opacity: 0.95;
         }
         /* Fallback */
-        #equipped-accessory.acc-default {
+        #equipped-accessory, #profile-equipped-accessory.acc-default {
             font-size: 28px;
             top: -10px;
             left: 50%;
