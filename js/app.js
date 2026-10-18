@@ -215,6 +215,23 @@
                 shopHead: "👤 Profil & Vibe-Shop",
                 coinsText: "Coins",
                 badgesHead: "🏆 Deine Badges & Trophäen",
+                statsHead: "📊 Deine Statistiken",
+                statLevel: "Level",
+                statXp: "XP",
+                statCoins: "Coins",
+                statMonthly: "Diesen Monat",
+                statStreak: "Streak",
+                statTruth: "Wahrheiten",
+                statDare: "Pflichten",
+                statTotal: "Aufgaben gesamt",
+                statBadges: "Badges",
+                statItems: "Items",
+                statThemes: "Themes",
+                btnProfile: "👤 Profil",
+                profileTitle: "👤 Profil & Statistiken",
+                profileStatsHead: "📊 Statistiken",
+                profileBadgesHead: "🏆 Badges & Trophäen",
+                profileClose: "Schließen",
                 accessoriesHead: "🛍 Avatar-Accessoires",
                 itemCrown: "Krone",
                 itemGlasses: "Sonnenbrille",
@@ -414,6 +431,23 @@
                 shopHead: "👤 Profile & Vibe Shop",
                 coinsText: "Coins",
                 badgesHead: "🏆 Your Badges & Trophies",
+                statsHead: "📊 Your Statistics",
+                statLevel: "Level",
+                statXp: "XP",
+                statCoins: "Coins",
+                statMonthly: "This month",
+                statStreak: "Streak",
+                statTruth: "Truths",
+                statDare: "Dares",
+                statTotal: "Total tasks",
+                statBadges: "Badges",
+                statItems: "Items",
+                statThemes: "Themes",
+                btnProfile: "👤 Profile",
+                profileTitle: "👤 Profile & Statistics",
+                profileStatsHead: "📊 Statistics",
+                profileBadgesHead: "🏆 Badges & Trophies",
+                profileClose: "Close",
                 accessoriesHead: "🛍️ Avatar Accessories",
                 itemCrown: "Crown",
                 itemGlasses: "Sunglasses",
@@ -644,6 +678,29 @@
             const coinsTxt = document.getElementById("ui-coins-text"); if (coinsTxt) coinsTxt.innerText = t.coinsText;
             const badgesHead = document.getElementById("ui-badges-head"); if (badgesHead) badgesHead.innerText = t.badgesHead;
             const accHead = document.getElementById("ui-accessories-head"); if (accHead) accHead.innerText = t.accessoriesHead;
+            // Profil-Modal Texte
+            const profileTitle = document.getElementById("ui-profile-title"); if (profileTitle) profileTitle.innerText = t.profileTitle || (currentLang === "de" ? "👤 Profil & Statistiken" : "👤 Profile & Statistics");
+            const profileStatsHead = document.getElementById("ui-profile-stats-head"); if (profileStatsHead) profileStatsHead.innerText = t.profileStatsHead || (currentLang === "de" ? "📊 Statistiken" : "📊 Statistics");
+            const profileBadgesHead = document.getElementById("ui-profile-badges-head"); if (profileBadgesHead) profileBadgesHead.innerText = t.profileBadgesHead || (currentLang === "de" ? "🏆 Badges & Trophäen" : "🏆 Badges & Trophies");
+            const profileClose = document.getElementById("ui-profile-close-btn"); if (profileClose) profileClose.innerText = t.profileClose || t.btnClose || (currentLang === "de" ? "Schließen" : "Close");
+            const btnProfile = document.getElementById("ui-btn-profile"); if (btnProfile) btnProfile.innerText = t.btnProfile || (currentLang === "de" ? "👤 Profil" : "👤 Profile");
+            const statLabels = {
+                "ui-stat-level-label": t.statLevel || "Level",
+                "ui-stat-xp-label": t.statXp || "XP",
+                "ui-stat-coins-label": t.statCoins || "Coins",
+                "ui-stat-monthly-label": t.statMonthly || (currentLang === "de" ? "Diesen Monat" : "This month"),
+                "ui-stat-streak-label": t.statStreak || "Streak",
+                "ui-stat-truth-label": t.statTruth || (currentLang === "de" ? "Wahrheiten" : "Truths"),
+                "ui-stat-dare-label": t.statDare || (currentLang === "de" ? "Pflichten" : "Dares"),
+                "ui-stat-total-label": t.statTotal || (currentLang === "de" ? "Aufgaben gesamt" : "Total tasks"),
+                "ui-stat-badges-label": t.statBadges || "Badges",
+                "ui-stat-items-label": t.statItems || "Items",
+                "ui-stat-themes-label": t.statThemes || "Themes"
+            };
+            Object.entries(statLabels).forEach(([id, label]) => {
+                const el = document.getElementById(id);
+                if (el) el.innerText = label;
+            });
             const itemCrown = document.getElementById("ui-item-crown"); if (itemCrown) itemCrown.innerText = t.itemCrown;
             const itemGlasses = document.getElementById("ui-item-glasses"); if (itemGlasses) itemGlasses.innerText = t.itemGlasses;
             const itemHat = document.getElementById("ui-item-hat"); if (itemHat) itemHat.innerText = t.itemHat;
@@ -1467,6 +1524,73 @@
             unlockedBadges.forEach(b => {
                 badgeBox.innerHTML += `<span class="badge-tag">${getBadgeDisplayName(b)}</span>`;
             });
+
+        }
+
+        function fillProfileStats() {
+            const setStat = (id, val) => {
+                const el = document.getElementById(id);
+                if (el) el.innerText = String(val);
+            };
+            setStat("stat-level", userLevel);
+            setStat("stat-xp", userXP);
+            setStat("stat-coins", userCoins);
+            setStat("stat-monthly", monthlyCoins);
+            setStat("stat-streak", userStreak);
+            setStat("stat-truth", truthCount);
+            setStat("stat-dare", dareCount);
+            setStat("stat-total", (Number(truthCount) || 0) + (Number(dareCount) || 0));
+            setStat("stat-badges", (unlockedBadges || []).length);
+            setStat("stat-items", (unlockedItems || []).length);
+            setStat("stat-themes", (unlockedThemes || []).length);
+
+            const nameEl = document.getElementById("profile-display-name");
+            if (nameEl) nameEl.innerText = myName || "";
+            const roleEl = document.getElementById("profile-display-role");
+            if (roleEl) {
+                roleEl.innerText = (myRole || "user").toUpperCase();
+                if (myRole === "master") roleEl.style.background = "#ff0055";
+                else if (myRole === "admin") roleEl.style.background = "#ff3300";
+                else if (myRole === "moderator") roleEl.style.background = "#00bfff";
+                else roleEl.style.background = "#666";
+            }
+            const levelEl = document.getElementById("profile-display-level");
+            if (levelEl) {
+                levelEl.innerText = currentLang === "de"
+                    ? `Partystufe ${userLevel} (${userXP} XP)`
+                    : `Party Level ${userLevel} (${userXP} XP)`;
+            }
+            const avatarEl = document.getElementById("profile-avatar-display");
+            if (avatarEl) {
+                // Ersten Textknoten (Emoji) setzen
+                if (avatarEl.childNodes[0] && avatarEl.childNodes[0].nodeType === 3) {
+                    avatarEl.childNodes[0].textContent = avatarEmote || "😊";
+                } else {
+                    avatarEl.insertBefore(document.createTextNode(avatarEmote || "😊"), avatarEl.firstChild);
+                }
+                const accSpan = document.getElementById("profile-equipped-accessory");
+                if (accSpan) accSpan.innerText = equippedAccessory || "";
+            }
+            const badgeBox = document.getElementById("profile-badge-container");
+            if (badgeBox) {
+                badgeBox.innerHTML = unlockedBadges.length > 0
+                    ? ""
+                    : `<span style='font-size:11px; color:#888;'>${currentLang === "de" ? "Noch keine Badges freigeschaltet." : "No badges unlocked yet."}</span>`;
+                unlockedBadges.forEach(b => {
+                    badgeBox.innerHTML += `<span class="badge-tag">${getBadgeDisplayName(b)}</span>`;
+                });
+            }
+        }
+
+        function openProfileModal() {
+            fillProfileStats();
+            const modal = document.getElementById("profile-modal");
+            if (modal) modal.classList.remove("hidden");
+        }
+
+        function closeProfileModal() {
+            const modal = document.getElementById("profile-modal");
+            if (modal) modal.classList.add("hidden");
         }
 
         function getBadgeDisplayName(badge) {
