@@ -335,6 +335,39 @@
             margin-right: 2px;
         }
 
+
+        .profile-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+        }
+        .stat-card {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.10);
+            border-radius: 10px;
+            padding: 8px 6px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+        .stat-label {
+            font-size: 10px;
+            color: #aab7c4;
+            letter-spacing: 0.02em;
+        }
+        .stat-value {
+            font-size: 15px;
+            font-weight: 700;
+            color: #ffcc00;
+            line-height: 1.2;
+        }
+        @media (max-width: 420px) {
+            .profile-stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
         .hud-bar {
             display: flex;
             justify-content: space-between;
