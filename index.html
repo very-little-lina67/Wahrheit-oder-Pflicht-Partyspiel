@@ -197,6 +197,45 @@
         </div>
     </div>
 
+
+    <!-- PROFILE / STATS MODAL -->
+    <div id="profile-modal" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 440px;">
+            <h2 id="ui-profile-title" style="color: var(--accent-color); margin-top: 0; text-align: center; font-size: 1.2rem;">👤 Profil & Statistiken</h2>
+
+            <div style="text-align: center; margin-bottom: 12px;">
+                <div class="avatar-preview-box" id="profile-avatar-display" style="margin: 0 auto 8px;">😊<span id="profile-equipped-accessory" class="acc-default"></span></div>
+                <strong id="profile-display-name" style="color: #ffcc00; font-size: 16px;"></strong>
+                <span id="profile-display-role" style="background:#666; padding:2px 5px; border-radius:4px; font-size:10px; font-weight:bold; margin-left:4px;"></span>
+                <div id="profile-display-level" style="font-size: 12px; color: #00bfff; margin-top: 4px;"></div>
+            </div>
+
+            <div class="box-section" style="padding:8px; margin-top:0;">
+                <h4 id="ui-profile-stats-head" style="margin: 0 0 8px 0; color: var(--accent-color); font-size: 13px;">📊 Statistiken</h4>
+                <div class="profile-stats-grid" id="profile-stats-grid">
+                    <div class="stat-card"><span class="stat-label" id="ui-stat-level-label">Level</span><span class="stat-value" id="stat-level">1</span></div>
+                    <div class="stat-card"><span class="stat-label" id="ui-stat-xp-label">XP</span><span class="stat-value" id="stat-xp">0</span></div>
+                    <div class="stat-card"><span class="stat-label" id="ui-stat-coins-label">Coins</span><span class="stat-value" id="stat-coins">0</span></div>
+                    <div class="stat-card"><span class="stat-label" id="ui-stat-monthly-label">Diesen Monat</span><span class="stat-value" id="stat-monthly">0</span></div>
+                    <div class="stat-card"><span class="stat-label" id="ui-stat-streak-label">Streak</span><span class="stat-value" id="stat-streak">0</span></div>
+                    <div class="stat-card"><span class="stat-label" id="ui-stat-truth-label">Wahrheiten</span><span class="stat-value" id="stat-truth">0</span></div>
+                    <div class="stat-card"><span class="stat-label" id="ui-stat-dare-label">Pflichten</span><span class="stat-value" id="stat-dare">0</span></div>
+                    <div class="stat-card"><span class="stat-label" id="ui-stat-total-label">Aufgaben gesamt</span><span class="stat-value" id="stat-total">0</span></div>
+                    <div class="stat-card"><span class="stat-label" id="ui-stat-badges-label">Badges</span><span class="stat-value" id="stat-badges">0</span></div>
+                    <div class="stat-card"><span class="stat-label" id="ui-stat-items-label">Items</span><span class="stat-value" id="stat-items">0</span></div>
+                    <div class="stat-card"><span class="stat-label" id="ui-stat-themes-label">Themes</span><span class="stat-value" id="stat-themes">0</span></div>
+                </div>
+            </div>
+
+            <div class="box-section" style="padding:8px;">
+                <h4 id="ui-profile-badges-head" style="margin: 0 0 6px 0; color: var(--primary-color); font-size: 13px;">🏆 Badges & Trophäen</h4>
+                <div id="profile-badge-container"></div>
+            </div>
+
+            <button id="ui-profile-close-btn" class="btn-blue" onclick="closeProfileModal()" style="width: 100%; padding: 10px; font-size: 13px; margin-top: 8px;">Schließen</button>
+        </div>
+    </div>
+
     <!-- LEADERBOARD MODAL -->
     <div id="leaderboard-modal" class="modal-overlay hidden">
         <div class="modal-content">
@@ -332,6 +371,7 @@
                 <button id="ui-btn-friends" class="btn-blue" onclick="openFriendsModal()" style="padding:2px 5px; font-size:10px; width:auto; margin:0; position:relative;">👥 Freunde <span id="hud-friend-req-badge" style="background:#ff0055;border-radius:10px;padding:1px 5px;font-size:9px;display:none;margin-left:2px;font-weight:bold;">0</span></button>
                 <button id="ui-btn-players" class="btn-blue" onclick="openOnlinePlayersModal()" style="padding:2px 5px; font-size:10px; width:auto; margin:0;">🌐 Spieler</button>
                 <button id="ui-btn-feedback" class="btn-green" onclick="openFeedbackModal()" style="padding:2px 5px; font-size:10px; width:auto; margin:0;">📝 Feedback</button>
+                <button id="ui-btn-profile" class="btn-blue" onclick="openProfileModal()" style="padding:2px 5px; font-size:10px; width:auto; margin:0;">👤 Profil</button>
                 <button id="ui-btn-shop" class="btn-blue" onclick="openAccountModal()" style="padding:2px 5px; font-size:10px; width:auto; margin:0;">🛒 Shop</button>
             </div>
         </div>
