@@ -1167,3 +1167,169 @@ a {
     background: linear-gradient(135deg, #1e5a9a, #3b82f6) !important;
     box-shadow: 0 6px 18px rgba(59, 130, 246, 0.25);
 }
+
+/* ==========================================================
+   MODERN BUTTONS — unified pill / glass style
+   ========================================================== */
+button,
+.btn-blue,
+.btn-green,
+.btn-danger,
+.btn-red,
+.btn-purple,
+.btn-primary,
+.btn-secondary,
+.lobby-action-btn,
+.shop-action-btn,
+.theme-action-btn,
+.emote-action-btn,
+.hud-btn {
+    appearance: none;
+    -webkit-appearance: none;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 12px;
+    font-weight: 650;
+    letter-spacing: 0.01em;
+    cursor: pointer;
+    transition:
+        transform 140ms ease,
+        box-shadow 160ms ease,
+        filter 140ms ease,
+        border-color 140ms ease,
+        background 160ms ease;
+    box-shadow:
+        0 4px 14px rgba(0, 0, 0, 0.22),
+        inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+button:hover:not(:disabled),
+.btn-blue:hover:not(:disabled),
+.btn-green:hover:not(:disabled),
+.btn-danger:hover:not(:disabled),
+.btn-purple:hover:not(:disabled),
+.lobby-action-btn:hover:not(:disabled),
+.hud-btn:hover:not(:disabled) {
+    filter: brightness(1.08);
+    transform: translateY(-1px);
+    box-shadow:
+        0 8px 22px rgba(0, 0, 0, 0.28),
+        inset 0 1px 0 rgba(255, 255, 255, 0.16);
+}
+
+button:active:not(:disabled),
+.btn-blue:active:not(:disabled),
+.btn-green:active:not(:disabled),
+.btn-danger:active:not(:disabled),
+.lobby-action-btn:active:not(:disabled),
+.hud-btn:active:not(:disabled) {
+    transform: translateY(1px);
+    filter: brightness(0.96);
+}
+
+button:disabled,
+.btn-blue:disabled,
+.btn-green:disabled,
+.btn-danger:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    transform: none !important;
+    box-shadow: none;
+}
+
+.btn-blue {
+    background: linear-gradient(145deg, #3b82f6, #2563eb) !important;
+    color: #fff !important;
+    border-color: rgba(147, 197, 253, 0.35) !important;
+}
+
+.btn-green {
+    background: linear-gradient(145deg, #34d399, #059669) !important;
+    color: #06281c !important;
+    border-color: rgba(167, 243, 208, 0.35) !important;
+}
+
+.btn-danger,
+.btn-red {
+    background: linear-gradient(145deg, #f87171, #dc2626) !important;
+    color: #fff !important;
+    border-color: rgba(254, 202, 202, 0.35) !important;
+}
+
+.btn-purple {
+    background: linear-gradient(145deg, #a78bfa, #7c3aed) !important;
+    color: #fff !important;
+    border-color: rgba(221, 214, 254, 0.35) !important;
+}
+
+.lobby-action-btn {
+    width: 100%;
+    padding: 12px 16px !important;
+    font-size: 14px !important;
+    border-radius: 14px !important;
+    margin: 6px 0 !important;
+}
+
+.lobby-action-btn.primary-host {
+    background: linear-gradient(145deg, #fb7185, #e11d48) !important;
+    color: #fff !important;
+    border-color: rgba(254, 205, 211, 0.4) !important;
+    box-shadow: 0 8px 24px rgba(225, 29, 72, 0.28);
+}
+
+.lobby-action-btn.join-code {
+    background: linear-gradient(145deg, #38bdf8, #2563eb) !important;
+    color: #fff !important;
+    border-color: rgba(186, 230, 253, 0.4) !important;
+    box-shadow: 0 8px 24px rgba(37, 99, 235, 0.25);
+}
+
+#start-btn {
+    background: linear-gradient(145deg, #fbbf24, #f59e0b) !important;
+    color: #1c1400 !important;
+    border: 1px solid rgba(253, 230, 138, 0.45) !important;
+    border-radius: 14px !important;
+    font-weight: 700 !important;
+    box-shadow: 0 8px 24px rgba(245, 158, 11, 0.28);
+}
+
+#ui-select-btn,
+#ui-send-task-btn,
+#ui-submit-answer-btn,
+#ui-dare-done-btn,
+#next-turn-btn,
+#spin-btn,
+#next-round-btn {
+    border-radius: 12px !important;
+}
+
+.shop-action-btn,
+.theme-action-btn,
+.emote-action-btn {
+    border-radius: 10px !important;
+    padding: 6px 10px !important;
+    font-size: 11px !important;
+}
+
+.hud-btn {
+    border-radius: 999px !important;
+    padding: 6px 11px !important;
+    font-size: 11px !important;
+}
+
+.shop-tab {
+    border-radius: 12px !important;
+}
+
+input,
+select,
+textarea {
+    border-radius: 11px !important;
+    transition: border-color 140ms ease, box-shadow 140ms ease;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+    border-color: rgba(98, 223, 196, 0.65) !important;
+    box-shadow: 0 0 0 3px rgba(98, 223, 196, 0.12) !important;
+}
