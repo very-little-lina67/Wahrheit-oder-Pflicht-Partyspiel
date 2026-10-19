@@ -334,10 +334,16 @@
                 langLabelText: "Sprache",
                 title: "Wahrheit oder Pflicht Partyspiel 🍻🚻",
                 subtitle: "Spielt nacheinander Wahrheit oder Pflicht. Nach jeder Runde dreht sich das Rad!",
-                setupHead: "Online Lobby:",
-                hostBtn: "Lobby erstellen (Host) 🏠",
+                setupHead: "Online Lobby",
+                hostBtn: "🏠 Private Lobby erstellen (Host)",
+                hostLookingBtn: "🏠 Lobby erstellen & Mitspieler suchen",
+                findPlayersBtn: "🔍 Sucht Mitspieler – offene Runden",
+                findTitle: "🔍 Sucht Mitspieler",
+                findDesc: "Offene Lobbies, die noch Mitspieler suchen – tippe auf Beitreten!",
+                findRefresh: "🔄 Aktualisieren",
+                findCreate: "🏠 Selbst hosten",
                 lobbyCodeInputPlaceholder: "Lobby-Code eingeben...",
-                joinBtn: "Lobby beitreten 🚀",
+                joinBtn: "🚀 Lobby beitreten",
                 lobbyCodeTitle: "Lobby-Code: ",
                 shareCode: "Teile diesen Code mit deinen Mitspielern!",
                 startBtn: "Spiel starten! 🔥",
@@ -575,10 +581,16 @@
                 langLabelText: "Language",
                 title: "Truth or Dare Party Game 🍻🚻",
                 subtitle: "Take turns playing truth or dare. After every full round, the wheel spins!",
-                setupHead: "Online Lobby:",
-                hostBtn: "Create Lobby (Host) 🏠",
+                setupHead: "Online Lobby",
+                hostBtn: "🏠 Create private lobby (Host)",
+                hostLookingBtn: "🏠 Create lobby & look for players",
+                findPlayersBtn: "🔍 Looking for players – open rounds",
+                findTitle: "🔍 Looking for players",
+                findDesc: "Open lobbies that still need players – tap Join!",
+                findRefresh: "🔄 Refresh",
+                findCreate: "🏠 Host yourself",
                 lobbyCodeInputPlaceholder: "Enter lobby code...",
-                joinBtn: "Join Lobby 🚀",
+                joinBtn: "🚀 Join lobby",
                 lobbyCodeTitle: "Lobby Code: ",
                 shareCode: "Share this code with your friends!",
                 startBtn: "Start Game! 🔥",
@@ -917,12 +929,27 @@
             const mainTitle = document.getElementById("ui-title"); if (mainTitle) mainTitle.innerText = t.title;
             const mainSub = document.getElementById("ui-subtitle"); if (mainSub) mainSub.innerText = t.subtitle;
             const setupHead = document.getElementById("ui-setup-head"); if (setupHead) setupHead.innerText = t.setupHead;
-            const privHint = document.getElementById("ui-private-lobby-hint"); if (privHint) privHint.innerText = t.privateLobbyHint;
+            const privHint = document.getElementById("ui-private-lobby-hint");
+            if (privHint) privHint.innerText = currentLang === "de"
+                ? "🔑 Erstelle eine Lobby, suche offene Runden oder tritt mit einem Code bei."
+                : "🔑 Create a lobby, find open rounds, or join with a code.";
             const hostBtn = document.getElementById("ui-host-btn"); if (hostBtn) hostBtn.innerText = t.hostBtn;
+            const hostLookingBtn = document.getElementById("ui-host-looking-btn");
+            if (hostLookingBtn) hostLookingBtn.innerText = t.hostLookingBtn || (currentLang === "de" ? "🏠 Lobby erstellen & Mitspieler suchen" : "🏠 Create lobby & look for players");
+            const findPlayersBtn = document.getElementById("ui-find-players-btn");
+            if (findPlayersBtn) findPlayersBtn.innerText = t.findPlayersBtn || (currentLang === "de" ? "🔍 Sucht Mitspieler – offene Runden" : "🔍 Looking for players – open rounds");
             const lobbyInp = document.getElementById("lobby-code-input"); if (lobbyInp) lobbyInp.placeholder = t.lobbyCodeInputPlaceholder;
             const joinBtn = document.getElementById("ui-join-btn"); if (joinBtn) joinBtn.innerText = t.joinBtn;
             const spectateBtn = document.getElementById("ui-spectate-btn"); if (spectateBtn) spectateBtn.innerText = t.spectateBtn;
             const specBadge = document.getElementById("hud-spectator-badge"); if (specBadge) specBadge.innerText = t.spectatorBadge;
+            // Find-Players Modal
+            const findTitle = document.getElementById("ui-find-title"); if (findTitle) findTitle.innerText = t.findTitle || "🔍";
+            const findDesc = document.getElementById("ui-find-desc"); if (findDesc) findDesc.innerText = t.findDesc || "";
+            const findRefresh = document.getElementById("ui-find-refresh-btn"); if (findRefresh) findRefresh.innerText = t.findRefresh || "🔄";
+            const findCreate = document.getElementById("ui-find-create-btn"); if (findCreate) findCreate.innerText = t.findCreate || "🏠";
+            const findClose = document.getElementById("ui-find-close-btn"); if (findClose) findClose.innerText = t.btnClose || "Close";
+            const chatHead = document.getElementById("ui-chat-head");
+            if (chatHead) chatHead.innerText = currentLang === "de" ? "💬 Live-Chat" : "💬 Live Chat";
 
             // Lobby Wartesaal
             const lobbyCodeTitle = document.getElementById("ui-lobby-code-title");
@@ -3366,9 +3393,12 @@
         function buildGameStatePayload() {
             return {
                 hostEmail: isHost ? myEmail : (lobbyHostEmail || ""),
+                hostName: myName || "",
                 players: Array.isArray(players) ? players : [],
+                playerCount: (Array.isArray(players) ? players : []).filter(p => !p.isSpectator).length,
                 phase: gamePhase || "lobby",
                 gameStarted: !!gameStarted,
+                lookingForPlayers: !!lobbyLookingForPlayers && !gameStarted,
                 currentPlayerIndex: Number(currentPlayerIndex) || 0,
                 pendingChoice: pendingChoice || "",
                 currentTaskText: currentTaskText || "",
@@ -3530,18 +3560,121 @@
             saveLobbySession();
         }
 
+        /** Host-Flag: Lobby sucht öffentlich Mitspieler */
+        let lobbyLookingForPlayers = false;
+
         async function ensureLobbyDoc() {
             if (!isHost || !activeLobbyCode) return;
             try {
                 await db.collection("lobbies").doc(activeLobbyCode).set({
                     hostEmail: myEmail,
+                    hostName: myName || "",
                     players: players,
+                    playerCount: (players || []).filter(p => !p.isSpectator).length,
                     phase: gamePhase || "lobby",
                     gameStarted: !!gameStarted,
+                    lookingForPlayers: !!lobbyLookingForPlayers && !gameStarted,
                     createdAt: firebase.firestore.FieldValue.serverTimestamp(),
                     updatedAt: Date.now()
                 }, { merge: true });
             } catch (e) {}
+        }
+
+        // ==============================================================================
+        // MATCHMAKING: OFFENE RUNDEN SUCHEN
+        // ==============================================================================
+        function openFindPlayersModal() {
+            const modal = document.getElementById("find-players-modal");
+            if (!modal) return;
+            modal.classList.remove("hidden");
+            loadOpenLobbies();
+        }
+
+        async function loadOpenLobbies() {
+            const list = document.getElementById("open-lobbies-list");
+            if (!list) return;
+            list.innerHTML = `<p style="font-size:12px; color:#aaa; text-align:center;">${currentLang === "de" ? "Lade offene Runden…" : "Loading open rounds…"}</p>`;
+
+            try {
+                // Lobbies die Mitspieler suchen und noch nicht gestartet sind
+                let snapshot;
+                try {
+                    snapshot = await db.collection("lobbies")
+                        .where("lookingForPlayers", "==", true)
+                        .where("gameStarted", "==", false)
+                        .limit(30)
+                        .get();
+                } catch (indexErr) {
+                    // Fallback ohne Composite-Index: nur lookingForPlayers
+                    snapshot = await db.collection("lobbies")
+                        .where("lookingForPlayers", "==", true)
+                        .limit(40)
+                        .get();
+                }
+
+                const entries = [];
+                snapshot.forEach(doc => {
+                    const d = doc.data() || {};
+                    if (d.gameStarted) return;
+                    if (!d.lookingForPlayers) return;
+                    // Eigene Lobby nicht anzeigen
+                    if (String(doc.id).toLowerCase() === String(activeLobbyCode || "").toLowerCase()) return;
+                    if (d.hostEmail && myEmail && String(d.hostEmail).toLowerCase() === String(myEmail).toLowerCase()) return;
+
+                    const playersArr = Array.isArray(d.players) ? d.players : [];
+                    const count = Number(d.playerCount) || playersArr.filter(p => !p.isSpectator).length || 1;
+                    entries.push({
+                        code: doc.id,
+                        hostName: d.hostName || (playersArr[0] && (playersArr[0].name || playersArr[0])) || "Host",
+                        count: count,
+                        updatedAt: d.updatedAt || 0
+                    });
+                });
+
+                // Neueste zuerst
+                entries.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+
+                if (!entries.length) {
+                    list.innerHTML = `<p style="font-size:13px; color:#888; text-align:center; padding:16px 8px;">${
+                        currentLang === "de"
+                            ? "Gerade keine offenen Runden.<br>Erstelle selbst eine und suche Mitspieler!"
+                            : "No open rounds right now.<br>Create one and look for players!"
+                    }</p>`;
+                    return;
+                }
+
+                list.innerHTML = "";
+                entries.forEach(e => {
+                    const safeCode = String(e.code).replace(/'/g, "\\'");
+                    const card = document.createElement("div");
+                    card.className = "open-lobby-card";
+                    card.innerHTML = `
+                        <div>
+                            <div><strong>${String(e.hostName).replace(/</g,"&lt;")}</strong>
+                                <span class="looking-badge">${currentLang === "de" ? "sucht" : "looking"}</span>
+                            </div>
+                            <div class="lobby-meta">
+                                🔑 ${String(e.code).toUpperCase()} · 👥 ${e.count} ${currentLang === "de" ? "Spieler" : "players"}
+                            </div>
+                        </div>
+                        <button class="join-open-btn" onclick="joinOpenLobby('${safeCode}')">${currentLang === "de" ? "Beitreten" : "Join"}</button>
+                    `;
+                    list.appendChild(card);
+                });
+            } catch (err) {
+                console.error("loadOpenLobbies:", err);
+                list.innerHTML = `<p style="font-size:12px; color:#ff6b6b; text-align:center;">${
+                    currentLang === "de" ? "Fehler beim Laden. Bitte erneut versuchen." : "Error loading. Please try again."
+                }</p>`;
+            }
+        }
+
+        async function joinOpenLobby(code) {
+            if (!code) return;
+            const input = document.getElementById("lobby-code-input");
+            if (input) input.value = code;
+            document.getElementById("find-players-modal")?.classList.add("hidden");
+            await joinGame();
         }
 
         function showLobbyUI(code, client = false) {
@@ -3586,6 +3719,7 @@
 // ==============================================================================
         async function hostGame(options = {}) {
             const restoring = !!options.restoring;
+            const looking = !!options.looking;
             restoringLobby = restoring;
             leavingLobbyManually = false;
             stopReconnectTimer();
@@ -3596,6 +3730,9 @@
             }
 
             isHost = true;
+            if (!restoring) {
+                lobbyLookingForPlayers = looking;
+            }
 
             if (!restoring || !activeLobbyCode) {
                 activeLobbyCode = "vibe" + Math.random().toString(36).slice(2, 8);
@@ -3636,13 +3773,22 @@
                     try {
                         const lobbyDoc = await db.collection("lobbies").doc(activeLobbyCode).get();
                         if (lobbyDoc.exists) {
-                            applyGameStateFromFirebase(lobbyDoc.data() || {});
+                            const ld = lobbyDoc.data() || {};
+                            applyGameStateFromFirebase(ld);
+                            lobbyLookingForPlayers = !!ld.lookingForPlayers;
                         }
                     } catch (e) {}
                 }
                 if (!gameStarted) {
                     showLobbyUI(activeLobbyCode, false);
                     document.getElementById("start-btn").classList.remove("hidden");
+                    // Hinweis wenn Mitspieler gesucht werden
+                    const shareEl = document.getElementById("ui-share-code");
+                    if (shareEl && lobbyLookingForPlayers) {
+                        shareEl.innerHTML = currentLang === "de"
+                            ? "🔍 Deine Lobby ist <b>öffentlich</b> – andere können dich unter „Sucht Mitspieler“ finden!"
+                            : "🔍 Your lobby is <b>public</b> – others can find you under “Looking for players”!";
+                    }
                 }
                 updatePlayerList();
                 scheduleSaveGameState();
@@ -4142,11 +4288,20 @@
         function startOnlineGame() {
             if (!isHost) return;
             gameStarted = true;
+            lobbyLookingForPlayers = false;
             gamePhase = "wop";
             currentPlayerIndex = 0;
             currentSharedResult = null;
             nextTurnVotedPlayers = [];
             nextRoundVotedPlayers = [];
+            // Öffentliche Suche beenden
+            try {
+                db.collection("lobbies").doc(activeLobbyCode).set({
+                    lookingForPlayers: false,
+                    gameStarted: true,
+                    updatedAt: Date.now()
+                }, { merge: true });
+            } catch (e) {}
             sendData({ type: 'START_GAME', players: players });
             startGameUI();
             scheduleSaveGameState();
