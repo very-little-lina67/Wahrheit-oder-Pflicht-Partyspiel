@@ -505,15 +505,12 @@
             <p id="ui-share-code" style="font-size: 12px;">Teile diesen Code mit deinen Mitspielern!</p>
             <ul id="player-list" style="list-style: none; padding: 0; text-align: left; font-size: 13px;"></ul>
 
-            <!-- Master: Test-Bots (max. 5) -->
-            <div id="bot-controls-box" class="hidden" style="margin: 12px 0; padding: 10px; background: rgba(98,223,196,0.08); border-radius: 12px; border: 1px solid rgba(98,223,196,0.28); text-align: left;">
-                <div style="font-size:13px; font-weight:600; margin-bottom:8px; color:#5eead4;">🤖 Test-Bots <span style="font-weight:400;color:#aaa;font-size:11px;">(nur Master · max. 5)</span></div>
-                <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
-                    <button type="button" id="ui-add-bot-btn" class="btn-green" onclick="addTestBot()" style="padding:8px 12px; font-size:12px; width:auto; margin:0;">+ Bot hinzufügen</button>
-                    <button type="button" id="ui-remove-bot-btn" class="btn-danger" onclick="removeLastTestBot()" style="padding:8px 12px; font-size:12px; width:auto; margin:0;">− Letzten Bot entfernen</button>
-                    <span id="bot-count-label" style="font-size:12px; color:#ccc;">Bots: 0/5</span>
-                </div>
-                <p style="font-size:11px; color:#888; margin:8px 0 0 0;">Bots spielen mit, chatten und antworten auf private Nachrichten – ideal zum Testen.</p>
+            <!-- Host: Mitspieler-Suche an/aus -->
+            <div id="looking-toggle-box" class="hidden" style="margin: 10px 0; padding: 8px; background: rgba(255,204,0,0.08); border-radius: 8px; border: 1px solid rgba(255,204,0,0.25);">
+                <label style="display:flex; align-items:center; justify-content:center; gap:8px; font-size:13px; cursor:pointer;">
+                    <input type="checkbox" id="looking-for-players-cb" onchange="toggleLookingForPlayers(this.checked)" style="width:auto; margin:0;">
+                    <span id="ui-looking-toggle-label">🔍 Mitspieler gesucht (öffentlich sichtbar)</span>
+                </label>
             </div>
 
             <button id="start-btn" class="hidden" onclick="startOnlineGame()" style="font-size: 14px; padding: 10px;">Spiel starten! 🔥</button>
