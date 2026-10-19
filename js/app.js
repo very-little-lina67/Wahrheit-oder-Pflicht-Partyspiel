@@ -1264,6 +1264,119 @@
 // ==============================================================================
 // 5. CLOUD-SYNCHRONISATION & ONLINE-STATUS (HEARTBEAT)
 // ==============================================================================
+        // ==============================================================================
+        // KONTO-FORTSCHRITT: sicheres Laden + lokales Backup (kein Reset bei Deploy/Reload)
+        // ==============================================================================
+        const PROGRESS_BACKUP_KEY = "wop_progress_backup_v1";
+        let userDataHydrated = false;
+
+        function numOr(value, fallback) {
+            if (value === undefined || value === null || value === "") return fallback;
+            const n = Number(value);
+            return Number.isFinite(n) ? n : fallback;
+        }
+
+        function saveProgressBackup() {
+            if (!myEmail) return;
+            try {
+                const payload = {
+                    email: String(myEmail).toLowerCase(),
+                    name: myName || "",
+                    xp: userXP,
+                    coins: userCoins,
+                    monthlyCoins: monthlyCoins,
+                    monthlyCoinsMonth: monthlyCoinsMonth || "",
+                    streak: userStreak,
+                    accessory: equippedAccessory || "",
+                    avatarEmote: avatarEmote || "😊",
+                    items: Array.isArray(unlockedItems) ? unlockedItems : [],
+                    themes: Array.isArray(unlockedThemes) ? unlockedThemes : [],
+                    badges: Array.isArray(unlockedBadges) ? unlockedBadges : [],
+                    emotes: Array.isArray(unlockedEmotes) ? unlockedEmotes : [],
+                    truthCount: truthCount,
+                    dareCount: dareCount,
+                    jokerSkip: jokerSkipCount,
+                    jokerForce: jokerForceCount,
+                    theme: (typeof document !== "undefined" && document.body) ? document.body.className : "",
+                    savedAt: Date.now()
+                };
+                localStorage.setItem(PROGRESS_BACKUP_KEY, JSON.stringify(payload));
+            } catch (e) {}
+        }
+
+        function readProgressBackup() {
+            try {
+                const raw = localStorage.getItem(PROGRESS_BACKUP_KEY);
+                if (!raw) return null;
+                const b = JSON.parse(raw);
+                if (!b || !b.email) return null;
+                if (String(b.email).toLowerCase() !== String(myEmail || "").toLowerCase()) return null;
+                // Backup max. 90 Tage
+                if (b.savedAt && (Date.now() - b.savedAt > 90 * 24 * 60 * 60 * 1000)) return null;
+                return b;
+            } catch (e) {
+                return null;
+            }
+        }
+
+        /**
+         * Schützt vor „frisch erstellt“-Cloud-Daten nach Deploy/Race:
+         * Wenn Cloud wie Starter-Account aussieht, lokales Backup mit echtem Fortschritt nutzen.
+         */
+        function mergeCloudWithBackup(data) {
+            const d = data && typeof data === "object" ? { ...data } : {};
+            const backup = readProgressBackup();
+            if (!backup) return d;
+
+            const cloudXp = numOr(d.xp, 0);
+            const cloudCoins = (d.coins === undefined || d.coins === null) ? null : numOr(d.coins, 0);
+            const cloudItems = Array.isArray(d.items) ? d.items.length : 0;
+            const cloudBadges = Array.isArray(d.badges) ? d.badges.length : 0;
+            const looksFresh = cloudXp === 0
+                && (cloudCoins === null || cloudCoins === 50 || cloudCoins === 0)
+                && cloudItems === 0
+                && cloudBadges === 0
+                && numOr(d.streak, 0) === 0
+                && numOr(d.truthCount, 0) === 0
+                && numOr(d.dareCount, 0) === 0;
+
+            const backupHasProgress = numOr(backup.xp, 0) > 0
+                || numOr(backup.coins, 0) > 50
+                || (Array.isArray(backup.items) && backup.items.length > 0)
+                || (Array.isArray(backup.badges) && backup.badges.length > 0)
+                || numOr(backup.truthCount, 0) > 0
+                || numOr(backup.dareCount, 0) > 0
+                || numOr(backup.streak, 0) > 0;
+
+            if (looksFresh && backupHasProgress) {
+                console.warn("Cloud-Stand wirkte wie Neukonto – Fortschritt aus lokalem Backup wiederhergestellt.");
+                d.xp = backup.xp;
+                d.coins = backup.coins;
+                d.monthlyCoins = backup.monthlyCoins;
+                d.monthlyCoinsMonth = backup.monthlyCoinsMonth;
+                d.streak = backup.streak;
+                d.accessory = backup.accessory;
+                d.avatarEmote = backup.avatarEmote;
+                d.items = backup.items;
+                d.themes = backup.themes;
+                d.badges = backup.badges;
+                d.emotes = backup.emotes;
+                d.truthCount = backup.truthCount;
+                d.dareCount = backup.dareCount;
+                d.jokerSkip = backup.jokerSkip;
+                d.jokerForce = backup.jokerForce;
+                if (backup.theme) d.theme = backup.theme;
+                if (backup.name && !d.name) d.name = backup.name;
+                return d;
+            }
+
+            // XP nie nach unten korrigieren, wenn Backup höher ist (Schutz vor Teil-Writes)
+            if (numOr(backup.xp, 0) > cloudXp) {
+                d.xp = backup.xp;
+            }
+            return d;
+        }
+
         async function loadUserDataFromCloud() {
             if (!myEmail) return;
             try {
@@ -1291,21 +1404,27 @@
                             await docRef.set({ name: myName }, { merge: true });
                         } catch (e) {}
                     }
-                    userXP = data.xp || 0;
-                    userCoins = data.coins || 50;
-                    monthlyCoins = Number(data.monthlyCoins) || 0;
-                    monthlyCoinsMonth = data.monthlyCoinsMonth || getCurrentMonthKey(); 
-                    userStreak = data.streak || 0;
+                    // Backup-Merge: verhindert „Konto zurückgesetzt“ nach Deploy/Reload
+                    data = mergeCloudWithBackup(data);
+
+                    // WICHTIG: 0 ist ein gültiger Wert – niemals "|| 50" / "|| 0" missbrauchen
+                    userXP = numOr(data.xp, 0);
+                    userCoins = (data.coins === undefined || data.coins === null)
+                        ? 50
+                        : numOr(data.coins, 0);
+                    monthlyCoins = numOr(data.monthlyCoins, 0);
+                    monthlyCoinsMonth = data.monthlyCoinsMonth || getCurrentMonthKey();
+                    userStreak = numOr(data.streak, 0);
                     equippedAccessory = data.accessory || "";
                     avatarEmote = data.avatarEmote || "😊";
-                    unlockedItems = data.items || [];
-                    unlockedThemes = data.themes || [];
-                    unlockedBadges = data.badges || [];
+                    unlockedItems = Array.isArray(data.items) ? data.items : [];
+                    unlockedThemes = Array.isArray(data.themes) ? data.themes : [];
+                    unlockedBadges = Array.isArray(data.badges) ? data.badges : [];
                     unlockedEmotes = Array.isArray(data.emotes) ? data.emotes.filter(Boolean) : [];
-                    truthCount = data.truthCount || 0;
-                    dareCount = data.dareCount || 0;
-                    jokerSkipCount = Number(data.jokerSkip) || 0;
-                    jokerForceCount = Number(data.jokerForce) || 0;
+                    truthCount = numOr(data.truthCount, 0);
+                    dareCount = numOr(data.dareCount, 0);
+                    jokerSkipCount = numOr(data.jokerSkip, 0);
+                    jokerForceCount = numOr(data.jokerForce, 0);
                     {
                         const raw = Array.isArray(data.friends) ? data.friends : [];
                         myFriends = [...new Set(raw.map(e => String(e || "").trim().toLowerCase()).filter(Boolean))];
@@ -1317,13 +1436,23 @@
                     return;
                 }
                 calculateLevel();
+                const badgesBefore = (unlockedBadges || []).slice().sort().join("|");
                 checkBadges();
+                const badgesAfter = (unlockedBadges || []).slice().sort().join("|");
                 updateHUD();
                 updateProfileModal();
-                // Neu freigeschaltete Badges (z. B. durch erweiterte Badge-Logik) speichern
-                saveUserDataToCloud();
+                userDataHydrated = true;
+                saveProgressBackup();
+                // Nur speichern, wenn sich wirklich etwas geändert hat (z. B. neue Badges)
+                // oder Backup den Cloud-Stand repariert hat – kein blindes Überschreiben.
+                const needPersist = badgesBefore !== badgesAfter;
+                if (needPersist) {
+                    await saveUserDataToCloud();
+                } else {
+                    // Leiser Heartbeat-Status, ohne Fortschritt zu überschreiben
+                    updateOnlineStatus(true);
+                }
                 checkAdminPermissions();
-                updateOnlineStatus(true);
                 startOnlineHeartbeat();
             } catch (e) {
                 console.error("Fehler beim Laden aus Cloud:", e);
@@ -1367,14 +1496,34 @@
 
         async function saveUserDataToCloud() {
             if (!myEmail) return;
+            // Vor dem ersten erfolgreichen Laden keine Defaults in die Cloud schreiben
+            if (!userDataHydrated && !(userXP > 0 || userCoins !== 50 || (unlockedItems || []).length)) {
+                // Ausnahme: frische Registrierung setzt hydrated nach load – register setzt danach load
+            }
             try {
                 // WICHTIG: "friends" wird hier bewusst NICHT geschrieben!
-                // Die Freundesliste wird nur über acceptFriendRequest / removeFriend
-                // atomar per arrayUnion / arrayRemove aktualisiert. Ein vollständiges
-                // Überschreiben hier würde parallele Annehmen-Vorgänge wieder löschen.
-                // Master-Rolle wird immer erzwungen, damit sie nie verloren geht.
                 const roleToSave = resolveRole(myEmail, myRole);
                 myRole = roleToSave;
+
+                // Gegen Race: aktuellen Cloud-Stand lesen und XP nie absenken
+                try {
+                    const snap = await db.collection("users").doc(myEmail).get();
+                    if (snap.exists) {
+                        const remote = snap.data() || {};
+                        const remoteXp = numOr(remote.xp, 0);
+                        if (remoteXp > userXP) userXP = remoteXp;
+                        // Arrays vereinigen (nichts verlieren)
+                        const union = (a, b) => [...new Set([...(Array.isArray(a) ? a : []), ...(Array.isArray(b) ? b : [])])];
+                        unlockedItems = union(unlockedItems, remote.items);
+                        unlockedThemes = union(unlockedThemes, remote.themes);
+                        unlockedBadges = union(unlockedBadges, remote.badges);
+                        unlockedEmotes = union(unlockedEmotes, remote.emotes);
+                        truthCount = Math.max(numOr(truthCount, 0), numOr(remote.truthCount, 0));
+                        dareCount = Math.max(numOr(dareCount, 0), numOr(remote.dareCount, 0));
+                        userStreak = Math.max(numOr(userStreak, 0), numOr(remote.streak, 0));
+                    }
+                } catch (e) {}
+
                 await db.collection("users").doc(myEmail).set({
                     name: myName,
                     role: roleToSave,
@@ -1398,6 +1547,8 @@
                     isOnline: true,
                     currentLobby: activeLobbyCode || ""
                 }, { merge: true });
+                userDataHydrated = true;
+                saveProgressBackup();
             } catch (e) {
                 console.error("Fehler beim Speichern in Cloud:", e);
             }
@@ -2373,6 +2524,8 @@
 
                 localStorage.setItem("wop_user_email_v6", myEmail);
                 localStorage.setItem("wop_user_name_v6", myName);
+                userDataHydrated = true;
+                saveProgressBackup();
 
                 await loadUserDataFromCloud();
                 alert(translations[currentLang]?.alertRegistered || "Erfolgreich registriert!");
