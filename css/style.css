@@ -1335,3 +1335,35 @@ textarea:focus {
     border-color: rgba(98, 223, 196, 0.65) !important;
     box-shadow: 0 0 0 3px rgba(98, 223, 196, 0.12) !important;
 }
+
+
+/* ==========================================================
+   EMERGENCY / ADMIN — unterschiedliche Farben
+   ========================================================== */
+#ui-leak-btn,
+.btn-leak {
+    background: linear-gradient(145deg, #f87171, #dc2626) !important;
+    color: #fff !important;
+    border: 1px solid rgba(254, 202, 202, 0.4) !important;
+    box-shadow: 0 4px 16px rgba(220, 38, 38, 0.28) !important;
+}
+
+#ui-admin-kick-btn,
+.btn-admin-kick {
+    background: linear-gradient(145deg, #a78bfa, #6d28d9) !important;
+    color: #fff !important;
+    border: 1px solid rgba(221, 214, 254, 0.4) !important;
+    box-shadow: 0 4px 16px rgba(109, 40, 217, 0.28) !important;
+    border-radius: 12px;
+    font-weight: 650;
+    cursor: pointer;
+    width: 100%;
+    transition: filter 140ms ease, transform 120ms ease, box-shadow 160ms ease;
+}
+
+#ui-admin-kick-btn:hover:not(:disabled),
+.btn-admin-kick:hover:not(:disabled) {
+    filter: brightness(1.08);
+    transform: translateY(-1px);
+    box-shadow: 0 8px 22px rgba(109, 40, 217, 0.35) !important;
+}
