@@ -329,6 +329,13 @@
                 friendSearchBtn: "Suchen & Anfrage senden",
                 friendsCloseBtn: "Schließen",
                 privateLobbyHint: "🔑 Erstelle eine private Lobby und teile den Code mit deinen Freunden – oder tritt mit einem Code bei.",
+                lobbyCodeJoinLabel: "Mit Code beitreten",
+                lookingToggleLabel: "🔍 Mitspieler gesucht (öffentlich sichtbar)",
+                chatHead: "💬 Live-Chat",
+                buyJokerBtn: "Kaufen",
+                buyJokerBtnPlus: "Kaufen (+{n})",
+                unlockEmoteBtn: "Freischalten",
+                equippedBtn: "Ausgerüstet",
                 hostBtnPrivate: "Lobby erstellen (Host) 🏠",
                 lbTabGlobal: "🌍 Global",
                 lbTabFriends: "👥 Freunde",
@@ -580,6 +587,13 @@
                 friendSearchBtn: "Search & Send Request",
                 friendsCloseBtn: "Close",
                 privateLobbyHint: "🔑 Create a private lobby and share the code with friends – or join with a code.",
+                lobbyCodeJoinLabel: "Join with code",
+                lookingToggleLabel: "🔍 Looking for players (publicly visible)",
+                chatHead: "💬 Live Chat",
+                buyJokerBtn: "Buy",
+                buyJokerBtnPlus: "Buy (+{n})",
+                unlockEmoteBtn: "Unlock",
+                equippedBtn: "Equipped",
                 hostBtnPrivate: "Create Lobby (Host) 🏠",
                 lbTabGlobal: "🌍 Global",
                 lbTabFriends: "👥 Friends",
@@ -757,7 +771,7 @@
             const profileStatsHead = document.getElementById("ui-profile-stats-head"); if (profileStatsHead) profileStatsHead.innerText = t.profileStatsHead || (currentLang === "de" ? "📊 Statistiken" : "📊 Statistics");
             const profileBadgesHead = document.getElementById("ui-profile-badges-head"); if (profileBadgesHead) profileBadgesHead.innerText = t.profileBadgesHead || (currentLang === "de" ? "🏆 Badges & Trophäen" : "🏆 Badges & Trophies");
             const profileClose = document.getElementById("ui-profile-close-btn"); if (profileClose) profileClose.innerText = t.profileClose || t.btnClose || (currentLang === "de" ? "Schließen" : "Close");
-            const btnProfile = document.getElementById("ui-btn-profile"); if (btnProfile) btnProfile.innerText = t.btnProfile || (currentLang === "de" ? "👤 Profil" : "👤 Profile");
+            // profile button translated in HUD block above
             const statLabels = {
                 "ui-stat-level-label": t.statLevel || "Level",
                 "ui-stat-xp-label": t.statXp || "XP",
@@ -872,6 +886,16 @@
             document.querySelectorAll(".shop-action-btn").forEach(el => el.innerText = t.buyEquipBtn);
             const themesHead = document.getElementById("ui-themes-head"); if (themesHead) themesHead.innerText = t.themesHead;
             document.querySelectorAll(".theme-action-btn").forEach(el => el.innerText = t.unlockBtn);
+            // Joker-Kauf-Buttons (data-joker-amount steuert +n)
+            document.querySelectorAll(".joker-buy-btn").forEach(el => {
+                const n = parseInt(el.getAttribute("data-joker-amount") || "1", 10);
+                if (n > 1) {
+                    const tpl = t.buyJokerBtnPlus || (currentLang === "de" ? "Kaufen (+{n})" : "Buy (+{n})");
+                    el.innerText = tpl.replace("{n}", String(n));
+                } else {
+                    el.innerText = (t.buyJokerBtn || (currentLang === "de" ? "Kaufen" : "Buy")) + " (+1)";
+                }
+            });
             const btnLogout = document.getElementById("ui-btn-logout"); if (btnLogout) btnLogout.innerText = t.btnLogout;
             const btnDeleteAccount = document.getElementById("ui-btn-delete-account"); if (btnDeleteAccount) btnDeleteAccount.innerText = t.btnDeleteAccount;
             const btnClose = document.getElementById("ui-btn-close"); if (btnClose) btnClose.innerText = t.btnClose;
@@ -928,12 +952,61 @@
             // HUD & Navigation
             const hudStreak = document.getElementById("ui-hud-streak-text"); if (hudStreak) hudStreak.innerText = t.hudStreakText;
             const hudCoins = document.getElementById("ui-hud-coins-text"); if (hudCoins) hudCoins.innerText = t.hudCoinsText;
-            const adminBtn = document.getElementById("btn-admin-panel"); if (adminBtn) adminBtn.innerText = t.btnAdmin;
-            const lbBtn = document.getElementById("ui-btn-leaderboard"); if (lbBtn) lbBtn.innerText = t.btnLeaderboard;
-            const frBtn = document.getElementById("ui-btn-friends"); if (frBtn) frBtn.innerText = t.btnFriends;
-            const playersBtn = document.getElementById("ui-btn-players"); if (playersBtn) playersBtn.innerText = t.btnPlayers;
-            const fbBtn = document.getElementById("ui-btn-feedback"); if (fbBtn) fbBtn.innerText = t.btnFeedback;
-            const shopBtn = document.getElementById("ui-btn-shop"); if (shopBtn) shopBtn.innerText = t.btnShop;
+            // HUD-Action-Buttons: Labels in Spans setzen, damit Badge/Icons erhalten bleiben
+            const setHudLabel = (btnId, labelId, text) => {
+                const lbl = document.getElementById(labelId);
+                if (lbl) { lbl.innerText = String(text || "").replace(/^[^\wÀ-ÿ🛡🏆👥🌐📝👤🛒]+\s*/, "").trim() || text; return; }
+                const btn = document.getElementById(btnId);
+                if (btn) btn.innerText = text;
+            };
+            // Full strings still contain emoji – use them on buttons without internal label spans as fallback
+            const adminBtn = document.getElementById("btn-admin-panel");
+            if (adminBtn) {
+                const al = document.getElementById("ui-btn-admin-label");
+                if (al) al.innerText = (t.btnAdmin || "Admin").replace(/^🛡️\s*/, "");
+                else adminBtn.innerText = t.btnAdmin;
+            }
+            const lbBtn = document.getElementById("ui-btn-leaderboard");
+            if (lbBtn) {
+                const ll = document.getElementById("ui-btn-lb-label");
+                if (ll) ll.innerText = (t.btnLeaderboard || "Rangliste").replace(/^🏆\s*/, "");
+                else lbBtn.innerText = t.btnLeaderboard;
+            }
+            const frBtn = document.getElementById("ui-btn-friends");
+            if (frBtn) {
+                const fl = document.getElementById("ui-btn-friends-label");
+                if (fl) fl.innerText = (t.btnFriends || "Freunde").replace(/^👥\s*/, "");
+                else {
+                    // Preserve badge if present
+                    const badge = document.getElementById("hud-friend-req-badge");
+                    const badgeHtml = badge ? badge.outerHTML : "";
+                    frBtn.innerHTML = (t.btnFriends || "👥 Freunde") + " " + badgeHtml;
+                }
+            }
+            const playersBtn = document.getElementById("ui-btn-players");
+            if (playersBtn) {
+                const pl = document.getElementById("ui-btn-players-label");
+                if (pl) pl.innerText = (t.btnPlayers || "Spieler").replace(/^🌐\s*/, "");
+                else playersBtn.innerText = t.btnPlayers;
+            }
+            const fbBtn = document.getElementById("ui-btn-feedback");
+            if (fbBtn) {
+                const fbl = document.getElementById("ui-btn-fb-label");
+                if (fbl) fbl.innerText = (t.btnFeedback || "Feedback").replace(/^📝\s*/, "");
+                else fbBtn.innerText = t.btnFeedback;
+            }
+            const profileBtn = document.getElementById("ui-btn-profile");
+            if (profileBtn) {
+                const prl = document.getElementById("ui-btn-profile-label");
+                if (prl) prl.innerText = (t.btnProfile || "Profil").replace(/^👤\s*/, "");
+                else profileBtn.innerText = t.btnProfile || (currentLang === "de" ? "👤 Profil" : "👤 Profile");
+            }
+            const shopBtn = document.getElementById("ui-btn-shop");
+            if (shopBtn) {
+                const sl = document.getElementById("ui-btn-shop-label");
+                if (sl) sl.innerText = (t.btnShop || "Shop").replace(/^🛒\s*/, "");
+                else shopBtn.innerText = t.btnShop;
+            }
             const leaveBtn = document.getElementById("leave-lobby-btn"); if (leaveBtn) leaveBtn.innerText = t.leaveBtn;
             const langLabel = document.getElementById("ui-lang-label-text"); if (langLabel) langLabel.innerText = t.langLabelText;
 
@@ -951,7 +1024,11 @@
             const spectateBtn = document.getElementById("ui-spectate-btn"); if (spectateBtn) spectateBtn.innerText = t.spectateBtn;
             const specBadge = document.getElementById("hud-spectator-badge"); if (specBadge) specBadge.innerText = t.spectatorBadge;
             const chatHead = document.getElementById("ui-chat-head");
-            if (chatHead) chatHead.innerText = currentLang === "de" ? "💬 Live-Chat" : "💬 Live Chat";
+            if (chatHead) chatHead.innerText = t.chatHead || (currentLang === "de" ? "💬 Live-Chat" : "💬 Live Chat");
+            const lobbyCodeLbl = document.getElementById("ui-lobby-code-label");
+            if (lobbyCodeLbl) lobbyCodeLbl.innerText = t.lobbyCodeJoinLabel || (currentLang === "de" ? "Mit Code beitreten" : "Join with code");
+            const lookingLbl = document.getElementById("ui-looking-toggle-label");
+            if (lookingLbl) lookingLbl.innerText = t.lookingToggleLabel || (currentLang === "de" ? "🔍 Mitspieler gesucht (öffentlich sichtbar)" : "🔍 Looking for players (publicly visible)");
 
             // Lobby Wartesaal
             const lobbyCodeTitle = document.getElementById("ui-lobby-code-title");
