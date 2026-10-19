@@ -3600,6 +3600,7 @@
             document.getElementById("client-wait-msg").classList.toggle("hidden", !client);
             saveLobbySession();
             updateOnlineStatus(true);
+            updateBotControlsUI();
         }
 
         function stopReconnectTimer() {
@@ -3851,6 +3852,7 @@
         }
 
         function leaveLobby() {
+            stopBotChatLoop();
             if (confirm(currentLang === 'de' ? "Möchtest du die Lobby wirklich verlassen?" : "Do you really want to leave the lobby?")) {
                 leavingLobbyManually = true;
                 stopReconnectTimer();
@@ -4050,13 +4052,395 @@
                 const fromName = data.sender || "";
                 if (namesEqual(fromName, myName)) {
                     // Eigene PN wurde schon lokal angezeigt – keine Duplikate.
+                    // Host: Bot antworten lassen, falls PN an Bot ging
+                    if (isHost) handleBotPrivateMessage(fromName, toName, data.text);
                     return;
                 }
                 if (namesEqual(toName, myName)) {
                     appendPrivateChat(fromName, toName, data.text, false);
                 }
+                // Host steuert Bot-Antworten auf PN an Bots
+                if (isHost) handleBotPrivateMessage(fromName, toName, data.text);
+            }
+
+            // Nach relevanten Events Bot-KI anstoßen
+            if (isHost && gameStarted) {
+                try { runBotAI(); } catch (e) {}
             }
         }
+
+
+// ==============================================================================
+// TEST-BOTS (nur Master-Rolle, max. 5) – spielen, chatten, PN beantworten
+// ==============================================================================
+        const MAX_TEST_BOTS = 5;
+        const BOT_NAME_POOL = ["Bot Alpha", "Bot Beta", "Bot Gamma", "Bot Delta", "Bot Epsilon"];
+        const BOT_TRUTH_TASKS_DE = [
+            "Was war dein peinlichster Moment auf einer Party?",
+            "Wen in der Runde findest du am coolsten – und warum?",
+            "Was würdest du nie öffentlich zugeben?",
+            "Welches Geheimnis hast du noch nie erzählt?",
+            "Was ist deine größte Angst beim Trinken?"
+        ];
+        const BOT_TRUTH_TASKS_EN = [
+            "What was your most embarrassing party moment?",
+            "Who in this group do you think is the coolest – and why?",
+            "What would you never admit publicly?",
+            "What secret have you never told?",
+            "What's your biggest fear when drinking?"
+        ];
+        const BOT_DARE_TASKS_DE = [
+            "Mach 10 Liegestütze!",
+            "Trink einen Schluck deines Getränks auf Ex!",
+            "Imitiere 10 Sekunden lang jemand anderen in der Runde!",
+            "Tanz 15 Sekunden ohne Musik!",
+            "Sag dem nächsten Spieler ein Kompliment!"
+        ];
+        const BOT_DARE_TASKS_EN = [
+            "Do 10 push-ups!",
+            "Chug a sip of your drink!",
+            "Imitate someone in the group for 10 seconds!",
+            "Dance for 15 seconds without music!",
+            "Give the next player a compliment!"
+        ];
+        const BOT_CHAT_LINES_DE = [
+            "Haha los geht's 🔥",
+            "Ich bin ready!",
+            "Das wird lustig…",
+            "Wer ist als Nächstes dran?",
+            "GG!",
+            "Nice Runde!",
+            "Bin gespannt 👀"
+        ];
+        const BOT_CHAT_LINES_EN = [
+            "Let's go 🔥",
+            "I'm ready!",
+            "This will be fun…",
+            "Who's next?",
+            "GG!",
+            "Nice round!",
+            "Can't wait 👀"
+        ];
+        const BOT_PM_REPLIES_DE = [
+            "Hey! Alles klar bei dir?",
+            "🤖 Automatische Bot-Antwort – ich bin nur ein Test-Bot!",
+            "Jo, was geht?",
+            "Verstanden 👍",
+            "Haha nice"
+        ];
+        const BOT_PM_REPLIES_EN = [
+            "Hey! All good?",
+            "🤖 Auto bot reply – I'm just a test bot!",
+            "Yo, what's up?",
+            "Got it 👍",
+            "Haha nice"
+        ];
+        const BOT_ANSWER_DE = [
+            "Äh… keine Ahnung, ehrlich!",
+            "Das bleibt geheim 😏",
+            "Vielleicht später…",
+            "Okay, ich sag's: es war peinlich.",
+            "Bot-Antwort: Test erfolgreich!"
+        ];
+        const BOT_ANSWER_EN = [
+            "Uh… no idea, honestly!",
+            "That's a secret 😏",
+            "Maybe later…",
+            "Okay I'll say it: it was embarrassing.",
+            "Bot answer: test successful!"
+        ];
+
+        let botActionTimers = [];
+        let botChatTimer = null;
+        let lastBotChoiceKey = "";
+        let lastBotCreatorKey = "";
+        let lastBotTaskKey = "";
+        let lastBotVoteKey = "";
+        let lastBotWheelVoteKey = "";
+
+        function isBotPlayer(p) {
+            if (!p) return false;
+            if (typeof p === "object") return !!p.isBot;
+            return false;
+        }
+
+        function countBots() {
+            return (players || []).filter(p => isBotPlayer(p) && !p.eliminated).length;
+        }
+
+        function getBotNamesInUse() {
+            return new Set((players || []).filter(isBotPlayer).map(p => getUserDisplayName(p)));
+        }
+
+        function nextBotName() {
+            const used = getBotNamesInUse();
+            for (const n of BOT_NAME_POOL) {
+                if (!used.has(n)) return n;
+            }
+            let i = 1;
+            while (used.has("Bot " + i)) i++;
+            return "Bot " + i;
+        }
+
+        function clearBotTimers() {
+            botActionTimers.forEach(id => clearTimeout(id));
+            botActionTimers = [];
+        }
+
+        function scheduleBot(fn, delayMs) {
+            if (!isHost) return;
+            const id = setTimeout(() => {
+                try { fn(); } catch (e) { console.error("bot action:", e); }
+            }, delayMs);
+            botActionTimers.push(id);
+        }
+
+        function pickRandom(arr) {
+            return arr[Math.floor(Math.random() * arr.length)];
+        }
+
+        function updateBotControlsUI() {
+            const box = document.getElementById("bot-controls-box");
+            if (!box) return;
+            const canUse = isHost && myRole === "master" && !gameStarted;
+            box.classList.toggle("hidden", !canUse);
+            const n = countBots();
+            const lbl = document.getElementById("bot-count-label");
+            if (lbl) lbl.innerText = currentLang === "de" ? `Bots: ${n}/${MAX_TEST_BOTS}` : `Bots: ${n}/${MAX_TEST_BOTS}`;
+            const addBtn = document.getElementById("ui-add-bot-btn");
+            if (addBtn) addBtn.disabled = n >= MAX_TEST_BOTS;
+            const remBtn = document.getElementById("ui-remove-bot-btn");
+            if (remBtn) remBtn.disabled = n <= 0;
+        }
+
+        function addTestBot() {
+            if (myRole !== "master") {
+                alert(currentLang === "de" ? "Nur der Master kann Bots hinzufügen." : "Only Master can add bots.");
+                return;
+            }
+            if (!isHost) {
+                alert(currentLang === "de" ? "Nur der Host kann Bots hinzufügen." : "Only the host can add bots.");
+                return;
+            }
+            if (gameStarted) {
+                alert(currentLang === "de" ? "Bots nur vor Spielstart hinzufügen." : "Add bots only before the game starts.");
+                return;
+            }
+            if (countBots() >= MAX_TEST_BOTS) {
+                alert(currentLang === "de" ? `Maximal ${MAX_TEST_BOTS} Bots.` : `Maximum ${MAX_TEST_BOTS} bots.`);
+                return;
+            }
+            const name = nextBotName();
+            players.push({
+                name: name,
+                accessory: "🤖",
+                eliminated: false,
+                isBot: true,
+                isSpectator: false
+            });
+            updatePlayerList();
+            saveLobbyPlayers();
+            sendData({ type: "UPDATE_PLAYERS", players: players });
+            scheduleSaveGameState();
+            updateBotControlsUI();
+            appendChat("System", currentLang === "de" ? `🤖 ${name} ist der Lobby beigetreten (Test-Bot).` : `🤖 ${name} joined the lobby (test bot).`);
+        }
+
+        function removeLastTestBot() {
+            if (myRole !== "master" || !isHost) return;
+            if (gameStarted) {
+                alert(currentLang === "de" ? "Während des Spiels keine Bots entfernen." : "Don't remove bots during the game.");
+                return;
+            }
+            let idx = -1;
+            for (let i = players.length - 1; i >= 0; i--) {
+                if (isBotPlayer(players[i])) { idx = i; break; }
+            }
+            if (idx < 0) return;
+            const removed = getUserDisplayName(players[idx]);
+            players.splice(idx, 1);
+            updatePlayerList();
+            saveLobbyPlayers();
+            sendData({ type: "UPDATE_PLAYERS", players: players });
+            scheduleSaveGameState();
+            updateBotControlsUI();
+            appendChat("System", currentLang === "de" ? `🤖 ${removed} wurde entfernt.` : `🤖 ${removed} was removed.`);
+        }
+
+        /** Host steuert Bot-Aktionen anhand des aktuellen Spielzustands */
+        function runBotAI() {
+            if (!isHost || !gameStarted) return;
+            if (!(players || []).some(isBotPlayer)) return;
+
+            // --- Wahrheit/Pflicht: Bot ist am Zug und muss wählen ---
+            if (gamePhase === "wop" && !currentSharedResult) {
+                const currentP = players[currentPlayerIndex];
+                if (currentP && isBotPlayer(currentP) && !currentP.eliminated && !pendingChoice && !currentTaskText) {
+                    const key = "choice|" + getUserDisplayName(currentP) + "|" + currentPlayerIndex;
+                    if (key !== lastBotChoiceKey) {
+                        lastBotChoiceKey = key;
+                        scheduleBot(() => {
+                            if (!isHost || gamePhase !== "wop") return;
+                            const cp = players[currentPlayerIndex];
+                            if (!cp || !isBotPlayer(cp) || pendingChoice) return;
+                            const choice = Math.random() < 0.45 ? "truth" : "dare";
+                            sendData({ type: "SUBMIT_CHOICE", playerName: getUserDisplayName(cp), choice });
+                        }, 800 + Math.random() * 1200);
+                    }
+                }
+
+                // Bot soll Aufgabe erstellen
+                if (pendingChoice && currentTaskCreator && !currentTaskText) {
+                    const creator = (players || []).find(p => namesEqual(p, currentTaskCreator) && isBotPlayer(p));
+                    if (creator) {
+                        const key = "create|" + currentTaskCreator + "|" + pendingChoice + "|" + currentPlayerIndex;
+                        if (key !== lastBotCreatorKey) {
+                            lastBotCreatorKey = key;
+                            scheduleBot(() => {
+                                if (!isHost || currentTaskText) return;
+                                if (!namesEqual(currentTaskCreator, getUserDisplayName(creator))) return;
+                                const isTruth = pendingChoice === "truth";
+                                const pool = currentLang === "de"
+                                    ? (isTruth ? BOT_TRUTH_TASKS_DE : BOT_DARE_TASKS_DE)
+                                    : (isTruth ? BOT_TRUTH_TASKS_EN : BOT_DARE_TASKS_EN);
+                                const taskText = pickRandom(pool);
+                                const target = players[currentPlayerIndex];
+                                const targetName = getUserDisplayName(target);
+                                sendData({
+                                    type: "SHOW_TASK",
+                                    targetPlayer: targetName,
+                                    choice: pendingChoice,
+                                    taskText,
+                                    creator: getUserDisplayName(creator)
+                                });
+                            }, 900 + Math.random() * 1400);
+                        }
+                    }
+                }
+
+                // Bot muss Aufgabe ausführen
+                if (pendingChoice && currentTaskText) {
+                    const currentP = players[currentPlayerIndex];
+                    if (currentP && isBotPlayer(currentP) && !taskCompleted) {
+                        const key = "task|" + getUserDisplayName(currentP) + "|" + currentTaskText;
+                        if (key !== lastBotTaskKey) {
+                            lastBotTaskKey = key;
+                            scheduleBot(() => {
+                                if (!isHost || taskCompleted) return;
+                                const cp = players[currentPlayerIndex];
+                                if (!cp || !isBotPlayer(cp)) return;
+                                const name = getUserDisplayName(cp);
+                                let resultText;
+                                if (pendingChoice === "truth") {
+                                    const ans = pickRandom(currentLang === "de" ? BOT_ANSWER_DE : BOT_ANSWER_EN);
+                                    resultText = currentLang === "de" ? `Antwort: "${ans}"` : `Answer: "${ans}"`;
+                                } else {
+                                    resultText = currentLang === "de" ? "Erfolgreich erfüllt! ✅ (Bot)" : "Successfully completed! ✅ (Bot)";
+                                }
+                                const resultData = {
+                                    type: "SHOW_RESULT",
+                                    targetPlayer: name,
+                                    choice: pendingChoice,
+                                    taskText: currentTaskText,
+                                    resultText
+                                };
+                                handleIncomingData(resultData);
+                                broadcastLobbyData(resultData);
+                                scheduleSaveGameState();
+                            }, 1200 + Math.random() * 1800);
+                        }
+                    }
+                }
+            }
+
+            // --- Alle Bots bestätigen „Weiter“ ---
+            if (gamePhase === "wop" && currentSharedResult) {
+                const key = "vote|" + currentSharedResultKey;
+                if (key !== lastBotVoteKey) {
+                    lastBotVoteKey = key;
+                    (players || []).filter(p => isBotPlayer(p) && !p.eliminated && !p.isSpectator).forEach((bot, i) => {
+                        const bName = getUserDisplayName(bot);
+                        if (nextTurnVotedPlayers.some(n => namesEqual(n, bName))) return;
+                        scheduleBot(() => {
+                            if (!currentSharedResult) return;
+                            if (nextTurnVotedPlayers.some(n => namesEqual(n, bName))) return;
+                            const voteData = { type: "VOTE_NEXT_TURN", playerName: bName };
+                            handleIncomingData(voteData);
+                            broadcastLobbyData(voteData);
+                        }, 600 + i * 400 + Math.random() * 500);
+                    });
+                }
+            }
+
+            // --- Rad-Phase: Bots bestätigen nächste Runde ---
+            if (gamePhase === "wheel") {
+                const resultVisible = document.getElementById("wheel-result-box") && !document.getElementById("wheel-result-box").classList.contains("hidden");
+                if (resultVisible) {
+                    const key = "wheelvote|" + (document.getElementById("wheel-action-title")?.innerText || "") + "|" + nextRoundVotedPlayers.length;
+                    if (key !== lastBotWheelVoteKey) {
+                        lastBotWheelVoteKey = key;
+                        (players || []).filter(p => isBotPlayer(p) && !p.eliminated && !p.isSpectator).forEach((bot, i) => {
+                            const bName = getUserDisplayName(bot);
+                            if (nextRoundVotedPlayers.some(n => namesEqual(n, bName))) return;
+                            scheduleBot(() => {
+                                if (gamePhase !== "wheel") return;
+                                if (nextRoundVotedPlayers.some(n => namesEqual(n, bName))) return;
+                                sendData({ type: "VOTE_NEXT_ROUND", playerName: bName });
+                            }, 700 + i * 350 + Math.random() * 400);
+                        });
+                    }
+                }
+            }
+        }
+
+        function botMaybePublicChat() {
+            if (!isHost || !gameStarted) return;
+            const bots = (players || []).filter(p => isBotPlayer(p) && !p.eliminated);
+            if (!bots.length) return;
+            if (Math.random() > 0.35) return;
+            const bot = pickRandom(bots);
+            const line = pickRandom(currentLang === "de" ? BOT_CHAT_LINES_DE : BOT_CHAT_LINES_EN);
+            const msg = { type: "CHAT_MSG", sender: getUserDisplayName(bot), text: line };
+            // Host: lokal + broadcast
+            handleIncomingData(msg);
+            broadcastLobbyData(msg);
+        }
+
+        function startBotChatLoop() {
+            if (botChatTimer) clearInterval(botChatTimer);
+            botChatTimer = setInterval(() => {
+                try { botMaybePublicChat(); } catch (e) {}
+            }, 18000 + Math.floor(Math.random() * 8000));
+        }
+
+        function stopBotChatLoop() {
+            if (botChatTimer) {
+                clearInterval(botChatTimer);
+                botChatTimer = null;
+            }
+            clearBotTimers();
+        }
+
+        function handleBotPrivateMessage(fromName, toName, text) {
+            if (!isHost) return;
+            const target = (players || []).find(p => isBotPlayer(p) && namesEqual(p, toName));
+            if (!target) return;
+            const reply = pickRandom(currentLang === "de" ? BOT_PM_REPLIES_DE : BOT_PM_REPLIES_EN);
+            scheduleBot(() => {
+                const pm = {
+                    type: "PRIVATE_MSG",
+                    sender: getUserDisplayName(target),
+                    to: fromName,
+                    text: reply
+                };
+                // Für den Host (wenn er Empfänger ist) lokal anzeigen
+                if (namesEqual(fromName, myName)) {
+                    appendPrivateChat(pm.sender, pm.to, pm.text, false);
+                }
+                broadcastLobbyData(pm);
+            }, 700 + Math.random() * 900);
+        }
+
 
         function updatePlayerList() {
             const list = document.getElementById("player-list");
@@ -4069,7 +4453,8 @@
                 const isSpec = !!p.isSpectator;
                 if (!isSpec) nonSpectatorCount++;
                 const specBadge = isSpec ? ` <span style="font-size:10px;color:#b388ff;font-weight:normal;">[${currentLang === "de" ? "Zuschauer" : "Spectator"}]</span>` : "";
-                list.innerHTML += `<li><b>${index + 1}.</b> ${accessory} ${playerName} ${p.eliminated ? '❌' : ''}${specBadge}</li>`;
+                const botBadge = isBotPlayer(p) ? ` <span style="font-size:10px;color:#5eead4;font-weight:normal;">[Bot]</span>` : "";
+                list.innerHTML += `<li><b>${index + 1}.</b> ${accessory} ${playerName} ${p.eliminated ? '❌' : ''}${specBadge}${botBadge}</li>`;
             });
             if (isHost && nonSpectatorCount >= 1) {
                 document.getElementById("start-btn").classList.remove("hidden");
@@ -4078,6 +4463,7 @@
             }
             renderPlayerStatuses();
             refreshChatRecipientSelect();
+            updateBotControlsUI();
         }
 
         /** Dropdown „An:“ im Chat mit aktuellen Mitspielern füllen (ohne sich selbst). */
@@ -4195,9 +4581,13 @@
             currentSharedResult = null;
             nextTurnVotedPlayers = [];
             nextRoundVotedPlayers = [];
+            lastBotChoiceKey = lastBotCreatorKey = lastBotTaskKey = lastBotVoteKey = lastBotWheelVoteKey = "";
             sendData({ type: 'START_GAME', players: players });
             startGameUI();
             scheduleSaveGameState();
+            updateBotControlsUI();
+            startBotChatLoop();
+            scheduleBot(() => runBotAI(), 600);
         }
 
         function startGameUI() {
@@ -4678,7 +5068,10 @@
             nextTurnVotedPlayers = [];
             currentPlayerIndex++;
             updateWopTurn();
-            if (isHost) scheduleSaveGameState();
+            if (isHost) {
+                scheduleSaveGameState();
+                scheduleBot(() => runBotAI(), 400);
+            }
         }
 
 // ==============================================================================
@@ -4718,6 +5111,7 @@
                     updateProfileModal();
                     saveUserDataToCloud();
                 }
+            try { runBotAI(); } catch (e) {}
             }, 3000);
         }
 
@@ -4759,7 +5153,11 @@
             const selectBtn = document.getElementById("ui-select-btn");
             if (selectBtn) selectBtn.disabled = false;
             updateWopTurn();
-            if (isHost) scheduleSaveGameState();
+            if (isHost) {
+                scheduleSaveGameState();
+                lastBotChoiceKey = lastBotCreatorKey = lastBotTaskKey = lastBotVoteKey = lastBotWheelVoteKey = "";
+                scheduleBot(() => runBotAI(), 500);
+            }
         }
 
         function findPlayerByNameInput(input) {
