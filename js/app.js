@@ -2262,36 +2262,33 @@
             if (savedEmail && savedName) {
                 myEmail = savedEmail;
                 myName = savedName;
-
-                // Auth-Modal sofort verstecken (kein Login-Flash beim Reload)
-                document.getElementById("auth-modal")?.classList.add("hidden");
-
-                const savedLobby = getSavedLobbySession();
-                const willRestoreLobby = !!(savedLobby && savedLobby.code);
-                if (willRestoreLobby) {
-                    restoringLobby = true;
-                    activeLobbyCode = String(savedLobby.code).toLowerCase();
-                    isHost = savedLobby.role === "host";
-                    isSpectator = !!savedLobby.isSpectator || savedLobby.role === "spectator";
-                    document.getElementById("setup")?.classList.add("hidden");
-                }
-
                 await loadUserDataFromCloud();
-                showLoggedInState({ skipSetup: willRestoreLobby });
+                showLoggedInState();
                 startOnlineHeartbeat();
                 listenForInvitations();
                 loadFriendsData();
                 listenForFriendRequests();
 
-                // Nach einem Reload automatisch in die vorhandene Lobby / laufende Runde zurück.
-                if (willRestoreLobby) {
-                    // Kein players.unshift hier – der Stand kommt aus Firebase (Host) bzw. Join.
-                    setTimeout(() => reconnectLobby(), 200);
+                // Nach einem Reload automatisch in die vorhandene Lobby zurück.
+                const savedLobby = getSavedLobbySession();
+                if (savedLobby && savedLobby.code) {
+                    activeLobbyCode = String(savedLobby.code).toLowerCase();
+                    isHost = savedLobby.role === "host";
+
+                    if (isHost) {
+                        players = loadLobbyPlayers();
+                        if (!players.some(p => p.name === myName)) {
+                            players.unshift({
+                                name: myName,
+                                accessory: equippedAccessory,
+                                eliminated: false
+                            });
+                        }
+                    }
+
+                    restoringLobby = true;
+                    setTimeout(() => reconnectLobby(), 250);
                 }
-            } else {
-                // Nicht eingeloggt → Login zeigen
-                document.getElementById("auth-modal")?.classList.remove("hidden");
-                document.getElementById("setup")?.classList.add("hidden");
             }
 
             changeLanguage(currentLang);
@@ -2471,17 +2468,11 @@
             document.getElementById("setup").classList.add("hidden");
         }
 
-        function showLoggedInState(options = {}) {
-            document.getElementById("auth-modal")?.classList.add("hidden");
+        function showLoggedInState() {
+            document.getElementById("auth-modal").classList.add("hidden");
             document.getElementById("account-modal")?.classList.add("hidden");
             document.getElementById("profile-modal")?.classList.add("hidden");
-            // Setup nur zeigen, wenn wir nicht gerade in eine laufende Lobby zurückkehren
-            const skipSetup = !!(options && options.skipSetup) || restoringLobby || !!activeLobbyCode;
-            if (!skipSetup) {
-                document.getElementById("setup")?.classList.remove("hidden");
-            } else {
-                document.getElementById("setup")?.classList.add("hidden");
-            }
+            document.getElementById("setup").classList.remove("hidden");
         }
 
 
@@ -3251,13 +3242,12 @@
                         const name = getUserDisplayName(d, "Spieler");
 
                         if (d.currentLobby === activeLobbyCode && name) {
-                            // eliminated-Status aus bisheriger Liste / Firebase-Stand behalten
-                            const oldPlayer = players.find(p => namesEqual(p, name) || p.name === name);
+                            const oldPlayer = players.find(p => p.name === name);
                             const playerIsSpec = !!d.isSpectator || d.lobbyRole === "spectator";
                             nextPlayers.push({
                                 name,
-                                accessory: d.accessory || (oldPlayer && oldPlayer.accessory) || "",
-                                eliminated: !!(oldPlayer && oldPlayer.eliminated),
+                                accessory: d.accessory || "",
+                                eliminated: !!oldPlayer?.eliminated,
                                 isSpectator: playerIsSpec
                             });
 
@@ -3288,21 +3278,6 @@
                             }
                         }
                     });
-
-                    // Laufendes Spiel: eliminierte Spieler behalten, auch wenn Presence kurz weg ist
-                    if (gameStarted) {
-                        players.forEach(oldP => {
-                            if (!oldP || !oldP.eliminated) return;
-                            if (!nextPlayers.some(n => namesEqual(n, oldP) || n.name === oldP.name)) {
-                                nextPlayers.push({
-                                    name: oldP.name,
-                                    accessory: oldP.accessory || "",
-                                    eliminated: true,
-                                    isSpectator: !!oldP.isSpectator
-                                });
-                            }
-                        });
-                    }
 
                     const changed = JSON.stringify(players) !== JSON.stringify(nextPlayers);
                     players = nextPlayers;
@@ -3653,12 +3628,10 @@
                 // UI in die laufende Runde bringen (auch nach Reload / Mid-Game-Join)
                 document.getElementById("setup")?.classList.add("hidden");
                 document.getElementById("lobby-wait-box")?.classList.add("hidden");
-                document.getElementById("start-btn")?.classList.add("hidden");
                 document.getElementById("leave-lobby-btn")?.classList.remove("hidden");
                 document.getElementById("chat-box-container")?.classList.remove("hidden");
                 document.getElementById("emergency-box")?.classList.remove("hidden");
                 document.getElementById("player-status-panel")?.classList.remove("hidden");
-                document.getElementById("auth-modal")?.classList.add("hidden");
 
                 if (phase === "wop") {
                     document.getElementById("woP-phase")?.classList.remove("hidden");
@@ -3749,58 +3722,28 @@
 
             isHost = true;
 
+            if (!restoring || !activeLobbyCode) {
+                activeLobbyCode = "vibe" + Math.random().toString(36).slice(2, 8);
+                players = [{ name: getUserDisplayName({name: myName}, "Spieler"), accessory: equippedAccessory || "", eliminated: false }];
+            } else {
+                const savedPlayers = loadLobbyPlayers();
+                players = Array.isArray(savedPlayers) && savedPlayers.length ? savedPlayers : [];
+                if (!players.some(p => p.name === myName)) {
+                    players.unshift({ name: myName, accessory: equippedAccessory || "", eliminated: false });
+                }
+            }
+
             destroyPeerOnly();
             stopFirestoreLobbyTransport();
             stopLobbyStateListener();
-
-            if (!restoring || !activeLobbyCode) {
-                // Neue Lobby
-                activeLobbyCode = "vibe" + Math.random().toString(36).slice(2, 8);
-                players = [{ name: getUserDisplayName({name: myName}, "Spieler"), accessory: equippedAccessory || "", eliminated: false }];
+            if (!restoring) {
                 gamePhase = "lobby";
                 gameStarted = false;
                 currentPlayerIndex = 0;
                 currentSharedResult = null;
-                currentSharedResultKey = "";
                 nextTurnVotedPlayers = [];
                 nextRoundVotedPlayers = [];
-            } else {
-                // RESTORE: Zuerst Firebase-Stand laden – NIEMALS vorher gameStarted:false schreiben
-                let restoredFromCloud = false;
-                try {
-                    const lobbyDoc = await db.collection("lobbies").doc(activeLobbyCode).get();
-                    if (lobbyDoc.exists) {
-                        const data = lobbyDoc.data() || {};
-                        if (Array.isArray(data.players) && data.players.length) {
-                            players = data.players.map(p => ({
-                                name: p.name,
-                                accessory: p.accessory || "",
-                                eliminated: !!p.eliminated,
-                                isSpectator: !!p.isSpectator
-                            }));
-                        }
-                        // Volle Runde / Phase wiederherstellen (UI + Index + Votes)
-                        applyGameStateFromFirebase(data);
-                        restoredFromCloud = true;
-                    }
-                } catch (e) {
-                    console.warn("Host-Restore: Lobby-Doc lesen fehlgeschlagen", e);
-                }
-                if (!restoredFromCloud) {
-                    const savedPlayers = loadLobbyPlayers();
-                    players = Array.isArray(savedPlayers) && savedPlayers.length ? savedPlayers : [];
-                }
-                // Host muss in der Liste sein, aber nicht als „neu“ mit eliminated:false überschreiben
-                if (!players.some(p => namesEqual(p, myName))) {
-                    players.unshift({
-                        name: getUserDisplayName({ name: myName }, myName),
-                        accessory: equippedAccessory || "",
-                        eliminated: false,
-                        isSpectator: false
-                    });
-                }
             }
-
             saveLobbySession();
             saveLobbyPlayers();
             updateOnlineStatus(true);
@@ -3810,12 +3753,11 @@
                     lobbyMessage: firebase.firestore.FieldValue.delete(),
                     hostMessage: firebase.firestore.FieldValue.delete()
                 });
-                // ensureLobbyDoc NACH Restore → schreibt korrekten gameStarted/phase-Stand
                 await ensureLobbyDoc();
                 startHostFirestoreLobby();
                 startLobbyStateListener();
+                // Beim Restore: bestehenden Firebase-Stand laden
                 if (restoring) {
-                    // Nochmal anwenden falls Presence kurz dazwischen kam
                     try {
                         const lobbyDoc = await db.collection("lobbies").doc(activeLobbyCode).get();
                         if (lobbyDoc.exists) {
@@ -3825,20 +3767,10 @@
                 }
                 if (!gameStarted) {
                     showLobbyUI(activeLobbyCode, false);
-                    document.getElementById("start-btn")?.classList.remove("hidden");
-                } else {
-                    // Laufendes Spiel nach Reload: kein Lobby-Start-Screen, kein Neustart-Button
-                    document.getElementById("setup")?.classList.add("hidden");
-                    document.getElementById("lobby-wait-box")?.classList.add("hidden");
-                    document.getElementById("start-btn")?.classList.add("hidden");
-                    document.getElementById("leave-lobby-btn")?.classList.remove("hidden");
-                    document.getElementById("chat-box-container")?.classList.remove("hidden");
-                    document.getElementById("emergency-box")?.classList.remove("hidden");
-                    document.getElementById("player-status-panel")?.classList.remove("hidden");
+                    document.getElementById("start-btn").classList.remove("hidden");
                 }
                 updatePlayerList();
                 scheduleSaveGameState();
-                reconnectAttempts = 0;
                 restoringLobby = false;
             } catch (e) {
                 if (!restoring) {
@@ -3974,39 +3906,25 @@
 
                 document.getElementById("display-code").innerText = code.toUpperCase();
                 saveLobbySession();
-                reconnectAttempts = 0;
                 restoringLobby = false;
             } catch (e) {
                 if (!restoring) {
                     alert(currentLang === "de"
                         ? "Lobby konnte nicht beigetreten werden. Bitte Code prüfen."
                         : "Could not join the lobby. Please check the code.");
-                } else if (!leavingLobbyManually) {
-                    scheduleLobbyReconnect();
                 }
             }
         }
 
         function reconnectLobby() {
             if (leavingLobbyManually || !activeLobbyCode) return;
-            stopReconnectTimer();
 
             const saved = getSavedLobbySession();
-            if (!saved || !saved.code) {
-                // Session verloren – nicht endlos neu verbinden
-                return;
-            }
-            const role = saved.role || (isHost ? "host" : (isSpectator ? "spectator" : "client"));
-            const wasSpectator = !!saved.isSpectator || role === "spectator";
-            activeLobbyCode = String(saved.code).toLowerCase();
+            const role = saved?.role || (isHost ? "host" : (isSpectator ? "spectator" : "client"));
+            const wasSpectator = !!saved?.isSpectator || role === "spectator";
 
-            if (role === "host") {
-                isHost = true;
-                hostGame({ restoring: true });
-            } else {
-                isHost = false;
-                joinGame({ restoring: true, asSpectator: wasSpectator });
-            }
+            if (role === "host") hostGame({ restoring: true });
+            else joinGame({ restoring: true, asSpectator: wasSpectator });
         }
 
         function leaveLobby() {
@@ -4937,66 +4855,43 @@
 
         function applyEliminationSideEffects(eliminatedName) {
             const name = eliminatedName || null;
-            // Doppelt anwenden verhindern (Host: lokal + ELIMINATE-Broadcast)
+            // Chat-Hinweis (nicht doppelt bei lokal + Broadcast)
             if (name) {
-                const chatKey = name + "|" + (currentPlayerIndex || 0) + "|" + (gamePhase || "");
-                if (chatKey === lastEliminatedChatKey) {
-                    return;
+                const chatKey = name + "|" + (currentPlayerIndex || 0);
+                if (chatKey !== lastEliminatedChatKey) {
+                    lastEliminatedChatKey = chatKey;
+                    appendChat(
+                        "System",
+                        currentLang === "de"
+                            ? `${name} ist raus (Leak / aufgegeben). ❌`
+                            : `${name} is out (leaked / gave up). ❌`
+                    );
                 }
-                lastEliminatedChatKey = chatKey;
-                appendChat(
-                    "System",
-                    currentLang === "de"
-                        ? `${name} ist raus (Leak / Kick). ❌`
-                        : `${name} is out (leak / kick). ❌`
-                );
             }
 
-            // Votes des Ausgeschiedenen entfernen (robuster Namensvergleich)
+            // Votes des Ausgeschiedenen entfernen, damit die Runde nicht blockiert
             if (name) {
-                nextTurnVotedPlayers = nextTurnVotedPlayers.filter(n => !namesEqual(n, name));
-                nextRoundVotedPlayers = nextRoundVotedPlayers.filter(n => !namesEqual(n, name));
-            }
-
-            // Spieler-Flag setzen falls noch nicht
-            if (name) {
-                players.forEach(p => {
-                    if (namesEqual(p, name)) p.eliminated = true;
-                });
+                nextTurnVotedPlayers = nextTurnVotedPlayers.filter(n => n !== name);
+                nextRoundVotedPlayers = nextRoundVotedPlayers.filter(n => n !== name);
             }
 
             // Wenn die laufende Runde den ausgeschiedenen Spieler betrifft → weiter
             const current = players[currentPlayerIndex];
             const currentName = current ? getUserDisplayName(current) : "";
-            let advancedTurn = false;
-            if (name && (namesEqual(currentName, name) || currentName === name)) {
+            if (name && currentName === name) {
                 currentSharedResult = null;
                 currentSharedResultKey = "";
-                pendingChoice = "";
-                currentTaskText = "";
-                taskCompleted = false;
                 document.getElementById("result-feedback-area")?.classList.add("hidden");
                 document.getElementById("active-task-area")?.classList.add("hidden");
                 document.getElementById("creator-input-area")?.classList.add("hidden");
                 document.getElementById("wop-choice-area")?.classList.add("hidden");
-                document.getElementById("waiting-for-player-box")?.classList.add("hidden");
                 currentPlayerIndex++;
-                advancedTurn = true;
             }
 
-            // Andere Spieler: Runde fortsetzen (nicht der Gekickte selbst)
-            if (!(name && namesEqual(name, myName))) {
+            // Andere Spieler: Runde fortsetzen
+            if (!(name && name === myName)) {
                 if (gameStarted && gamePhase === "wop") {
-                    if (advancedTurn || !currentSharedResult) {
-                        updateWopTurn();
-                    } else {
-                        // Feedback-Screen bleibt: Vote-Zähler aktualisieren
-                        const activePlayers = players.filter(p => !p.eliminated && !p.isSpectator);
-                        const countEl = document.getElementById("next-votes-count");
-                        const totalEl = document.getElementById("next-votes-total");
-                        if (countEl) countEl.innerText = String(nextTurnVotedPlayers.length);
-                        if (totalEl) totalEl.innerText = String(activePlayers.length);
-                    }
+                    updateWopTurn();
                 } else if (gameStarted && gamePhase === "wheel") {
                     const activeCount = players.filter(p => !p.eliminated && !p.isSpectator).length;
                     const countEl = document.getElementById("round-votes-count");
@@ -5007,10 +4902,9 @@
                         sendData({ type: "NEXT_ROUND" });
                     }
                 }
-                // Host: wenn alle verbleibenden bestätigt haben → nächster Zug
                 if (gameStarted && gamePhase === "wop" && isHost) {
                     const activePlayers = players.filter(p => !p.eliminated && !p.isSpectator);
-                    if (currentSharedResult && activePlayers.length > 0 && nextTurnVotedPlayers.length >= activePlayers.length) {
+                    if (currentSharedResult && nextTurnVotedPlayers.length >= activePlayers.length && activePlayers.length > 0) {
                         const nextData = { type: "EXECUTE_NEXT_TURN" };
                         handleIncomingData(nextData);
                         broadcastLobbyData(nextData);
@@ -5018,10 +4912,8 @@
                 }
             }
 
-            if (isHost) scheduleSaveGameState();
-
-            // Der ausgeschiedene Spieler selbst → zurück zum Lobby-Setup
-            if (name && namesEqual(name, myName)) {
+            // Der ausgeschiedene Spieler selbst → zurück zum Lobby-Setup (Erstellen / Code eingeben)
+            if (name && name === myName) {
                 setTimeout(() => kickEliminatedPlayerToSetup(), 300);
             }
         }
@@ -5189,20 +5081,18 @@
                 updateProfileModal();
             }
 
-            // Host: sendData → handleIncomingData wendet Side-Effects einmal an.
-            // Client/Admin: lokal sofort anwenden, Host broadcastet danach an alle.
+            // An alle senden. Host verarbeitet sofort über sendData → handleIncomingData;
+            // Clients wenden den Effekt an, sobald der Host ELIMINATE broadcastet.
+            // Für den auslösenden Client lokal schon UI anpassen, damit es ohne Verzögerung wirkt.
             updatePlayerList();
-            if (!isHost) {
-                applyEliminationSideEffects(eliminatedName);
-            }
+            applyEliminationSideEffects(eliminatedName);
 
             sendData({
                 type: "ELIMINATE",
                 players: players.map(p => ({
                     name: p.name,
                     accessory: p.accessory || "",
-                    eliminated: !!p.eliminated,
-                    isSpectator: !!p.isSpectator
+                    eliminated: !!p.eliminated
                 })),
                 eliminatedName: eliminatedName
             });
