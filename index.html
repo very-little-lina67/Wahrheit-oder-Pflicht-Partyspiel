@@ -11,6 +11,26 @@
 
     <!-- Ausgelagertes Stylesheet für Themes, Layout & Komponenten -->
     <link rel="stylesheet" href="css/style.css">
+    <style id="wop-early-auth-hide">
+      /* Verhindert Login-Flash beim Reload wenn Session vorhanden */
+      body.wop-authed #auth-modal { display: none !important; visibility: hidden !important; }
+      body.wop-authed #setup.hidden { display: none !important; }
+    </style>
+    <script>
+      (function () {
+        try {
+          var email = localStorage.getItem("wop_user_email_v6");
+          var name = localStorage.getItem("wop_user_name_v6");
+          if (email && name) {
+            document.documentElement.classList.add("wop-authed");
+            if (document.body) document.body.classList.add("wop-authed");
+            else document.addEventListener("DOMContentLoaded", function () {
+              document.body.classList.add("wop-authed");
+            });
+          }
+        } catch (e) {}
+      })();
+    </script>
 </head>
 <body class="theme-default">
 
