@@ -937,3 +937,63 @@ a {
 }
 
 /* Keep the main lobby panel translucent so the page background shows through. */
+
+/* ==========================================================
+   SHOP TABS — Kategorien ohne langes Scrollen
+   ========================================================== */
+.shop-tabs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+.shop-tab {
+    margin: 0 !important;
+    width: 100%;
+    padding: 10px 8px !important;
+    font-size: 12px !important;
+    font-weight: 600;
+    border-radius: 12px !important;
+    border: 1px solid rgba(190, 210, 226, 0.18);
+    background: rgba(255, 255, 255, 0.06);
+    color: #c8d0dc;
+    box-shadow: none;
+    cursor: pointer;
+    transition: background 150ms ease, border-color 150ms ease, color 150ms ease, transform 120ms ease;
+}
+.shop-tab:hover {
+    background: rgba(255, 255, 255, 0.1);
+    filter: none;
+}
+.shop-tab.active {
+    background: linear-gradient(135deg, rgba(98, 223, 196, 0.22), rgba(99, 102, 241, 0.28));
+    border-color: rgba(98, 223, 196, 0.45);
+    color: #f4f7fa;
+    box-shadow: 0 4px 14px rgba(98, 223, 196, 0.12);
+}
+.shop-panel {
+    max-height: min(52vh, 420px);
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(150, 160, 205, 0.45) transparent;
+}
+.shop-panel::-webkit-scrollbar {
+    width: 7px;
+}
+.shop-panel::-webkit-scrollbar-thumb {
+    background: rgba(150, 160, 205, 0.4);
+    border-radius: 8px;
+}
+#account-modal .modal-content {
+    max-width: 460px;
+}
+@media (max-width: 420px) {
+    .shop-tabs {
+        grid-template-columns: 1fr 1fr;
+        gap: 6px;
+    }
+    .shop-tab {
+        padding: 9px 6px !important;
+        font-size: 11px !important;
+    }
+}
