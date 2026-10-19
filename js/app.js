@@ -3166,12 +3166,17 @@
 
                         if (d.currentLobby === activeLobbyCode && name) {
                             const oldPlayer = players.find(p => p.name === name);
+                            // Echte User – nie isBot aus Presence (Bots haben kein User-Doc)
+                            if (oldPlayer && oldPlayer.isBot) {
+                                // Name-Kollision: echter User gewinnt, Bot behalten wir separat
+                            }
                             const playerIsSpec = !!d.isSpectator || d.lobbyRole === "spectator";
                             nextPlayers.push({
                                 name,
-                                accessory: d.accessory || "",
+                                accessory: d.accessory || (oldPlayer && oldPlayer.accessory) || "",
                                 eliminated: !!oldPlayer?.eliminated,
-                                isSpectator: playerIsSpec
+                                isSpectator: playerIsSpec,
+                                isBot: false
                             });
 
                             if (doc.id !== myEmail) {
@@ -3200,6 +3205,22 @@
                                 }
                             }
                         }
+                    });
+
+                    // Test-Bots haben kein Firebase-User-Dokument → aus der aktuellen
+                    // players-Liste übernehmen, sonst verschwinden sie bei jedem Presence-Update.
+                    (players || []).forEach(p => {
+                        if (!p || !p.isBot) return;
+                        const botName = getUserDisplayName(p);
+                        if (!botName) return;
+                        if (nextPlayers.some(np => namesEqual(np, botName))) return;
+                        nextPlayers.push({
+                            name: botName,
+                            accessory: p.accessory || "🤖",
+                            eliminated: !!p.eliminated,
+                            isSpectator: false,
+                            isBot: true
+                        });
                     });
 
                     const changed = JSON.stringify(players) !== JSON.stringify(nextPlayers);
@@ -3500,7 +3521,17 @@
             const prevStarted = gameStarted;
 
             if (Array.isArray(data.players) && data.players.length) {
-                players = data.players;
+                // isBot-Flag beibehalten / aus Payload übernehmen
+                players = data.players.map(p => {
+                    if (!p || typeof p !== "object") return p;
+                    return {
+                        name: p.name,
+                        accessory: p.accessory || "",
+                        eliminated: !!p.eliminated,
+                        isSpectator: !!p.isSpectator,
+                        isBot: !!p.isBot
+                    };
+                });
                 updatePlayerList();
             }
             if (data.playerStatuses && typeof data.playerStatuses === "object") {
@@ -4152,11 +4183,13 @@
 
         let botActionTimers = [];
         let botChatTimer = null;
+        let botTickTimer = null;
         let lastBotChoiceKey = "";
         let lastBotCreatorKey = "";
         let lastBotTaskKey = "";
         let lastBotVoteKey = "";
         let lastBotWheelVoteKey = "";
+        let botBusyUntil = 0;
 
         function isBotPlayer(p) {
             if (!p) return false;
@@ -4190,8 +4223,11 @@
         function scheduleBot(fn, delayMs) {
             if (!isHost) return;
             const id = setTimeout(() => {
-                try { fn(); } catch (e) { console.error("bot action:", e); }
-            }, delayMs);
+                try {
+                    if (!isHost || leavingLobbyManually) return;
+                    fn();
+                } catch (e) { console.error("bot action:", e); }
+            }, Math.max(200, delayMs || 500));
             botActionTimers.push(id);
         }
 
@@ -4240,7 +4276,15 @@
             });
             updatePlayerList();
             saveLobbyPlayers();
-            sendData({ type: "UPDATE_PLAYERS", players: players });
+            // Sofort in Firebase + an Clients – Presence-Listener darf Bots nicht verwerfen
+            sendData({ type: "UPDATE_PLAYERS", players: players.map(p => ({
+                name: p.name,
+                accessory: p.accessory || "",
+                eliminated: !!p.eliminated,
+                isSpectator: !!p.isSpectator,
+                isBot: !!p.isBot
+            })) });
+            try { ensureLobbyDoc(); } catch (e) {}
             scheduleSaveGameState();
             updateBotControlsUI();
             appendChat("System", currentLang === "de" ? `🤖 ${name} ist der Lobby beigetreten (Test-Bot).` : `🤖 ${name} joined the lobby (test bot).`);
@@ -4394,23 +4438,33 @@
         }
 
         function botMaybePublicChat() {
-            if (!isHost || !gameStarted) return;
+            if (!isHost || !gameStarted || leavingLobbyManually) return;
             const bots = (players || []).filter(p => isBotPlayer(p) && !p.eliminated);
             if (!bots.length) return;
-            if (Math.random() > 0.35) return;
+            // Höhere Chance: Bots sollen sichtbar chatten
+            if (Math.random() > 0.55) return;
             const bot = pickRandom(bots);
             const line = pickRandom(currentLang === "de" ? BOT_CHAT_LINES_DE : BOT_CHAT_LINES_EN);
             const msg = { type: "CHAT_MSG", sender: getUserDisplayName(bot), text: line };
-            // Host: lokal + broadcast
-            handleIncomingData(msg);
+            appendChat(msg.sender, msg.text);
             broadcastLobbyData(msg);
         }
 
         function startBotChatLoop() {
             if (botChatTimer) clearInterval(botChatTimer);
+            if (botTickTimer) clearInterval(botTickTimer);
+            // Regelmäßig Bot-Aktionen prüfen (Spiel + Chat)
+            botTickTimer = setInterval(() => {
+                try {
+                    if (!isHost || !gameStarted || leavingLobbyManually) return;
+                    runBotAI();
+                } catch (e) { console.error("botTick:", e); }
+            }, 1200);
             botChatTimer = setInterval(() => {
                 try { botMaybePublicChat(); } catch (e) {}
-            }, 18000 + Math.floor(Math.random() * 8000));
+            }, 12000);
+            // Sofort einmal anstoßen
+            scheduleBot(() => runBotAI(), 400);
         }
 
         function stopBotChatLoop() {
@@ -4418,7 +4472,12 @@
                 clearInterval(botChatTimer);
                 botChatTimer = null;
             }
+            if (botTickTimer) {
+                clearInterval(botTickTimer);
+                botTickTimer = null;
+            }
             clearBotTimers();
+            lastBotChoiceKey = lastBotCreatorKey = lastBotTaskKey = lastBotVoteKey = lastBotWheelVoteKey = "";
         }
 
         function handleBotPrivateMessage(fromName, toName, text) {
