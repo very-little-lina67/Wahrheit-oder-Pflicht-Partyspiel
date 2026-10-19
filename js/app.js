@@ -407,6 +407,7 @@
                 adminUsersHead: "👥 Benutzer:",
                 adminFbHead: "📥 Feedback:",
                 adminCloseBtn: "Schließen",
+                footerRules: "Regelwerk",
                 footerImprint: "Impressum",
                 footerPrivacy: "Datenschutz",
                 alertEmailNamePass: "Bitte E-Mail, Benutzername und Passwort eingeben!",
@@ -665,6 +666,7 @@
                 adminUsersHead: "👥 Users:",
                 adminFbHead: "📥 Feedback:",
                 adminCloseBtn: "Close",
+                footerRules: "Rules",
                 footerImprint: "Imprint",
                 footerPrivacy: "Privacy Policy",
                 alertEmailNamePass: "Please enter email, username and password!",
@@ -1107,6 +1109,7 @@
             });
 
             // Footer
+            const footerRules = document.getElementById("ui-footer-rules"); if (footerRules) footerRules.innerText = t.footerRules || (currentLang === "de" ? "Regelwerk" : "Rules");
             const footerImp = document.getElementById("ui-footer-imprint"); if (footerImp) footerImp.innerText = t.footerImprint;
             const footerPriv = document.getElementById("ui-footer-privacy"); if (footerPriv) footerPriv.innerText = t.footerPrivacy;
 
