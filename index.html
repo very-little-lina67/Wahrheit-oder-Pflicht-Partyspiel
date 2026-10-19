@@ -13,24 +13,9 @@
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body class="theme-default">
-    <script>
-    /* Sofort: wenn Session vorhanden, Login-Modal nicht kurz aufblitzen */
-    (function () {
-        try {
-            var e = localStorage.getItem("wop_user_email_v6");
-            var n = localStorage.getItem("wop_user_name_v6");
-            if (e && n) {
-                document.documentElement.classList.add("wop-session-active");
-            }
-        } catch (err) {}
-    })();
-    </script>
-    <style>
-    html.wop-session-active #auth-modal { display: none !important; }
-    </style>
 
     <!-- LOGIN & AUTH MODAL -->
-    <div id="auth-modal" class="modal-overlay hidden">
+    <div id="auth-modal" class="modal-overlay">
         <div class="modal-content">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                 <h2 id="ui-auth-title" style="color: var(--primary-color); margin: 0; font-size: 1.2rem;">User Account & Vibe</h2>
