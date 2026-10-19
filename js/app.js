@@ -2421,22 +2421,12 @@
                 listenForFriendRequests();
 
                 // Nach einem Reload automatisch in die vorhandene Lobby zurück.
+                // Spieler/Status kommen aus Firebase – hier NICHT neu in die Liste schreiben.
                 const savedLobby = getSavedLobbySession();
                 if (savedLobby && savedLobby.code) {
                     activeLobbyCode = String(savedLobby.code).toLowerCase();
                     isHost = savedLobby.role === "host";
-
-                    if (isHost) {
-                        players = loadLobbyPlayers();
-                        if (!players.some(p => p.name === myName)) {
-                            players.unshift({
-                                name: myName,
-                                accessory: equippedAccessory,
-                                eliminated: false
-                            });
-                        }
-                    }
-
+                    isSpectator = !!savedLobby.isSpectator || savedLobby.role === "spectator";
                     restoringLobby = true;
                     setTimeout(() => reconnectLobby(), 250);
                 }
@@ -2619,13 +2609,24 @@
             document.getElementById("profile-modal")?.classList.add("hidden");
             document.getElementById("auth-modal").classList.remove("hidden");
             document.getElementById("setup").classList.add("hidden");
+            try {
+                document.documentElement.classList.remove("wop-authed");
+                document.body.classList.remove("wop-authed");
+            } catch (e) {}
         }
 
         function showLoggedInState() {
             document.getElementById("auth-modal").classList.add("hidden");
             document.getElementById("account-modal")?.classList.add("hidden");
             document.getElementById("profile-modal")?.classList.add("hidden");
-            document.getElementById("setup").classList.remove("hidden");
+            // Bei Lobby-Restore bleibt Setup versteckt (applyGameState steuert die UI)
+            if (!restoringLobby && !gameStarted && !activeLobbyCode) {
+                document.getElementById("setup")?.classList.remove("hidden");
+            }
+            try {
+                document.documentElement.classList.add("wop-authed");
+                document.body.classList.add("wop-authed");
+            } catch (e) {}
         }
 
 
@@ -3879,11 +3880,9 @@
                 activeLobbyCode = "vibe" + Math.random().toString(36).slice(2, 8);
                 players = [{ name: getUserDisplayName({name: myName}, "Spieler"), accessory: equippedAccessory || "", eliminated: false }];
             } else {
+                // Restore: lokale Cache-Liste nur als Fallback – Firebase ist Quelle der Wahrheit
                 const savedPlayers = loadLobbyPlayers();
                 players = Array.isArray(savedPlayers) && savedPlayers.length ? savedPlayers : [];
-                if (!players.some(p => p.name === myName)) {
-                    players.unshift({ name: myName, accessory: equippedAccessory || "", eliminated: false });
-                }
             }
 
             destroyPeerOnly();
@@ -3898,7 +3897,6 @@
                 nextRoundVotedPlayers = [];
             }
             saveLobbySession();
-            saveLobbyPlayers();
             updateOnlineStatus(true);
 
             try {
@@ -3906,10 +3904,9 @@
                     lobbyMessage: firebase.firestore.FieldValue.delete(),
                     hostMessage: firebase.firestore.FieldValue.delete()
                 });
-                await ensureLobbyDoc();
                 startHostFirestoreLobby();
                 startLobbyStateListener();
-                // Beim Restore: bestehenden Firebase-Stand laden
+                // Beim Restore: ZUERST Firebase lesen, damit gameStarted/players nicht überschrieben werden
                 if (restoring) {
                     try {
                         const lobbyDoc = await db.collection("lobbies").doc(activeLobbyCode).get();
@@ -3917,15 +3914,38 @@
                             applyGameStateFromFirebase(lobbyDoc.data() || {});
                         }
                     } catch (e) {}
+                    // Host darf nach Reload nicht als neuer Spieler hinzugefügt werden
+                    if (Array.isArray(players) && players.length) {
+                        const meIdx = players.findIndex(p => namesEqual(p, myName));
+                        if (meIdx < 0) {
+                            // Nur wenn wirklich nicht in der Liste (z.B. alter Cache) – Status aus Session
+                            players.unshift({
+                                name: myName,
+                                accessory: equippedAccessory || "",
+                                eliminated: false,
+                                isSpectator: !!isSpectator
+                            });
+                        }
+                    }
                 }
+                // Jetzt erst schreiben (mit korrektem gameStarted / players)
+                await ensureLobbyDoc();
                 if (!gameStarted) {
                     showLobbyUI(activeLobbyCode, false);
-                    document.getElementById("start-btn").classList.remove("hidden");
+                    document.getElementById("start-btn")?.classList.remove("hidden");
+                } else {
+                    // Laufendes Spiel: kein Neustart-Button, Setup bleibt versteckt
+                    document.getElementById("setup")?.classList.add("hidden");
+                    document.getElementById("lobby-wait-box")?.classList.add("hidden");
+                    document.getElementById("start-btn")?.classList.add("hidden");
+                    document.getElementById("leave-lobby-btn")?.classList.remove("hidden");
                 }
                 updatePlayerList();
+                saveLobbyPlayers();
                 scheduleSaveGameState();
                 restoringLobby = false;
             } catch (e) {
+                restoringLobby = false;
                 if (!restoring) {
                     alert(currentLang === "de"
                         ? "Lobby konnte nicht erstellt werden. Bitte erneut versuchen."
@@ -4249,7 +4269,19 @@
             } else if (data.type === 'NEXT_ROUND') {
                 nextRound();
             } else if (data.type === 'ELIMINATE') {
-                players = Array.isArray(data.players) ? data.players : players;
+                if (Array.isArray(data.players) && data.players.length) {
+                    // Bestehende Flags mergen (eliminated nicht verlieren)
+                    const incoming = data.players;
+                    players = incoming.map(ip => {
+                        const prev = (players || []).find(p => namesEqual(p, ip));
+                        return {
+                            name: ip.name,
+                            accessory: ip.accessory || (prev && prev.accessory) || "",
+                            eliminated: !!(ip.eliminated || (prev && prev.eliminated)),
+                            isSpectator: !!(ip.isSpectator || (prev && prev.isSpectator))
+                        };
+                    });
+                }
                 updatePlayerList();
                 applyEliminationSideEffects(data.eliminatedName || null);
                 if (isHost) scheduleSaveGameState();
@@ -5005,33 +5037,37 @@
         }
 
         let lastEliminatedChatKey = "";
+        let lastEliminatedAt = 0;
 
         function applyEliminationSideEffects(eliminatedName) {
             const name = eliminatedName || null;
-            // Chat-Hinweis (nicht doppelt bei lokal + Broadcast)
+            // Schutz vor Doppel-Anwendung (Host sendData + Broadcast / Race)
             if (name) {
-                const chatKey = name + "|" + (currentPlayerIndex || 0);
-                if (chatKey !== lastEliminatedChatKey) {
-                    lastEliminatedChatKey = chatKey;
-                    appendChat(
-                        "System",
-                        currentLang === "de"
-                            ? `${name} ist raus (Leak / aufgegeben). ❌`
-                            : `${name} is out (leaked / gave up). ❌`
-                    );
+                const chatKey = String(name) + "|" + (currentPlayerIndex || 0);
+                const now = Date.now();
+                if (chatKey === lastEliminatedChatKey && (now - lastEliminatedAt) < 2500) {
+                    return;
                 }
+                lastEliminatedChatKey = chatKey;
+                lastEliminatedAt = now;
+                appendChat(
+                    "System",
+                    currentLang === "de"
+                        ? `${name} ist raus (Leak / aufgegeben). ❌`
+                        : `${name} is out (leaked / gave up). ❌`
+                );
             }
 
             // Votes des Ausgeschiedenen entfernen, damit die Runde nicht blockiert
             if (name) {
-                nextTurnVotedPlayers = nextTurnVotedPlayers.filter(n => n !== name);
-                nextRoundVotedPlayers = nextRoundVotedPlayers.filter(n => n !== name);
+                nextTurnVotedPlayers = nextTurnVotedPlayers.filter(n => !namesEqual(n, name));
+                nextRoundVotedPlayers = nextRoundVotedPlayers.filter(n => !namesEqual(n, name));
             }
 
             // Wenn die laufende Runde den ausgeschiedenen Spieler betrifft → weiter
             const current = players[currentPlayerIndex];
             const currentName = current ? getUserDisplayName(current) : "";
-            if (name && currentName === name) {
+            if (name && namesEqual(currentName, name)) {
                 currentSharedResult = null;
                 currentSharedResultKey = "";
                 document.getElementById("result-feedback-area")?.classList.add("hidden");
@@ -5066,7 +5102,7 @@
             }
 
             // Der ausgeschiedene Spieler selbst → zurück zum Lobby-Setup (Erstellen / Code eingeben)
-            if (name && name === myName) {
+            if (name && namesEqual(name, myName)) {
                 setTimeout(() => kickEliminatedPlayerToSetup(), 300);
             }
         }
@@ -5234,23 +5270,34 @@
                 updateProfileModal();
             }
 
-            // An alle senden. Host verarbeitet sofort über sendData → handleIncomingData;
-            // Clients wenden den Effekt an, sobald der Host ELIMINATE broadcastet.
-            // Für den auslösenden Client lokal schon UI anpassen, damit es ohne Verzögerung wirkt.
+            // Host: sendData → handleIncomingData (einmal Side-Effects).
+            // Client: lokal anwenden + an Host senden (Host broadcastet, Client filtert Duplikat).
             updatePlayerList();
-            applyEliminationSideEffects(eliminatedName);
-
-            sendData({
-                type: "ELIMINATE",
-                players: players.map(p => ({
-                    name: p.name,
-                    accessory: p.accessory || "",
-                    eliminated: !!p.eliminated
-                })),
-                eliminatedName: eliminatedName
-            });
-
-            if (isHost) scheduleSaveGameState();
+            if (isHost) {
+                sendData({
+                    type: "ELIMINATE",
+                    players: players.map(p => ({
+                        name: p.name,
+                        accessory: p.accessory || "",
+                        eliminated: !!p.eliminated,
+                        isSpectator: !!p.isSpectator
+                    })),
+                    eliminatedName: eliminatedName
+                });
+                scheduleSaveGameState();
+            } else {
+                applyEliminationSideEffects(eliminatedName);
+                sendData({
+                    type: "ELIMINATE",
+                    players: players.map(p => ({
+                        name: p.name,
+                        accessory: p.accessory || "",
+                        eliminated: !!p.eliminated,
+                        isSpectator: !!p.isSpectator
+                    })),
+                    eliminatedName: eliminatedName
+                });
+            }
         }
 
         function appendChat(sender, text) {
