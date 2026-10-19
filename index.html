@@ -479,13 +479,34 @@
 
         <!-- SETUP (LOBBY) -->
         <div id="setup" class="box-section hidden">
-            <h3 id="ui-setup-head" style="font-size: 14px; margin-top: 0;">Online Lobby:</h3>
-            <p id="ui-private-lobby-hint" style="font-size:11px; color:#aaa; margin:4px 0 8px 0;">🔑 Teile den Lobby-Code mit deinen Freunden oder lade sie direkt ein.</p>
-            <button onclick="hostGame()" id="ui-host-btn" style="margin-top: 4px; font-size: 14px; padding: 10px;">Lobby erstellen (Host) 🏠</button>
-            <hr style="border-color: rgba(255,255,255,0.1); margin: 10px 0;">
-            <input type="text" id="lobby-code-input" placeholder="Lobby-Code eingeben..." style="font-size: 14px; padding: 10px;">
-            <button class="btn-blue" onclick="joinGame()" id="ui-join-btn" style="font-size: 14px; padding: 10px;">Lobby beitreten 🚀</button>
-            <button class="btn-purple hidden" onclick="joinGame({ asSpectator: true })" id="ui-spectate-btn" style="font-size: 13px; padding: 8px; margin-top: 6px; width: 100%;">Als Zuschauer beitreten (Admin/Master) 👁️</button>
+            <h3 id="ui-setup-head" style="font-size: 15px; margin-top: 0;">Online Lobby</h3>
+            <p id="ui-private-lobby-hint" style="font-size:12px; color:#aaa; margin:4px 0 12px 0;">🔑 Erstelle eine Lobby, suche offene Runden oder tritt mit einem Code bei.</p>
+
+            <button onclick="openFindPlayersModal()" id="ui-find-players-btn" class="lobby-action-btn find-players">🔍 Sucht Mitspieler – offene Runden</button>
+            <button onclick="hostGame({ looking: true })" id="ui-host-looking-btn" class="lobby-action-btn host-looking">🏠 Lobby erstellen &amp; Mitspieler suchen</button>
+            <button onclick="hostGame()" id="ui-host-btn" class="lobby-action-btn primary-host">🏠 Private Lobby erstellen (Host)</button>
+
+            <hr style="border-color: rgba(255,255,255,0.12); margin: 14px 0;">
+            <label for="lobby-code-input" id="ui-lobby-code-label" style="font-size:12px; color:#bbb; display:block; margin-bottom:4px;">Mit Code beitreten</label>
+            <input type="text" id="lobby-code-input" placeholder="Lobby-Code eingeben..." autocomplete="off" spellcheck="false">
+            <button class="lobby-action-btn join-code" onclick="joinGame()" id="ui-join-btn">🚀 Lobby beitreten</button>
+            <button class="btn-purple hidden" onclick="joinGame({ asSpectator: true })" id="ui-spectate-btn" style="font-size: 13px; padding: 10px; margin-top: 8px; width: 100%; border-radius:12px;">Als Zuschauer beitreten (Admin/Master) 👁️</button>
+        </div>
+
+        <!-- FINDE MITSPIELER / OFFENE RUNDEN MODAL -->
+        <div id="find-players-modal" class="modal-overlay hidden">
+            <div class="modal-content" style="max-width: 440px;">
+                <h2 id="ui-find-title" style="color: var(--accent-color); margin-top:0; font-size: 1.2rem;">🔍 Sucht Mitspieler</h2>
+                <p id="ui-find-desc" style="font-size: 12px; color: #ccc; margin:0 0 10px 0;">Offene Lobbies, die noch Mitspieler suchen – tippe auf Beitreten!</p>
+                <div style="display:flex; gap:6px; margin-bottom:10px;">
+                    <button id="ui-find-refresh-btn" class="btn-green" onclick="loadOpenLobbies()" style="flex:1; padding:8px; font-size:12px;">🔄 Aktualisieren</button>
+                    <button id="ui-find-create-btn" class="btn-blue" onclick="document.getElementById('find-players-modal').classList.add('hidden'); hostGame({ looking: true });" style="flex:1; padding:8px; font-size:12px;">🏠 Selbst hosten</button>
+                </div>
+                <div id="open-lobbies-list" style="max-height: 280px; overflow-y: auto; margin-bottom: 12px;">
+                    <p id="ui-find-loading" style="font-size:12px; color:#aaa; text-align:center;">Lade offene Runden…</p>
+                </div>
+                <button id="ui-find-close-btn" class="btn-blue" onclick="document.getElementById('find-players-modal').classList.add('hidden')" style="width:100%; padding:8px; font-size:13px;">Schließen</button>
+            </div>
         </div>
 
         <!-- LOBBY WARTESAAL -->
@@ -493,6 +514,14 @@
             <h3 id="ui-lobby-code-title" style="font-size: 14px;">Lobby Code: <span id="display-code" style="color: #ffcc00; font-size: 18px;"></span></h3>
             <p id="ui-share-code" style="font-size: 12px;">Teile diesen Code mit deinen Mitspielern!</p>
             <ul id="player-list" style="list-style: none; padding: 0; text-align: left; font-size: 13px;"></ul>
+
+            <!-- Host: Mitspieler-Suche an/aus -->
+            <div id="looking-toggle-box" class="hidden" style="margin: 10px 0; padding: 8px; background: rgba(255,204,0,0.08); border-radius: 8px; border: 1px solid rgba(255,204,0,0.25);">
+                <label style="display:flex; align-items:center; justify-content:center; gap:8px; font-size:13px; cursor:pointer;">
+                    <input type="checkbox" id="looking-for-players-cb" onchange="toggleLookingForPlayers(this.checked)" style="width:auto; margin:0;">
+                    <span id="ui-looking-toggle-label">🔍 Mitspieler gesucht (öffentlich sichtbar)</span>
+                </label>
+            </div>
 
             <button id="start-btn" class="hidden" onclick="startOnlineGame()" style="font-size: 14px; padding: 10px;">Spiel starten! 🔥</button>
             <div id="client-wait-msg" class="hidden" style="color: #ffcc00; font-size: 12px;">Mit Lobby verbunden! Warte darauf, dass der Host startet...</div>
@@ -587,17 +616,20 @@
 
         <!-- LIVE CHAT BEREICH -->
         <div id="chat-box-container" class="hidden">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                <h4 id="ui-chat-head" style="margin:0; font-size:14px; color:var(--accent-color);">💬 Live-Chat</h4>
+            </div>
             <div id="chat-messages"></div>
-            <div style="display: flex; flex-direction: column; gap: 6px;">
-                <div style="display: flex; gap: 5px; align-items: center; flex-wrap: wrap;">
-                    <label id="ui-chat-to-label" for="chat-recipient" style="font-size: 11px; color: #aaa; white-space: nowrap;">An:</label>
-                    <select id="chat-recipient" style="flex: 1; min-width: 120px; font-size: 12px; padding: 6px; margin: 0;">
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+                <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+                    <label id="ui-chat-to-label" for="chat-recipient" style="font-size: 12px; color: #aaa; white-space: nowrap;">An:</label>
+                    <select id="chat-recipient" style="flex: 1; min-width: 120px; font-size: 13px; padding: 8px; margin: 0;">
                         <option value="all" id="ui-chat-to-all">🌐 Alle (öffentlich)</option>
                     </select>
                 </div>
-                <div style="display: flex; gap: 5px;">
-                    <input type="text" id="chat-input" placeholder="Type a message..." style="margin:0; font-size: 13px; padding: 8px;" onkeydown="if(event.key === 'Enter') sendChatMessage()">
-                    <button class="btn-blue" style="width: 70px; margin:0; padding:8px; font-size: 12px;" onclick="sendChatMessage()" id="ui-chat-send">Send</button>
+                <div style="display: flex; gap: 6px;">
+                    <input type="text" id="chat-input" placeholder="Type a message..." style="margin:0; font-size: 14px; padding: 10px;" onkeydown="if(event.key === 'Enter') sendChatMessage()">
+                    <button class="btn-blue" style="width: 80px; margin:0; padding:10px; font-size: 13px; font-weight:600;" onclick="sendChatMessage()" id="ui-chat-send">Send</button>
                 </div>
             </div>
         </div>
