@@ -53,7 +53,15 @@
                 💰 <span id="acc-display-coins" style="color: #ffcc00; font-weight: bold;">0</span> <span id="ui-coins-text">Coins</span>
             </div>
 
-            <div class="box-section" style="padding:8px;">
+            <!-- Shop-Kategorien: nur eine Sektion sichtbar -->
+            <div class="shop-tabs" id="shop-tabs" role="tablist">
+                <button type="button" class="shop-tab active" id="shop-tab-emotes" data-shop-tab="emotes" onclick="switchShopTab('emotes')">🙂 <span id="ui-shop-tab-emotes">Profil-Emojis</span></button>
+                <button type="button" class="shop-tab" id="shop-tab-accessories" data-shop-tab="accessories" onclick="switchShopTab('accessories')">🛍 <span id="ui-shop-tab-accessories">Accessoires</span></button>
+                <button type="button" class="shop-tab" id="shop-tab-jokers" data-shop-tab="jokers" onclick="switchShopTab('jokers')">🃏 <span id="ui-shop-tab-jokers">Joker</span></button>
+                <button type="button" class="shop-tab" id="shop-tab-themes" data-shop-tab="themes" onclick="switchShopTab('themes')">🎨 <span id="ui-shop-tab-themes">Themes</span></button>
+            </div>
+
+            <div class="box-section shop-panel hidden" id="shop-panel-accessories" style="padding:8px;">
                 <h4 id="ui-accessories-head" style="margin: 0 0 6px 0; color: var(--accent-color); font-size: 13px;">🛍 Avatar Accessories</h4>
                 <div class="shop-grid">
                     <div class="shop-item">
@@ -124,7 +132,7 @@
             </div>
 
             <!-- PROFIL-EMOJIS (echtes Avatar-Emoji, keine Deko) -->
-            <div class="box-section" style="padding:8px;">
+            <div class="box-section shop-panel" id="shop-panel-emotes" style="padding:8px;">
                 <h4 id="ui-profile-emotes-head" style="margin: 0 0 6px 0; color: #c084fc; font-size: 13px;">🙂 Profil-Emojis</h4>
                 <p id="ui-profile-emotes-desc" style="font-size:11px; color:#aaa; margin:0 0 8px 0;">Kaufe Emojis und wähle sie im Profil als dein Avatar-Emoji – nicht als Dekoration!</p>
                 <div class="shop-grid">
@@ -168,7 +176,7 @@
             </div>
 
             <!-- JOKER SHOP -->
-            <div class="box-section" style="padding:8px;">
+            <div class="box-section shop-panel hidden" id="shop-panel-jokers" style="padding:8px;">
                 <h4 id="ui-jokers-head" style="margin: 0 0 6px 0; color: #ffcc00; font-size: 13px;">🃏 Joker</h4>
                 <p id="ui-jokers-desc" style="font-size:11px; color:#aaa; margin:0 0 8px 0;">Kaufe Joker, um Aufgaben zu überspringen oder andere Spieler auszusetzen. Verbrauchsgut – nach Nutzung weg!</p>
                 <div style="font-size:12px; margin-bottom:8px; text-align:center;">
@@ -200,7 +208,7 @@
                 </div>
             </div>
 
-            <div class="box-section" style="padding:8px;">
+            <div class="box-section shop-panel hidden" id="shop-panel-themes" style="padding:8px;">
                 <h4 id="ui-themes-head" style="margin: 0 0 6px 0; color: var(--primary-color); font-size: 13px;">🎨 Color Themes</h4>
                 <div class="shop-grid">
                     <div class="shop-item">
@@ -477,36 +485,18 @@
         <h1 id="ui-title">Wahrheit oder Pflicht Partyspiel 🍻🚻</h1>
         <p id="ui-subtitle" style="font-size: 13px;">Spielt nacheinander Wahrheit oder Pflicht. Nach jeder Runde dreht sich das Rad!</p>
 
-        <!-- SETUP (LOBBY) -->
+        <!-- SETUP (LOBBY) – nur private Lobbys -->
         <div id="setup" class="box-section hidden">
             <h3 id="ui-setup-head" style="font-size: 15px; margin-top: 0;">Online Lobby</h3>
-            <p id="ui-private-lobby-hint" style="font-size:12px; color:#aaa; margin:4px 0 12px 0;">🔑 Erstelle eine Lobby, suche offene Runden oder tritt mit einem Code bei.</p>
+            <p id="ui-private-lobby-hint" style="font-size:12px; color:#aaa; margin:4px 0 12px 0;">🔑 Erstelle eine private Lobby und teile den Code mit deinen Freunden – oder tritt mit einem Code bei.</p>
 
-            <button onclick="openFindPlayersModal()" id="ui-find-players-btn" class="lobby-action-btn find-players">🔍 Sucht Mitspieler – offene Runden</button>
-            <button onclick="hostGame({ looking: true })" id="ui-host-looking-btn" class="lobby-action-btn host-looking">🏠 Lobby erstellen &amp; Mitspieler suchen</button>
-            <button onclick="hostGame()" id="ui-host-btn" class="lobby-action-btn primary-host">🏠 Private Lobby erstellen (Host)</button>
+            <button onclick="hostGame()" id="ui-host-btn" class="lobby-action-btn primary-host">🏠 Lobby erstellen (Host)</button>
 
             <hr style="border-color: rgba(255,255,255,0.12); margin: 14px 0;">
             <label for="lobby-code-input" id="ui-lobby-code-label" style="font-size:12px; color:#bbb; display:block; margin-bottom:4px;">Mit Code beitreten</label>
             <input type="text" id="lobby-code-input" placeholder="Lobby-Code eingeben..." autocomplete="off" spellcheck="false">
             <button class="lobby-action-btn join-code" onclick="joinGame()" id="ui-join-btn">🚀 Lobby beitreten</button>
             <button class="btn-purple hidden" onclick="joinGame({ asSpectator: true })" id="ui-spectate-btn" style="font-size: 13px; padding: 10px; margin-top: 8px; width: 100%; border-radius:12px;">Als Zuschauer beitreten (Admin/Master) 👁️</button>
-        </div>
-
-        <!-- FINDE MITSPIELER / OFFENE RUNDEN MODAL -->
-        <div id="find-players-modal" class="modal-overlay hidden">
-            <div class="modal-content" style="max-width: 440px;">
-                <h2 id="ui-find-title" style="color: var(--accent-color); margin-top:0; font-size: 1.2rem;">🔍 Sucht Mitspieler</h2>
-                <p id="ui-find-desc" style="font-size: 12px; color: #ccc; margin:0 0 10px 0;">Offene Lobbies, die noch Mitspieler suchen – tippe auf Beitreten!</p>
-                <div style="display:flex; gap:6px; margin-bottom:10px;">
-                    <button id="ui-find-refresh-btn" class="btn-green" onclick="loadOpenLobbies()" style="flex:1; padding:8px; font-size:12px;">🔄 Aktualisieren</button>
-                    <button id="ui-find-create-btn" class="btn-blue" onclick="document.getElementById('find-players-modal').classList.add('hidden'); hostGame({ looking: true });" style="flex:1; padding:8px; font-size:12px;">🏠 Selbst hosten</button>
-                </div>
-                <div id="open-lobbies-list" style="max-height: 280px; overflow-y: auto; margin-bottom: 12px;">
-                    <p id="ui-find-loading" style="font-size:12px; color:#aaa; text-align:center;">Lade offene Runden…</p>
-                </div>
-                <button id="ui-find-close-btn" class="btn-blue" onclick="document.getElementById('find-players-modal').classList.add('hidden')" style="width:100%; padding:8px; font-size:13px;">Schließen</button>
-            </div>
         </div>
 
         <!-- LOBBY WARTESAAL -->
