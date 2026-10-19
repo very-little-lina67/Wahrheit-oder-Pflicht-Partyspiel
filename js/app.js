@@ -249,6 +249,29 @@
                 itemFlower: "Blume",
                 itemFlame: "Flamme",
                 itemCool: "Brille",
+                itemMoon: "Mond",
+                itemClover: "Kleeblatt",
+                itemTarget: "Zielscheibe",
+                itemPizza: "Pizza",
+                itemGamepad: "Controller",
+                itemRocket: "Rakete",
+                itemDragon: "Drache",
+                itemIcecream: "Eis",
+                itemTrophy: "Pokal",
+                profileEmotesHead: "🙂 Profil-Emojis",
+                profileEmotesDesc: "Kaufe Emojis und wähle sie im Profil als dein Avatar-Emoji – nicht als Dekoration!",
+                jokersHead: "🃏 Joker",
+                jokersDesc: "Kaufe Joker, um Aufgaben zu überspringen oder andere Spieler auszusetzen. Verbrauchsgut – nach Nutzung weg!",
+                jokerSkipName: "Skip-Joker",
+                jokerSkipDesc: "Eigene Aufgabe überspringen",
+                jokerForceName: "Force-Skip-Joker",
+                jokerForceDesc: "Aktuellen Spieler aussetzen",
+                jokerSkipPackName: "Skip-Pack",
+                jokerSkipPackDesc: "3 Skip-Joker (günstiger)",
+                jokerForcePackName: "Force-Pack",
+                jokerForcePackDesc: "2 Force-Skip-Joker",
+                jokerSkipBtnText: "Aufgabe überspringen",
+                jokerForceBtnText: "Spieler aussetzen",
                 themeCyberpunk: "Cyberpunk",
                 themeRetro: "Retro-Pixel",
                 themeParty: "Party Neon",
@@ -467,6 +490,29 @@
                 itemFlower: "Flower",
                 itemFlame: "Flame",
                 itemCool: "Glasses",
+                itemMoon: "Moon",
+                itemClover: "Clover",
+                itemTarget: "Target",
+                itemPizza: "Pizza",
+                itemGamepad: "Controller",
+                itemRocket: "Rocket",
+                itemDragon: "Dragon",
+                itemIcecream: "Ice Cream",
+                itemTrophy: "Trophy",
+                profileEmotesHead: "🙂 Profile Emojis",
+                profileEmotesDesc: "Buy emojis and select them as your profile avatar emoji – not as decoration!",
+                jokersHead: "🃏 Jokers",
+                jokersDesc: "Buy jokers to skip tasks or force other players to skip. Consumable – used up after one use!",
+                jokerSkipName: "Skip Joker",
+                jokerSkipDesc: "Skip your own task",
+                jokerForceName: "Force-Skip Joker",
+                jokerForceDesc: "Force the current player to skip",
+                jokerSkipPackName: "Skip Pack",
+                jokerSkipPackDesc: "3 Skip Jokers (cheaper)",
+                jokerForcePackName: "Force Pack",
+                jokerForcePackDesc: "2 Force-Skip Jokers",
+                jokerSkipBtnText: "Skip task",
+                jokerForceBtnText: "Force player skip",
                 themeCyberpunk: "Cyberpunk",
                 themeRetro: "Retro-Pixel",
                 themeParty: "Party Neon",
@@ -727,6 +773,46 @@
                 const el = document.getElementById(id);
                 if (el && label) el.innerText = label;
             });
+            // Profil-Emoji-Shop
+            const peHead = document.getElementById("ui-profile-emotes-head");
+            if (peHead) peHead.innerText = t.profileEmotesHead || (currentLang === "de" ? "🙂 Profil-Emojis" : "🙂 Profile Emojis");
+            const peDesc = document.getElementById("ui-profile-emotes-desc");
+            if (peDesc) peDesc.innerText = t.profileEmotesDesc || (currentLang === "de"
+                ? "Kaufe Emojis und wähle sie im Profil als dein Avatar-Emoji – nicht als Dekoration!"
+                : "Buy emojis and select them as your profile avatar emoji – not as decoration!");
+            const emoteShopIds = {
+                "ui-emote-shop-moon": t.itemMoon,
+                "ui-emote-shop-clover": t.itemClover,
+                "ui-emote-shop-target": t.itemTarget,
+                "ui-emote-shop-pizza": t.itemPizza,
+                "ui-emote-shop-gamepad": t.itemGamepad,
+                "ui-emote-shop-rocket": t.itemRocket,
+                "ui-emote-shop-dragon": t.itemDragon,
+                "ui-emote-shop-icecream": t.itemIcecream,
+                "ui-emote-shop-trophy": t.itemTrophy
+            };
+            Object.entries(emoteShopIds).forEach(([id, label]) => {
+                const el = document.getElementById(id);
+                if (el && label) el.innerText = label;
+            });
+            document.querySelectorAll(".emote-action-btn").forEach(el => {
+                // Text wird von updateShopEmoteButtons gesetzt
+            });
+            try { updateShopEmoteButtons(); } catch (e) {}
+            try { refreshEmoteSelect(); } catch (e) {}
+            // Joker-Shop & Buttons
+            const jokersHead = document.getElementById("ui-jokers-head"); if (jokersHead) jokersHead.innerText = t.jokersHead || "🃏 Joker";
+            const jokersDesc = document.getElementById("ui-jokers-desc"); if (jokersDesc) jokersDesc.innerText = t.jokersDesc || "";
+            const jsName = document.getElementById("ui-joker-skip-name"); if (jsName) jsName.innerText = t.jokerSkipName || "Skip-Joker";
+            const jsDesc = document.getElementById("ui-joker-skip-desc"); if (jsDesc) jsDesc.innerText = t.jokerSkipDesc || "";
+            const jfName = document.getElementById("ui-joker-force-name"); if (jfName) jfName.innerText = t.jokerForceName || "Force-Skip";
+            const jfDesc = document.getElementById("ui-joker-force-desc"); if (jfDesc) jfDesc.innerText = t.jokerForceDesc || "";
+            const jspName = document.getElementById("ui-joker-skip-pack-name"); if (jspName) jspName.innerText = t.jokerSkipPackName || "Skip-Pack";
+            const jspDesc = document.getElementById("ui-joker-skip-pack-desc"); if (jspDesc) jspDesc.innerText = t.jokerSkipPackDesc || "";
+            const jfpName = document.getElementById("ui-joker-force-pack-name"); if (jfpName) jfpName.innerText = t.jokerForcePackName || "Force-Pack";
+            const jfpDesc = document.getElementById("ui-joker-force-pack-desc"); if (jfpDesc) jfpDesc.innerText = t.jokerForcePackDesc || "";
+            const jsBtn = document.getElementById("ui-joker-skip-btn-text"); if (jsBtn) jsBtn.innerText = t.jokerSkipBtnText || "Aufgabe überspringen";
+            const jfBtn = document.getElementById("ui-joker-force-btn-text"); if (jfBtn) jfBtn.innerText = t.jokerForceBtnText || "Spieler aussetzen";
             const themeIds = {
                 "ui-theme-cyberpunk": t.themeCyberpunk,
                 "ui-theme-retro": t.themeRetro,
@@ -970,10 +1056,29 @@
         let unlockedItems = [];
         let unlockedThemes = [];
         let unlockedBadges = [];
+        /** Freigeschaltete Profil-Emojis (Shop) – speichern das Emoji-Zeichen selbst */
+        let unlockedEmotes = [];
         let truthCount = 0;
         let dareCount = 0;
+        /** Verbrauchbare Joker (müssen im Shop gekauft werden) */
+        let jokerSkipCount = 0;   // eigene Aufgabe überspringen
+        let jokerForceCount = 0;  // anderen Spieler aussetzen
         let isSpectator = false;
         let currentTaskCreator = "";
+
+        /** Kostenpflichtige Profil-Emojis (Emoji → Anzeigename DE/EN über Translations) */
+        const PREMIUM_EMOTES = [
+            { emoji: "🌙", key: "moon", cost: 70 },
+            { emoji: "🍀", key: "clover", cost: 55 },
+            { emoji: "🎯", key: "target", cost: 90 },
+            { emoji: "🍕", key: "pizza", cost: 60 },
+            { emoji: "🎮", key: "gamepad", cost: 100 },
+            { emoji: "🚀", key: "rocket", cost: 125 },
+            { emoji: "🐉", key: "dragon", cost: 180 },
+            { emoji: "🍦", key: "icecream", cost: 50 },
+            { emoji: "🏆", key: "trophy", cost: 160 }
+        ];
+        const FREE_EMOTES = ["😊", "🤩", "🥳", "😈", "🤖", "👻", "🐱", "🦊", "🐸", "💀", "🔥"];
 
         // --- IN-MEMORY CACHES ZUR PERFORMANCE-STEIGERUNG & FIREBASE-ENTLASTUNG ---
         let leaderboardCache = null;
@@ -1090,8 +1195,11 @@
                     unlockedItems = data.items || [];
                     unlockedThemes = data.themes || [];
                     unlockedBadges = data.badges || [];
+                    unlockedEmotes = Array.isArray(data.emotes) ? data.emotes.filter(Boolean) : [];
                     truthCount = data.truthCount || 0;
                     dareCount = data.dareCount || 0;
+                    jokerSkipCount = Number(data.jokerSkip) || 0;
+                    jokerForceCount = Number(data.jokerForce) || 0;
                     {
                         const raw = Array.isArray(data.friends) ? data.friends : [];
                         myFriends = [...new Set(raw.map(e => String(e || "").trim().toLowerCase()).filter(Boolean))];
@@ -1174,8 +1282,11 @@
                     items: unlockedItems,
                     themes: unlockedThemes,
                     badges: unlockedBadges,
+                    emotes: unlockedEmotes,
                     truthCount: truthCount,
                     dareCount: dareCount,
+                    jokerSkip: jokerSkipCount,
+                    jokerForce: jokerForceCount,
                     theme: document.body.className,
                     lastActive: firebase.firestore.FieldValue.serverTimestamp(),
                     isOnline: true,
@@ -1484,6 +1595,16 @@
             document.getElementById("hud-streak").innerText = userStreak;
             document.getElementById("hud-xp").innerText = userXP;
             document.getElementById("hud-coins").innerText = userCoins;
+            const jokersEl = document.getElementById("hud-jokers");
+            if (jokersEl) jokersEl.innerText = `${jokerSkipCount}/${jokerForceCount}`;
+            const shopSkip = document.getElementById("shop-joker-skip-count");
+            if (shopSkip) shopSkip.innerText = String(jokerSkipCount);
+            const shopForce = document.getElementById("shop-joker-force-count");
+            if (shopForce) shopForce.innerText = String(jokerForceCount);
+            const btnSkipCnt = document.getElementById("joker-skip-btn-count");
+            if (btnSkipCnt) btnSkipCnt.innerText = String(jokerSkipCount);
+            const btnForceCnt = document.getElementById("joker-force-btn-count");
+            if (btnForceCnt) btnForceCnt.innerText = String(jokerForceCount);
             const badge = document.getElementById("hud-spectator-badge");
             if (badge) {
                 badge.classList.toggle("hidden", !isSpectator);
@@ -1522,8 +1643,8 @@
             const coinsEl = document.getElementById("acc-display-coins");
             if (coinsEl) coinsEl.innerText = userCoins;
 
-            const emoteSel = document.getElementById("avatar-emote-select");
-            if (emoteSel) emoteSel.value = avatarEmote || "😊";
+            refreshEmoteSelect();
+            updateShopEmoteButtons();
             applyAccessoryStyle(equippedAccessory);
 
             // Profil-Modal mit aktualisieren, falls offen oder für Konsistenz
@@ -1691,9 +1812,135 @@
         }
 
         async function setAvatarEmote(emote) {
-            avatarEmote = emote || "😊";
+            emote = emote || "😊";
+            // Premium-Emojis nur nutzen, wenn freigeschaltet
+            const isFree = FREE_EMOTES.includes(emote);
+            const isUnlocked = unlockedEmotes.includes(emote);
+            if (!isFree && !isUnlocked) {
+                alert(currentLang === "de"
+                    ? "Dieses Profil-Emoji ist noch nicht freigeschaltet. Kaufe es im Shop!"
+                    : "This profile emoji is not unlocked yet. Buy it in the shop!");
+                refreshEmoteSelect();
+                return;
+            }
+            avatarEmote = emote;
             updateProfileModal();
             await saveUserDataToCloud();
+        }
+
+        /** Premium-Profil-Emoji im Shop freischalten und optional sofort auswählen */
+        async function buyProfileEmote(emoji, cost) {
+            if (!emoji) return;
+            if (unlockedEmotes.includes(emoji)) {
+                // Bereits freigeschaltet → direkt als Profil-Emoji setzen
+                avatarEmote = emoji;
+                alert(currentLang === "de"
+                    ? "Emoji bereits freigeschaltet – jetzt als Profil-Emoji gesetzt!"
+                    : "Emoji already unlocked – set as your profile emoji!");
+                refreshEmoteSelect();
+                updateProfileModal();
+                await saveUserDataToCloud();
+                return;
+            }
+            cost = Number(cost) || 0;
+            if (userCoins < cost) {
+                alert(currentLang === "de" ? "Nicht genug Coins!" : "Not enough coins!");
+                return;
+            }
+            userCoins -= cost;
+            unlockedEmotes.push(emoji);
+            avatarEmote = emoji;
+            alert(currentLang === "de"
+                ? "Profil-Emoji freigeschaltet und ausgewählt!"
+                : "Profile emoji unlocked and selected!");
+            refreshEmoteSelect();
+            updateShopEmoteButtons();
+            updateHUD();
+            updateProfileModal();
+            await saveUserDataToCloud();
+        }
+
+        /** Dropdown im Profil mit Basis- + freigeschalteten Premium-Emojis füllen */
+        function refreshEmoteSelect() {
+            const sel = document.getElementById("avatar-emote-select");
+            if (!sel) return;
+            const t = translations[currentLang] || translations.de;
+            const freeLabels = {
+                "😊": t.emoteHappy || "Fröhlich",
+                "🤩": t.emoteExcited || "Begeistert",
+                "🥳": t.emoteParty || "Party",
+                "😈": t.emoteCheeky || "Frech",
+                "🤖": t.emoteRobot || "Roboter",
+                "👻": t.emoteGhost || "Geist",
+                "🐱": t.emoteCat || "Katze",
+                "🦊": t.emoteFox || "Fuchs",
+                "🐸": t.emoteFrog || "Frosch",
+                "💀": t.emoteSkull || "Totenkopf",
+                "🔥": t.emoteFire || "Feuer"
+            };
+            const premiumLabels = {
+                "🌙": t.itemMoon || "Mond",
+                "🍀": t.itemClover || "Kleeblatt",
+                "🎯": t.itemTarget || "Zielscheibe",
+                "🍕": t.itemPizza || "Pizza",
+                "🎮": t.itemGamepad || "Controller",
+                "🚀": t.itemRocket || "Rakete",
+                "🐉": t.itemDragon || "Drache",
+                "🍦": t.itemIcecream || "Eis",
+                "🏆": t.itemTrophy || "Pokal"
+            };
+
+            const current = avatarEmote || "😊";
+            sel.innerHTML = "";
+
+            FREE_EMOTES.forEach(em => {
+                const opt = document.createElement("option");
+                opt.value = em;
+                opt.textContent = `${em} ${freeLabels[em] || ""}`;
+                if (em === "😊") opt.id = "ui-emote-happy";
+                sel.appendChild(opt);
+            });
+
+            unlockedEmotes.forEach(em => {
+                if (FREE_EMOTES.includes(em)) return;
+                const opt = document.createElement("option");
+                opt.value = em;
+                opt.textContent = `${em} ${premiumLabels[em] || em}`;
+                sel.appendChild(opt);
+            });
+
+            // Falls aktuelles Emote nicht in Liste (sollte nicht vorkommen), trotzdem behalten
+            if (current && ![...FREE_EMOTES, ...unlockedEmotes].includes(current)) {
+                const opt = document.createElement("option");
+                opt.value = current;
+                opt.textContent = current;
+                sel.appendChild(opt);
+            }
+            sel.value = current;
+        }
+
+        /** Shop-Buttons für Profil-Emojis aktualisieren (Freischalten / Auswählen) */
+        function updateShopEmoteButtons() {
+            const t = translations[currentLang] || translations.de;
+            const unlockLabel = t.unlockBtn || (currentLang === "de" ? "Freischalten" : "Unlock");
+            const selectLabel = currentLang === "de" ? "Auswählen" : "Select";
+            PREMIUM_EMOTES.forEach(({ emoji }) => {
+                // Button per onclick-Attribut finden
+                document.querySelectorAll(".emote-action-btn").forEach(btn => {
+                    const onclick = btn.getAttribute("onclick") || "";
+                    if (onclick.includes(`'${emoji}'`) || onclick.includes(`"${emoji}"`)) {
+                        if (unlockedEmotes.includes(emoji)) {
+                            btn.innerText = selectLabel;
+                            btn.classList.remove("btn-green");
+                            btn.classList.add("btn-blue");
+                        } else {
+                            btn.innerText = unlockLabel;
+                            btn.classList.add("btn-green");
+                            btn.classList.remove("btn-blue");
+                        }
+                    }
+                });
+            });
         }
 
         function applyAccessoryStyle(symbol) {
@@ -1743,6 +1990,137 @@
             }
             await saveUserDataToCloud();
             updateProfileModal();
+        }
+
+        /**
+         * Joker im Shop kaufen (Verbrauchsgut).
+         * @param {"skip"|"force"} kind
+         * @param {number} cost
+         * @param {number} [amount=1]
+         */
+        async function buyJoker(kind, cost, amount = 1) {
+            amount = Math.max(1, Number(amount) || 1);
+            cost = Number(cost) || 0;
+            if (userCoins < cost) {
+                alert(currentLang === "de" ? "Nicht genug Coins!" : "Not enough coins!");
+                return;
+            }
+            userCoins -= cost;
+            if (kind === "force") {
+                jokerForceCount += amount;
+            } else {
+                jokerSkipCount += amount;
+            }
+            alert(
+                currentLang === "de"
+                    ? `Joker gekauft! (+${amount} ${kind === "force" ? "Force-Skip" : "Skip"})`
+                    : `Joker purchased! (+${amount} ${kind === "force" ? "Force-Skip" : "Skip"})`
+            );
+            await saveUserDataToCloud();
+            updateHUD();
+            updateProfileModal();
+        }
+
+        /** Eigene Aufgabe mit Skip-Joker überspringen (keine Belohnung). */
+        function useSkipJoker() {
+            if (isSpectator || taskCompleted) return;
+            if (jokerSkipCount <= 0) {
+                alert(currentLang === "de"
+                    ? "Keine Skip-Joker mehr! Kaufe welche im Shop."
+                    : "No Skip Jokers left! Buy some in the shop.");
+                return;
+            }
+            const currentP = players[currentPlayerIndex];
+            if (!currentP || !namesEqual(currentP, myName)) return;
+            if (!pendingChoice) return;
+
+            if (!confirm(currentLang === "de"
+                ? "Skip-Joker verwenden und diese Aufgabe überspringen? (keine XP/Coins)"
+                : "Use Skip Joker and skip this task? (no XP/Coins)")) {
+                return;
+            }
+
+            jokerSkipCount--;
+            taskCompleted = true;
+            updateHUD();
+            saveUserDataToCloud();
+
+            const resultData = {
+                type: "SHOW_RESULT",
+                targetPlayer: getUserDisplayName(currentP),
+                choice: pendingChoice,
+                taskText: currentTaskText,
+                resultText: currentLang === "de"
+                    ? "🃏 Mit Skip-Joker übersprungen!"
+                    : "🃏 Skipped with Skip Joker!"
+            };
+
+            handleIncomingData(resultData);
+            if (!isHost) {
+                sendClientLobbyData(resultData);
+            } else {
+                broadcastLobbyData(resultData);
+                scheduleSaveGameState();
+            }
+
+            // Joker-Buttons ausblenden
+            document.getElementById("joker-skip-box")?.classList.add("hidden");
+        }
+
+        /**
+         * Force-Skip: den aktuell dran seienden Spieler aussetzen.
+         * Nur nutzbar, wenn man selbst nicht der aktuelle Spieler ist und eine Aufgabe läuft.
+         */
+        function useForceSkipJoker() {
+            if (isSpectator) return;
+            if (jokerForceCount <= 0) {
+                alert(currentLang === "de"
+                    ? "Keine Force-Skip-Joker mehr! Kaufe welche im Shop."
+                    : "No Force-Skip Jokers left! Buy some in the shop.");
+                return;
+            }
+            const currentP = players[currentPlayerIndex];
+            if (!currentP || currentP.eliminated || currentP.isSpectator) return;
+            const targetName = getUserDisplayName(currentP);
+            if (namesEqual(targetName, myName)) {
+                alert(currentLang === "de"
+                    ? "Du kannst dich nicht selbst aussetzen – nutze den Skip-Joker."
+                    : "You cannot force-skip yourself – use the Skip Joker.");
+                return;
+            }
+            // Nur sinnvoll, wenn eine Aufgabe aktiv ist oder der Spieler gewählt hat
+            if (!pendingChoice && !currentTaskText) {
+                alert(currentLang === "de"
+                    ? "Aktuell läuft keine Aufgabe zum Aussetzen."
+                    : "No active task to force-skip right now.");
+                return;
+            }
+
+            if (!confirm(currentLang === "de"
+                ? `Force-Skip-Joker auf ${targetName} anwenden? Die Aufgabe wird übersprungen.`
+                : `Apply Force-Skip Joker on ${targetName}? The task will be skipped.`)) {
+                return;
+            }
+
+            jokerForceCount--;
+            updateHUD();
+            saveUserDataToCloud();
+
+            const forceData = {
+                type: "FORCE_SKIP",
+                byPlayer: myName,
+                targetPlayer: targetName,
+                choice: pendingChoice || "",
+                taskText: currentTaskText || ""
+            };
+
+            if (!isHost) {
+                // An Host senden – der Host verarbeitet & broadcastet SHOW_RESULT
+                sendClientLobbyData(forceData);
+            } else {
+                // Host: FORCE_SKIP verarbeiten (zeigt Ergebnis + broadcastet SHOW_RESULT)
+                handleIncomingData(forceData);
+            }
         }
 
         async function buyTheme(themeName, cost) {
@@ -1993,6 +2371,7 @@
 
         function openAccountModal() {
             updateProfileModal();
+            updateHUD();
             document.getElementById("account-modal").classList.remove("hidden");
         }
         function closeAccountModal() {
@@ -2210,8 +2589,12 @@
                 unlockedItems = [];
                 unlockedThemes = [];
                 unlockedBadges = [];
+                unlockedEmotes = [];
                 truthCount = 0;
                 dareCount = 0;
+                jokerSkipCount = 0;
+                jokerForceCount = 0;
+                avatarEmote = "😊";
 
                 document.getElementById("account-modal")?.classList.add("hidden");
                 document.getElementById("profile-modal")?.classList.add("hidden");
@@ -3547,6 +3930,27 @@
                     data.taskText,
                     data.resultText
                 );
+            } else if (data.type === 'FORCE_SKIP') {
+                // Jemand hat einen Force-Skip-Joker auf den aktuellen Spieler gespielt
+                const targetName = data.targetPlayer || "";
+                const byName = data.byPlayer || "";
+                taskCompleted = true;
+                const resultData = {
+                    type: "SHOW_RESULT",
+                    targetPlayer: targetName,
+                    choice: data.choice || pendingChoice || "",
+                    taskText: data.taskText || currentTaskText || "",
+                    resultText: currentLang === "de"
+                        ? `🚫 Von ${byName} mit Force-Skip-Joker ausgesetzt!`
+                        : `🚫 Force-skipped by ${byName}!`
+                };
+                // Lokal anzeigen
+                handleIncomingData(resultData);
+                // Host verteilt das Ergebnis an alle Clients
+                if (isHost) {
+                    broadcastLobbyData(resultData);
+                    scheduleSaveGameState();
+                }
             } else if (data.type === 'VOTE_NEXT_TURN') {
                 handleNextTurnVote(data.playerName);
             } else if (data.type === 'EXECUTE_NEXT_TURN') {
@@ -3979,6 +4383,19 @@
                     document.getElementById("answer-box").classList.add("hidden");
                     document.getElementById("dare-box").classList.remove("hidden");
                 }
+
+                // Skip-Joker-Button anzeigen, wenn Joker vorhanden
+                const skipBox = document.getElementById("joker-skip-box");
+                if (skipBox) {
+                    if (jokerSkipCount > 0) {
+                        skipBox.classList.remove("hidden");
+                        const cnt = document.getElementById("joker-skip-btn-count");
+                        if (cnt) cnt.innerText = String(jokerSkipCount);
+                    } else {
+                        skipBox.classList.add("hidden");
+                    }
+                }
+                document.getElementById("joker-force-box")?.classList.add("hidden");
             } else {
                 document.getElementById("active-task-area").classList.add("hidden");
                 document.getElementById("waiting-for-player-box").classList.remove("hidden");
@@ -3987,6 +4404,19 @@
                 document.getElementById("waiting-info-text").innerText = currentLang === 'de'
                     ? `${rolePrefix}${tp} führt aus: „${taskText}“`
                     : `${rolePrefix}${tp}'s task: "${taskText}"`;
+
+                // Force-Skip-Button für andere Spieler (nicht Zuschauer, Joker vorhanden)
+                const forceBox = document.getElementById("joker-force-box");
+                if (forceBox) {
+                    if (!isSpectator && jokerForceCount > 0 && !namesEqual(targetPlayer, myName)) {
+                        forceBox.classList.remove("hidden");
+                        const cnt = document.getElementById("joker-force-btn-count");
+                        if (cnt) cnt.innerText = String(jokerForceCount);
+                    } else {
+                        forceBox.classList.add("hidden");
+                    }
+                }
+                document.getElementById("joker-skip-box")?.classList.add("hidden");
             }
         }
 
@@ -4088,6 +4518,8 @@
             document.getElementById("creator-input-area").classList.add("hidden");
             document.getElementById("wop-choice-area").classList.add("hidden");
             document.getElementById("waiting-for-player-box").classList.add("hidden");
+            document.getElementById("joker-skip-box")?.classList.add("hidden");
+            document.getElementById("joker-force-box")?.classList.add("hidden");
             document.getElementById("result-feedback-area").classList.remove("hidden");
 
             if (isNewResult) {
