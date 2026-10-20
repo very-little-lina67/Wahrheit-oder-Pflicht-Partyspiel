@@ -1367,3 +1367,44 @@ textarea:focus {
     transform: translateY(-1px);
     box-shadow: 0 8px 22px rgba(109, 40, 217, 0.35) !important;
 }
+
+
+/* ==========================================================
+   LOBBY VERLASSEN + FORCE-JOKER — eigene Farben
+   ========================================================== */
+#leave-lobby-btn,
+.btn-leave-lobby {
+    background: linear-gradient(145deg, #fb923c, #ea580c) !important;
+    color: #fff !important;
+    border: 1px solid rgba(253, 186, 116, 0.45) !important;
+    box-shadow: 0 4px 14px rgba(234, 88, 12, 0.28) !important;
+    border-radius: 12px;
+    font-weight: 650;
+    cursor: pointer;
+    transition: filter 140ms ease, transform 120ms ease, box-shadow 160ms ease;
+}
+#leave-lobby-btn:hover:not(:disabled),
+.btn-leave-lobby:hover:not(:disabled) {
+    filter: brightness(1.08);
+    transform: translateY(-1px);
+    box-shadow: 0 8px 20px rgba(234, 88, 12, 0.35) !important;
+}
+
+#ui-joker-force-btn,
+.btn-joker-force {
+    background: linear-gradient(145deg, #c084fc, #7c3aed) !important;
+    color: #fff !important;
+    border: 1px solid rgba(221, 214, 254, 0.4) !important;
+    box-shadow: 0 4px 16px rgba(124, 58, 237, 0.3) !important;
+    border-radius: 12px;
+    font-weight: 650;
+    cursor: pointer;
+    width: 100%;
+    transition: filter 140ms ease, transform 120ms ease, box-shadow 160ms ease;
+}
+#ui-joker-force-btn:hover:not(:disabled),
+.btn-joker-force:hover:not(:disabled) {
+    filter: brightness(1.08);
+    transform: translateY(-1px);
+    box-shadow: 0 8px 22px rgba(124, 58, 237, 0.38) !important;
+}
