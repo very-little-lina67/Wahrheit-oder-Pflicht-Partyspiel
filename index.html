@@ -478,7 +478,7 @@
                 <div class="hud-stat"><span class="hud-stat-icon">🔥</span> <span id="ui-hud-streak-text">Streak</span>: <span id="hud-streak" class="hud-val hud-val-gold">0</span></div>
                 <div class="hud-stat"><span class="hud-stat-icon">✨</span> XP: <span id="hud-xp" class="hud-val hud-val-cyan">0</span></div>
                 <div class="hud-stat"><span class="hud-stat-icon">💰</span> <span id="ui-hud-coins-text">Coins</span>: <span id="hud-coins" class="hud-val hud-val-gold">0</span></div>
-                <div class="hud-stat"><span class="hud-stat-icon">🃏</span> <span id="hud-jokers" class="hud-val hud-val-purple">0/0</span></div>
+                <div class="hud-stat"><span class="hud-stat-icon">🃏</span> <span id="ui-hud-jokers-text">Joker</span>: <span id="hud-jokers" class="hud-val hud-val-purple">0/0</span></div>
                 <span id="hud-spectator-badge" class="hidden hud-spectator-badge">👁️ ZUSCHAUER</span>
             </div>
             <div class="hud-actions-row">
@@ -493,7 +493,7 @@
         </div>
 
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-            <button id="leave-lobby-btn" class="btn-danger hidden" onclick="leaveLobby()" style="width: auto; padding: 5px 10px; font-size: 12px; margin: 0;">🚪 Lobby verlassen</button>
+            <button id="leave-lobby-btn" class="btn-leave-lobby hidden" onclick="leaveLobby()" style="width: auto; padding: 5px 10px; font-size: 12px; margin: 0;">🚪 Lobby verlassen</button>
             
             <div style="margin-left: auto;">
                 <label for="lang-select" style="font-size: 12px; color: #ccc;">🌐 <span id="ui-lang-label-text">Language</span>:</label>
@@ -598,7 +598,7 @@
                 <p id="waiting-info-text" style="color: #ccc; font-weight: bold; font-size: 13px; margin:0;"></p>
                 <!-- Force-Skip-Joker: aktuellen Spieler aussetzen -->
                 <div id="joker-force-box" class="hidden" style="margin-top: 10px;">
-                    <button class="btn-danger" onclick="useForceSkipJoker()" id="ui-joker-force-btn" style="width:100%; font-size: 12px; padding: 8px; background: linear-gradient(135deg,#9f1239,#e11d48);">
+                    <button class="btn-joker-force" onclick="useForceSkipJoker()" id="ui-joker-force-btn" style="width:100%; font-size: 12px; padding: 8px;">
                         🚫 <span id="ui-joker-force-btn-text">Spieler aussetzen</span> (<span id="joker-force-btn-count">0</span>)
                     </button>
                 </div>
