@@ -309,6 +309,7 @@
                 btnClose: "Schließen",
                 hudStreakText: "Streak",
                 hudCoinsText: "Coins",
+                hudJokersText: "Joker",
                 btnShop: "🛒 Shop",
                 btnAdmin: "🛡️ Admin",
                 btnLeaderboard: "🏆 Rangliste",
@@ -568,6 +569,7 @@
                 btnClose: "Close",
                 hudStreakText: "Streak",
                 hudCoinsText: "Coins",
+                hudJokersText: "Joker",
                 btnShop: "🛒 Shop",
                 btnAdmin: "🛡️ Admin",
                 btnLeaderboard: "🏆 Ranking",
@@ -954,6 +956,7 @@
             // HUD & Navigation
             const hudStreak = document.getElementById("ui-hud-streak-text"); if (hudStreak) hudStreak.innerText = t.hudStreakText;
             const hudCoins = document.getElementById("ui-hud-coins-text"); if (hudCoins) hudCoins.innerText = t.hudCoinsText;
+            const hudJokers = document.getElementById("ui-hud-jokers-text"); if (hudJokers) hudJokers.innerText = t.hudJokersText || "Joker";
             // HUD-Action-Buttons: Labels in Spans setzen, damit Badge/Icons erhalten bleiben
             const setHudLabel = (btnId, labelId, text) => {
                 const lbl = document.getElementById(labelId);
