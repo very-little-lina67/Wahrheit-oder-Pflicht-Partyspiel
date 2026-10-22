@@ -448,12 +448,12 @@
                 statusSettingsTitle: "⚙️ Mein Status einstellen",
                 statusSettingsDesc: "Stelle deine aktuellen Werte ein – sie werden live an die Lobby gesendet.",
                 statusSettingsClose: "Schließen",
-                toiletLabel: "🚻 Klo-Dringlichkeit",
+                toiletLabel: "💧 Blasen-Füllstand / Pipi-Dringlichkeit",
                 hornyLabel: "🔥 Horny-Level",
                 alcoholLabel: "🍺 Alkohol-Pegel",
                 thirstLabel: "💧 Durst",
                 energyLabel: "😴 Müdigkeit",
-                toiletShort: "Klo",
+                toiletShort: "Pipi",
                 hornyShort: "Horny",
                 alcoholShort: "Alkohol",
                 thirstShort: "Durst",
@@ -720,12 +720,12 @@
                 statusSettingsTitle: "⚙️ Set my status",
                 statusSettingsDesc: "Adjust your current values – they are sent live to the lobby.",
                 statusSettingsClose: "Close",
-                toiletLabel: "🚻 Restroom Urgency",
+                toiletLabel: "💧 Bladder level / Pee urgency",
                 hornyLabel: "🔥 Horny Level",
                 alcoholLabel: "🍺 Alcohol Level",
                 thirstLabel: "💧 Thirst",
                 energyLabel: "😴 Tiredness",
-                toiletShort: "Restroom",
+                toiletShort: "Pee",
                 hornyShort: "Horny",
                 alcoholShort: "Alcohol",
                 thirstShort: "Thirst",
@@ -1126,7 +1126,7 @@
             const statusSetClose = document.getElementById("ui-status-settings-close");
             if (statusSetClose) statusSetClose.innerText = t.statusSettingsClose || (currentLang === "de" ? "Schließen" : "Close");
             const statusLabelMap = [
-                { id: "ui-toilet-label", valueId: "toilet-level-value", key: "toiletLabel", fallbackDe: "🚻 Klo-Dringlichkeit", fallbackEn: "🚻 Restroom Urgency" },
+                { id: "ui-toilet-label", valueId: "toilet-level-value", key: "toiletLabel", fallbackDe: "💧 Blasen-Füllstand / Pipi-Dringlichkeit", fallbackEn: "💧 Bladder level / Pee urgency" },
                 { id: "ui-horny-label", valueId: "horny-level-value", key: "hornyLabel", fallbackDe: "🔥 Horny-Level", fallbackEn: "🔥 Horny Level" },
                 { id: "ui-alcohol-label", valueId: "alcohol-level-value", key: "alcoholLabel", fallbackDe: "🍺 Alkohol-Pegel", fallbackEn: "🍺 Alcohol Level" },
                 { id: "ui-thirst-label", valueId: "thirst-level-value", key: "thirstLabel", fallbackDe: "💧 Durst", fallbackEn: "💧 Thirst" },
@@ -4675,7 +4675,7 @@
             container.innerHTML = "";
             const t = translations[currentLang] || translations.de;
             const bars = [
-                { key: "toilet", icon: "🚻", short: t.toiletShort || (currentLang === "de" ? "Klo" : "Restroom"), color: "#35b8ff" },
+                { key: "toilet", icon: "💧", short: t.toiletShort || (currentLang === "de" ? "Pipi" : "Pee"), color: "#35b8ff" },
                 { key: "horny", icon: "🔥", short: t.hornyShort || (currentLang === "de" ? "Horny" : "Horny"), color: "#ff5b9b" },
                 { key: "alcohol", icon: "🍺", short: t.alcoholShort || (currentLang === "de" ? "Alkohol" : "Alcohol"), color: "#f0a500" },
                 { key: "thirst", icon: "💧", short: t.thirstShort || (currentLang === "de" ? "Durst" : "Thirst"), color: "#4fc3f7" },
