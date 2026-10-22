@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Wahrheit oder Pflicht Partyspiel / Truth or Dare Party Game</title>
     
     <!-- Firebase SDKs (Compat-Modus für direkten Browser-Einsatz) -->
@@ -326,6 +326,9 @@
                     <div class="stat-card"><span class="stat-label" id="ui-stat-truth-label">Wahrheiten</span><span class="stat-value" id="stat-truth">0</span></div>
                     <div class="stat-card"><span class="stat-label" id="ui-stat-dare-label">Pflichten</span><span class="stat-value" id="stat-dare">0</span></div>
                     <div class="stat-card"><span class="stat-label" id="ui-stat-total-label">Aufgaben gesamt</span><span class="stat-value" id="stat-total">0</span></div>
+                    <div class="stat-card"><span class="stat-label" id="ui-stat-jokers-used-label">Joker verwendet</span><span class="stat-value" id="stat-jokers-used">0</span></div>
+                    <div class="stat-card"><span class="stat-label" id="ui-stat-jokers-skip-used-label">Skip-Joker genutzt</span><span class="stat-value" id="stat-jokers-skip-used">0</span></div>
+                    <div class="stat-card"><span class="stat-label" id="ui-stat-jokers-force-used-label">Force-Joker genutzt</span><span class="stat-value" id="stat-jokers-force-used">0</span></div>
                     <div class="stat-card"><span class="stat-label" id="ui-stat-badges-label">Badges</span><span class="stat-value" id="stat-badges">0</span></div>
                     <div class="stat-card"><span class="stat-label" id="ui-stat-items-label">Items</span><span class="stat-value" id="stat-items">0</span></div>
                     <div class="stat-card"><span class="stat-label" id="ui-stat-themes-label">Themes</span><span class="stat-value" id="stat-themes">0</span></div>
@@ -601,6 +604,18 @@
                     <button class="btn-joker-force" onclick="useForceSkipJoker()" id="ui-joker-force-btn" style="width:100%; font-size: 12px; padding: 8px;">
                         🚫 <span id="ui-joker-force-btn-text">Spieler aussetzen</span> (<span id="joker-force-btn-count">0</span>)
                     </button>
+                </div>
+                <!-- Warte-Minispiel (ab 4 aktiven Spielern) -->
+                <div id="mini-wait-game" class="hidden mini-wait-game">
+                    <div class="mini-wait-head">
+                        <span id="ui-mini-title">⏱️ Warte-Mini: Blitz-Reaktion</span>
+                    </div>
+                    <p id="ui-mini-desc" class="mini-wait-desc">Sobald der Button grün wird – tippen!</p>
+                    <button type="button" id="mini-react-btn" class="mini-react-btn mini-react-idle" onclick="miniGameClick()">
+                        <span id="ui-mini-btn-label">Bereit?</span>
+                    </button>
+                    <p id="mini-react-result" class="mini-wait-result"></p>
+                    <p id="mini-react-best" class="mini-wait-best"></p>
                 </div>
             </div>
 
