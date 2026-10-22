@@ -3899,7 +3899,11 @@
             const prevStarted = gameStarted;
 
             if (Array.isArray(data.players) && data.players.length) {
-                players = data.players;
+                const prevList = players || [];
+                players = data.players.map(ip => {
+                    const prev = prevList.find(p => namesEqual(p, ip));
+                    return normalizePlayerEntry(ip, prev);
+                });
                 updatePlayerList();
             }
             if (data.playerStatuses && typeof data.playerStatuses === "object") {
@@ -4046,7 +4050,7 @@
 
             if (!restoring || !activeLobbyCode) {
                 activeLobbyCode = "vibe" + Math.random().toString(36).slice(2, 8);
-                players = [{ name: getUserDisplayName({name: myName}, "Spieler"), accessory: equippedAccessory || "", eliminated: false }];
+                players = [{ name: getUserDisplayName({name: myName}, "Spieler"), accessory: equippedAccessory || "", eliminated: false, isSpectator: false, isLocal: false }];
             } else {
                 // Restore: lokale Cache-Liste nur als Fallback – Firebase ist Quelle der Wahrheit
                 const savedPlayers = loadLobbyPlayers();
@@ -4536,12 +4540,7 @@
                     const incoming = data.players;
                     players = incoming.map(ip => {
                         const prev = (players || []).find(p => namesEqual(p, ip));
-                        return {
-                            name: ip.name,
-                            accessory: ip.accessory || (prev && prev.accessory) || "",
-                            eliminated: !!(ip.eliminated || (prev && prev.eliminated)),
-                            isSpectator: !!(ip.isSpectator || (prev && prev.isSpectator))
-                        };
+                        return normalizePlayerEntry(ip, prev);
                     });
                 }
                 updatePlayerList();
@@ -4760,10 +4759,21 @@
             return !!(p && p.isLocal === true);
         }
 
+        function normalizePlayerEntry(p, prev) {
+            const prevMatch = prev || null;
+            return {
+                name: (p && p.name) != null ? p.name : (prevMatch && prevMatch.name) || "",
+                accessory: (p && p.accessory) || (prevMatch && prevMatch.accessory) || "",
+                eliminated: !!(p && p.eliminated) || !!(prevMatch && prevMatch.eliminated),
+                isSpectator: !!(p && p.isSpectator) || !!(prevMatch && prevMatch.isSpectator),
+                isLocal: !!(p && p.isLocal) || !!(prevMatch && prevMatch.isLocal)
+            };
+        }
+
         /**
          * Darf dieser Client den Zug für playerName steuern?
          * - eigener Account immer
-         * - Host: alle isLocal-Sitze (mehrere Personen, ein Gerät)
+         * - Host: alle isLocal-Sitze (Pass & Play auf einem Gerät)
          */
         function canControlPlayer(playerName) {
             if (isSpectator) return false;
@@ -4772,6 +4782,19 @@
             if (!isHost) return false;
             const p = players.find(x => namesEqual(x, playerName));
             return isLocalSeat(p);
+        }
+
+        /** Nächster Name auf diesem Gerät, der noch nicht abgestimmt hat (Pass & Play) */
+        function getNextControllableUnvotedName(votedList) {
+            const voted = Array.isArray(votedList) ? votedList : [];
+            const active = (players || []).filter(p => !p.eliminated && !p.isSpectator);
+            for (const p of active) {
+                const n = getUserDisplayName(p);
+                if (!n) continue;
+                if (voted.some(v => namesEqual(v, n))) continue;
+                if (canControlPlayer(n)) return n;
+            }
+            return null;
         }
 
         function addLocalPlayer() {
@@ -4924,7 +4947,8 @@
                 ? "Warte auf die Aufgabe von einem Mitspieler…"
                 : "Waiting for a task from another player…";
 
-            sendData({ type: 'SUBMIT_CHOICE', playerName: myName, choice: choice });
+            const actingName = getUserDisplayName(currentP);
+            sendData({ type: 'SUBMIT_CHOICE', playerName: actingName, choice: choice });
             if (isHost) scheduleSaveGameState();
         }
 
@@ -5146,8 +5170,14 @@
         function finishTaskAndReward(choice) {
             const currentPlayer = players[currentPlayerIndex];
             if (!currentPlayer || !canControlPlayer(getUserDisplayName(currentPlayer))) return;
-
-            addRewards(choice === "dare");
+            // Cloud-Fortschritt nur für den eingeloggten Account, nicht für Pass-&-Play-Gäste
+            if (namesEqual(currentPlayer, myName)) {
+                addRewards(choice === "dare");
+            } else {
+                // Session-Stats trotzdem zählen
+                const isDare = choice === "dare";
+                trackSessionReward(isDare, isDare ? 20 : 10, isDare ? 8 : 4);
+            }
         }
 
         function showFeedbackScreen(targetPlayer, choice, taskText, resultText) {
@@ -5199,7 +5229,7 @@
                 }
             } else {
                 if (nextBtn) {
-                    nextBtn.disabled = nextTurnVotedPlayers.some(n => namesEqual(n, myName));
+                    nextBtn.disabled = !getNextControllableUnvotedName(nextTurnVotedPlayers);
                     nextBtn.innerText = currentLang === 'de' ? "Weiter" : "Next";
                 }
             }
@@ -5213,13 +5243,13 @@
             if (isSpectator) return;
             if (!currentSharedResult) return;
 
-            const me = players.find(p => namesEqual(p, myName));
-            if (!me || me.eliminated || me.isSpectator) return;
-            if (nextTurnVotedPlayers.some(n => namesEqual(n, myName))) return;
+            // Pass & Play: nächster noch offener Sitz auf diesem Gerät
+            const voterName = getNextControllableUnvotedName(nextTurnVotedPlayers);
+            if (!voterName) return;
 
             document.getElementById("next-turn-btn").disabled = true;
 
-            const voteData = { type: 'VOTE_NEXT_TURN', playerName: myName };
+            const voteData = { type: 'VOTE_NEXT_TURN', playerName: voterName };
 
             // Eigene Bestätigung sofort lokal registrieren.
             handleIncomingData(voteData);
@@ -5243,9 +5273,12 @@
             document.getElementById("next-votes-count").innerText = nextTurnVotedPlayers.length;
             document.getElementById("next-votes-total").innerText = activePlayers.length;
 
-            if (namesEqual(pName, myName)) {
+            // Button wieder freigeben, solange auf diesem Gerät noch Stimmen fehlen (Pass & Play)
+            {
                 const nb = document.getElementById("next-turn-btn");
-                if (nb) nb.disabled = true;
+                if (nb && !isSpectator) {
+                    nb.disabled = !getNextControllableUnvotedName(nextTurnVotedPlayers);
+                }
             }
 
             // Erst wenn wirklich jeder aktive Spieler bestätigt hat, geht es weiter.
@@ -5328,8 +5361,10 @@
 
         function voteNextRound() {
             if (isSpectator) return;
+            const voterName = getNextControllableUnvotedName(nextRoundVotedPlayers);
+            if (!voterName) return;
             document.getElementById("next-round-btn").disabled = true;
-            sendData({ type: 'VOTE_NEXT_ROUND', playerName: myName });
+            sendData({ type: 'VOTE_NEXT_ROUND', playerName: voterName });
         }
 
         function handleNextRoundVote(pName) {
@@ -5343,6 +5378,11 @@
             const totalEl = document.getElementById("round-votes-total");
             if (countEl) countEl.innerText = nextRoundVotedPlayers.length;
             if (totalEl) totalEl.innerText = activeCount;
+
+            const nrb = document.getElementById("next-round-btn");
+            if (nrb && !isSpectator) {
+                nrb.disabled = !getNextControllableUnvotedName(nextRoundVotedPlayers);
+            }
 
             if (isHost && activeCount > 0 && nextRoundVotedPlayers.length >= activeCount) {
                 sendData({ type: 'NEXT_ROUND' });
@@ -5763,7 +5803,8 @@
                         name: p.name,
                         accessory: p.accessory || "",
                         eliminated: !!p.eliminated,
-                        isSpectator: !!p.isSpectator
+                        isSpectator: !!p.isSpectator,
+                        isLocal: !!p.isLocal
                     })),
                     eliminatedName: eliminatedName
                 });
@@ -5776,7 +5817,8 @@
                         name: p.name,
                         accessory: p.accessory || "",
                         eliminated: !!p.eliminated,
-                        isSpectator: !!p.isSpectator
+                        isSpectator: !!p.isSpectator,
+                        isLocal: !!p.isLocal
                     })),
                     eliminatedName: eliminatedName
                 });
