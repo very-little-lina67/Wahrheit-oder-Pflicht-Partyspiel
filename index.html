@@ -405,9 +405,11 @@
                 <button id="lb-tab-global" class="btn-green" onclick="switchLeaderboardTab('global')" style="flex:1; padding:6px; font-size:12px;">🌍 Global</button>
                 <button id="lb-tab-friends" class="btn-blue" onclick="switchLeaderboardTab('friends')" style="flex:1; padding:6px; font-size:12px;">👥 Freunde</button>
             </div>
-            <div style="display:flex; gap:6px; margin-bottom:10px;">
-                <button id="lb-metric-total" class="btn-green" onclick="switchLeaderboardMetric('total')" style="flex:1; padding:6px; font-size:12px;">💰 Gesamt</button>
-                <button id="lb-metric-monthly" class="btn-blue" onclick="switchLeaderboardMetric('monthly')" style="flex:1; padding:6px; font-size:12px;">📅 Monat</button>
+            <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px;">
+                <button id="lb-metric-total" class="btn-green" onclick="switchLeaderboardMetric('total')" style="flex:1; min-width:42%; padding:6px; font-size:12px;">💰 Gesamt</button>
+                <button id="lb-metric-monthly" class="btn-blue" onclick="switchLeaderboardMetric('monthly')" style="flex:1; min-width:42%; padding:6px; font-size:12px;">📅 Monat</button>
+                <button id="lb-metric-level" class="btn-blue" onclick="switchLeaderboardMetric('level')" style="flex:1; min-width:42%; padding:6px; font-size:12px;">⭐ Level</button>
+                <button id="lb-metric-streak" class="btn-blue" onclick="switchLeaderboardMetric('streak')" style="flex:1; min-width:42%; padding:6px; font-size:12px;">🔥 Tages-Streak</button>
             </div>
             <p id="ui-lb-desc" style="font-size: 12px; color: #ccc;">Die Spieler mit den meisten Coins:</p>
             
