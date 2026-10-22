@@ -305,6 +305,7 @@
                 lbError: "Die Rangliste konnte nicht geladen werden.",
                 btnLogout: "Logout",
                 btnDeleteAccount: "Konto löschen",
+                deleteAccountWarning: "⚠️ Achtung: Konto löschen ist endgültig. XP, Coins, Badges, Streaks und Shop-Items gehen verloren und können nicht wiederhergestellt werden.",
                 alertDeleteOwnConfirm: "Möchtest du dein Konto wirklich unwiderruflich löschen?\n\nAlle deine Daten (XP, Coins, Badges, Freunde, …) werden gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.",
                 alertDeleteOwnSuccess: "Dein Konto wurde erfolgreich gelöscht.",
                 alertDeleteOwnError: "Fehler beim Löschen des Kontos. Bitte versuche es später erneut.",
@@ -586,6 +587,7 @@
                 lbError: "Could not load the leaderboard.",
                 btnLogout: "Logout",
                 btnDeleteAccount: "Delete Account",
+                deleteAccountWarning: "⚠️ Warning: Deleting your account is permanent. XP, coins, badges, streaks and shop items will be lost and cannot be restored.",
                 alertDeleteOwnConfirm: "Do you really want to permanently delete your account?\n\nAll your data (XP, coins, badges, friends, …) will be deleted. This action cannot be undone.",
                 alertDeleteOwnSuccess: "Your account has been successfully deleted.",
                 alertDeleteOwnError: "Error deleting the account. Please try again later.",
@@ -943,6 +945,10 @@
             });
             const btnLogout = document.getElementById("ui-btn-logout"); if (btnLogout) btnLogout.innerText = t.btnLogout;
             const btnDeleteAccount = document.getElementById("ui-btn-delete-account"); if (btnDeleteAccount) btnDeleteAccount.innerText = t.btnDeleteAccount;
+            const delWarn = document.getElementById("ui-delete-account-warning");
+            if (delWarn) delWarn.innerText = t.deleteAccountWarning || (currentLang === "de"
+                ? "⚠️ Achtung: Konto löschen ist endgültig. XP, Coins, Badges, Streaks und Shop-Items gehen verloren und können nicht wiederhergestellt werden."
+                : "⚠️ Warning: Deleting your account is permanent. XP, coins, badges, streaks and shop items will be lost and cannot be restored.");
             const btnClose = document.getElementById("ui-btn-close"); if (btnClose) btnClose.innerText = t.btnClose;
 
             // Feedback Modal
