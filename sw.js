@@ -1,5 +1,5 @@
 /* Service Worker – macht die App in Chrome installierbar (PWA) */
-const CACHE_NAME = "wop-party-v1";
+const CACHE_NAME = "wop-party-v2";
 const PRECACHE = [
   "./",
   "./index.html",
@@ -7,7 +7,10 @@ const PRECACHE = [
   "./js/app.js",
   "./manifest.webmanifest",
   "./icon-192.png",
-  "./icon-512.png"
+  "./icon-512.png",
+  "./apple-touch-icon.png",
+  "./apple-touch-icon-180.png",
+  "./favicon-32.png"
 ];
 
 self.addEventListener("install", (event) => {
