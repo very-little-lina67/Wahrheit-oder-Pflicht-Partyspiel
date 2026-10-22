@@ -224,7 +224,7 @@
                 statXp: "XP",
                 statCoins: "Coins",
                 statMonthly: "Diesen Monat",
-                statStreak: "Streak",
+                statStreak: "Tages-Streak",
                 statTruth: "Wahrheiten",
                 statDare: "Pflichten",
                 statTotal: "Aufgaben gesamt",
@@ -496,7 +496,7 @@
                 statXp: "XP",
                 statCoins: "Coins",
                 statMonthly: "This month",
-                statStreak: "Streak",
+                statStreak: "Daily Streak",
                 statTruth: "Truths",
                 statDare: "Dares",
                 statTotal: "Total tasks",
@@ -805,7 +805,7 @@
                 "ui-stat-xp-label": t.statXp || "XP",
                 "ui-stat-coins-label": t.statCoins || "Coins",
                 "ui-stat-monthly-label": t.statMonthly || (currentLang === "de" ? "Diesen Monat" : "This month"),
-                "ui-stat-streak-label": t.statStreak || "Streak",
+                "ui-stat-streak-label": t.statStreak || (currentLang === "de" ? "Tages-Streak" : "Daily Streak"),
                 "ui-stat-truth-label": t.statTruth || (currentLang === "de" ? "Wahrheiten" : "Truths"),
                 "ui-stat-dare-label": t.statDare || (currentLang === "de" ? "Pflichten" : "Dares"),
                 "ui-stat-total-label": t.statTotal || (currentLang === "de" ? "Aufgaben gesamt" : "Total tasks"),
@@ -1191,8 +1191,17 @@
         let userCoins = 50;
         let monthlyCoins = 0;
         let monthlyCoinsMonth = "";
-        let userStreak = 0;
+        let userStreak = 0;       // Tages-Streak (Login pro Tag) – Profil
+        let gameStreak = 0;       // Spiel-Streak (Runden ohne Leak) – HUD
         let lastLoginDate = ""; // YYYY-MM-DD – für tägliche Login-Streak
+        // Session-/Runden-Stats (seit letztem Spielstart, für End-Screen)
+        let sessionTruth = 0;
+        let sessionDare = 0;
+        let sessionXp = 0;
+        let sessionCoins = 0;
+        let sessionJokers = 0;
+        let sessionPeakStreak = 0;
+        let _roundStatsPendingAction = null; // "leave" | "leak" | null
         let jokersUsedSkip = 0;
         let jokersUsedForce = 0;
         let userLevel = 1;
@@ -1326,6 +1335,7 @@
                     monthlyCoins: monthlyCoins,
                     monthlyCoinsMonth: monthlyCoinsMonth || "",
                     streak: userStreak,
+                    gameStreak: gameStreak,
                     accessory: equippedAccessory || "",
                     avatarEmote: avatarEmote || "😊",
                     items: Array.isArray(unlockedItems) ? unlockedItems : [],
@@ -1397,6 +1407,7 @@
                 d.monthlyCoins = backup.monthlyCoins;
                 d.monthlyCoinsMonth = backup.monthlyCoinsMonth;
                 d.streak = backup.streak;
+                if (backup.gameStreak != null) d.gameStreak = backup.gameStreak;;
                 d.accessory = backup.accessory;
                 d.avatarEmote = backup.avatarEmote;
                 d.items = backup.items;
@@ -1498,6 +1509,7 @@
                     monthlyCoins = numOr(data.monthlyCoins, 0);
                     monthlyCoinsMonth = data.monthlyCoinsMonth || getCurrentMonthKey();
                     userStreak = numOr(data.streak, 0);
+                    gameStreak = numOr(data.gameStreak, 0);
                     equippedAccessory = data.accessory || "";
                     avatarEmote = data.avatarEmote || "😊";
                     unlockedItems = Array.isArray(data.items) ? data.items : [];
@@ -1616,6 +1628,7 @@
                             lastLoginDate = rLogin;
                             userStreak = numOr(remote.streak, userStreak);
                         }
+                        gameStreak = Math.max(numOr(gameStreak, 0), numOr(remote.gameStreak, 0));
                     }
                 } catch (e) {}
 
@@ -1627,6 +1640,7 @@
                     monthlyCoins: monthlyCoins,
                     monthlyCoinsMonth: monthlyCoinsMonth || getCurrentMonthKey(),
                     streak: userStreak,
+                    gameStreak: gameStreak,
                     accessory: equippedAccessory,
                     avatarEmote: avatarEmote,
                     items: unlockedItems,
@@ -1974,7 +1988,7 @@
         }
 
         function updateHUD() {
-            document.getElementById("hud-streak").innerText = userStreak;
+            document.getElementById("hud-streak").innerText = gameStreak;
             document.getElementById("hud-xp").innerText = userXP;
             document.getElementById("hud-coins").innerText = userCoins;
             const jokersEl = document.getElementById("hud-jokers");
@@ -2137,14 +2151,16 @@
 // 8. BELOHNUNGEN, BADGES, AVATARE & VIBE-SHOP
 // ==============================================================================
         function addRewards(isDare) {
-            let mult = userStreak >= 5 ? 2 : 1;
+            // Spiel-Streak: +1 pro erfolgreiche Runde (ohne Leak)
+            gameStreak = (Number(gameStreak) || 0) + 1;
+            let mult = gameStreak >= 5 ? 2 : 1;
             let xpGain = isDare ? 20 : 10;
             let coinGain = (isDare ? 8 : 4) * mult;
 
             userXP += xpGain;
             userCoins += coinGain;
             addMonthlyCoins(coinGain);
-            // Streak ist Login-Tages-Serie (applyDailyLoginStreak) – nicht pro Aufgabe
+            trackSessionReward(!!isDare, xpGain, coinGain);
             
             if(isDare) dareCount++;
             else truthCount++;
@@ -2173,10 +2189,10 @@
             if (truthCount >= 10) addBadge("💡 10 Wahrheiten");
             if (truthCount >= 25) addBadge("💡 25 Wahrheiten");
 
-            // Streaks
-            if (userStreak >= 5) addBadge("⚡ Streak-Monster");
-            if (userStreak >= 15) addBadge("⚡ Streak-Legende");
-            if (userStreak >= 30) addBadge("⚡ Unstoppable");
+            // Spiel-Streak (HUD) + Tages-Streak (Profil)
+            if (gameStreak >= 5 || userStreak >= 5) addBadge("⚡ Streak-Monster");
+            if (gameStreak >= 15 || userStreak >= 15) addBadge("⚡ Streak-Legende");
+            if (gameStreak >= 30 || userStreak >= 30) addBadge("⚡ Unstoppable");
 
             // Gesamt-Aufgaben
             if (totalTasks >= 25) addBadge("🎯 25 Aufgaben");
@@ -2193,7 +2209,7 @@
             if (userCoins >= 500) addBadge("💰 Coin-König");
 
             // Party-Animal (viele Aufgaben + guter Streak)
-            if (totalTasks >= 30 && userStreak >= 10) addBadge("🍻 Party-Animal");
+            if (totalTasks >= 30 && (userStreak >= 10 || gameStreak >= 10)) addBadge("🍻 Party-Animal");
         }
 
         async function setAvatarEmote(emote) {
@@ -2427,6 +2443,7 @@
 
             jokerSkipCount--;
             jokersUsedSkip = (Number(jokersUsedSkip) || 0) + 1;
+            sessionJokers = (Number(sessionJokers) || 0) + 1;
             taskCompleted = true;
             updateHUD();
             updateProfileModal();
@@ -2491,6 +2508,7 @@
 
             jokerForceCount--;
             jokersUsedForce = (Number(jokersUsedForce) || 0) + 1;
+            sessionJokers = (Number(sessionJokers) || 0) + 1;
             updateHUD();
             updateProfileModal();
             saveUserDataToCloud();
@@ -2989,6 +3007,7 @@
                 userXP = 0;
                 userCoins = 50;
                 userStreak = 0;
+                gameStreak = 0;
                 lastLoginDate = "";
                 jokersUsedSkip = 0;
                 jokersUsedForce = 0;
@@ -4235,16 +4254,110 @@
             else joinGame({ restoring: true, asSpectator: wasSpectator });
         }
 
-        function leaveLobby() {
-            if (confirm(currentLang === 'de' ? "Möchtest du die Lobby wirklich verlassen?" : "Do you really want to leave the lobby?")) {
-                leavingLobbyManually = true;
-                stopReconnectTimer();
 
-                try { sendData({ type: 'LEAVE_LOBBY', playerName: myName }); } catch (e) {}
+        function resetSessionStats() {
+            sessionTruth = 0;
+            sessionDare = 0;
+            sessionXp = 0;
+            sessionCoins = 0;
+            sessionJokers = 0;
+            sessionPeakStreak = 0;
+        }
 
-                clearSavedLobbySession();
-                cleanupAndResetLobby(true);
+        function trackSessionReward(isDare, xpGain, coinGain) {
+            if (isDare) sessionDare++;
+            else sessionTruth++;
+            sessionXp += Math.max(0, Number(xpGain) || 0);
+            sessionCoins += Math.max(0, Number(coinGain) || 0);
+            if ((Number(gameStreak) || 0) > sessionPeakStreak) {
+                sessionPeakStreak = Number(gameStreak) || 0;
             }
+        }
+
+        function showRoundStatsModal(reason) {
+            // reason: "leave" | "leak"
+            const modal = document.getElementById("round-stats-modal");
+            if (!modal) return false;
+            const de = currentLang === "de";
+            const title = document.getElementById("ui-round-stats-title");
+            const reasonEl = document.getElementById("ui-round-stats-reason");
+            if (title) title.innerText = de ? "📊 Runden-Statistik" : "📊 Round Stats";
+            if (reasonEl) {
+                if (reason === "leak") {
+                    reasonEl.innerText = de
+                        ? "Du bist ausgeschieden (Leak / musste pinkeln)."
+                        : "You were eliminated (leak / had to pee).";
+                } else {
+                    reasonEl.innerText = de
+                        ? "Du hast die Lobby verlassen."
+                        : "You left the lobby.";
+                }
+            }
+            const set = (id, val) => {
+                const el = document.getElementById(id);
+                if (el) el.innerText = String(val);
+            };
+            set("rs-truth", sessionTruth);
+            set("rs-dare", sessionDare);
+            set("rs-total", sessionTruth + sessionDare);
+            set("rs-xp", sessionXp);
+            set("rs-coins", sessionCoins);
+            set("rs-streak", sessionPeakStreak);
+            set("rs-jokers", sessionJokers);
+            set("rs-daily", userStreak);
+
+            // Labels
+            const L = (id, deT, enT) => {
+                const el = document.getElementById(id);
+                if (el) el.innerText = de ? deT : enT;
+            };
+            L("ui-rs-truth-label", "Wahrheiten", "Truths");
+            L("ui-rs-dare-label", "Pflichten", "Dares");
+            L("ui-rs-total-label", "Aufgaben", "Tasks");
+            L("ui-rs-xp-label", "XP verdient", "XP earned");
+            L("ui-rs-coins-label", "Coins verdient", "Coins earned");
+            L("ui-rs-streak-label", "Beste Streak", "Best streak");
+            L("ui-rs-jokers-label", "Joker genutzt", "Jokers used");
+            L("ui-rs-daily-label", "Tages-Streak", "Daily Streak");
+            const closeBtn = document.getElementById("ui-round-stats-close");
+            if (closeBtn) closeBtn.innerText = "OK";
+
+            modal.classList.remove("hidden");
+            return true;
+        }
+
+        function closeRoundStatsModal() {
+            const modal = document.getElementById("round-stats-modal");
+            if (modal) modal.classList.add("hidden");
+            const action = _roundStatsPendingAction;
+            _roundStatsPendingAction = null;
+            if (action === "leave") {
+                _doLeaveLobbyCleanup();
+            } else if (action === "leak") {
+                kickEliminatedPlayerToSetup();
+            }
+        }
+
+        function leaveLobby() {
+            if (!confirm(currentLang === 'de' ? "Möchtest du die Lobby wirklich verlassen?" : "Do you really want to leave the lobby?")) {
+                return;
+            }
+            // Runden-Stats zeigen, wenn in dieser Session etwas passiert ist
+            const hadSession = (sessionTruth + sessionDare + sessionXp + sessionJokers) > 0 || gameStarted;
+            if (hadSession && showRoundStatsModal("leave")) {
+                _roundStatsPendingAction = "leave";
+                return;
+            }
+            _doLeaveLobbyCleanup();
+        }
+
+        function _doLeaveLobbyCleanup() {
+            leavingLobbyManually = true;
+            stopReconnectTimer();
+            try { sendData({ type: 'LEAVE_LOBBY', playerName: myName }); } catch (e) {}
+            clearSavedLobbySession();
+            cleanupAndResetLobby(true);
+            resetSessionStats();
         }
 
         function cleanupAndResetLobby(manual = false) {
@@ -4598,6 +4711,7 @@
         }
 
         function startGameUI() {
+            resetSessionStats();
             gameStarted = true;
             gamePhase = gamePhase === "wheel" ? "wheel" : "wop";
             document.getElementById("auth-modal").classList.add("hidden");
@@ -5369,9 +5483,17 @@
                 }
             }
 
-            // Der ausgeschiedene Spieler selbst → zurück zum Lobby-Setup (Erstellen / Code eingeben)
+            // Der ausgeschiedene Spieler selbst → Runden-Stats, dann Setup
             if (name && namesEqual(name, myName)) {
-                setTimeout(() => kickEliminatedPlayerToSetup(), 300);
+                // Peak-Streak vor Reset merken (gameStreak wird ggf. schon 0)
+                if ((Number(gameStreak) || 0) > sessionPeakStreak) {
+                    sessionPeakStreak = Number(gameStreak) || 0;
+                }
+                if (showRoundStatsModal("leak")) {
+                    _roundStatsPendingAction = "leak";
+                } else {
+                    setTimeout(() => kickEliminatedPlayerToSetup(), 300);
+                }
             }
         }
 
@@ -5428,6 +5550,7 @@
                 document.getElementById("start-btn")?.classList.add("hidden");
                 document.getElementById("client-wait-msg")?.classList.add("hidden");
                 document.getElementById("setup")?.classList.remove("hidden");
+                resetSessionStats();
                 const chatMsgs = document.getElementById("chat-messages");
                 if (chatMsgs) chatMsgs.innerHTML = "";
 
@@ -5528,8 +5651,10 @@
             target.eliminated = true;
             const eliminatedName = getUserDisplayName(target);
 
-            // Login-Streak bleibt bei Ausscheiden erhalten (nur Tages-Lücke setzt zurück).
+            // Spiel-Streak (HUD) bei Leak/Ausscheiden zurücksetzen; Tages-Streak bleibt.
             if (eliminatedName === myName || target.name === myName) {
+                gameStreak = 0;
+                try { await saveUserDataToCloud(); } catch (e) {}
                 updateHUD();
                 updateProfileModal();
             }
