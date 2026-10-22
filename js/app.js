@@ -463,18 +463,18 @@
                 thirstShort: "Durst",
                 energyShort: "Müdigkeit",
                 wheelSectors: [
-                    { title: "🍻 [TRINKEN] 500 ml auf Ex", desc: "TRINKEN: Jeder trinkt sofort ca. 500 ml (ein halber Liter) seines Getränks." },
-                    { title: "🍻 [TRINKEN] Großer Schluck", desc: "TRINKEN: Jeder nimmt sofort einen deutlich großen Schluck." },
+                    { title: "🍻 [TRINKEN] 500 ml auf Ex", desc: "TRINKEN: Jeder trinkt sofort ca. 500 ml (ein halber Liter) seines Getränks – möglichst in einem Zug." },
+                    { title: "🍻 [TRINKEN] Großer Schluck", desc: "TRINKEN: Jeder nimmt sofort einen deutlich großen Schluck (mindestens 3 Sekunden am Glas)." },
                     { title: "🍻 [TRINKEN] Doppel-Schluck verteilen", desc: "TRINKEN: Jeder wählt eine andere Person und vergibt 2 Schlucke – die Person muss trinken." },
-                    { title: "💧 [TRINKEN] Wasser-Glas auf Ex", desc: "TRINKEN: Jeder trinkt ein volles Glas Wasser oder Getränk seiner wahl (oder stilles Getränk) möglichst ohne Pause aus." },
+                    { title: "💧 [TRINKEN] Wasser-Glas auf Ex", desc: "TRINKEN: Jeder trinkt ein volles Glas Wasser (oder stilles Getränk) möglichst ohne Pause aus." },
                     { title: "💧 [TRINKEN] Wasser-Ersatz", desc: "TRINKEN: Wer gerade kein alkoholisches Getränk hat, trinkt stattdessen ein Glas Wasser auf Ex." },
                     { title: "🍻 [TRINKEN] Prosit-Runde", desc: "TRINKEN: Alle stoßen an und trinken gemeinsam einen normalen Schluck." },
-                    { title: "🍻 [TRINKEN] Linke-Hand-Schluck", desc: "TRINKEN: Jeder trinkt einen Schluck." },
+                    { title: "🍻 [TRINKEN] Linke-Hand-Schluck", desc: "TRINKEN: Jeder trinkt einen Schluck nur mit der linken Hand (Rechts: nur rechte Hand)." },
                     { title: "🚫 Pipi-Verbot 3 Runden", desc: "Niemand darf die nächsten 3 Rad-Runden / Züge zur Toilette. (Fair bleiben – bei echtem Notfall Leak-Button.)" },
                     { title: "🤫 2 Runden Schweigen", desc: "Niemand darf die nächsten 2 Spieler-Züge sprechen. Nur Nicken/Gesten erlaubt." },
                     { title: "🤫 2 Runden geräuschlos", desc: "Keine lauten Geräusche, kein Lachen mit Ton – 2 Runden lang möglichst still." },
-                    { title: "⚡ Blasen-Druck 30 Sek.", desc: "Alle legen 30 Sekunden lang die flache Hand auf den Unterbauch und drücken leicht (auf die blase) – dabei ruhig stehen oder sitzen." },
-                    { title: "⚡ Blasen-Druck 45 Sek.", desc: "Wie Blasen-Druck, aber 45 Sekunden auf die Blase drücken so fest es geht. Wer abbricht, nimmt zur Strafe einen Schluck (TRINKEN)." },
+                    { title: "⚡ Blasen-Druck 30 Sek.", desc: "Alle legen 30 Sekunden lang die flache Hand auf den Unterbauch und drücken leicht – dabei ruhig stehen oder sitzen." },
+                    { title: "⚡ Blasen-Druck 45 Sek.", desc: "Wie Blasen-Druck, aber 45 Sekunden. Wer abbricht, nimmt zur Strafe einen Schluck (TRINKEN)." },
                     { title: "⏱️ Hüpfen 30 Sekunden", desc: "Alle hüpfen 30 Sekunden auf der Stelle (kleine Hüpfer reichen)." },
                     { title: "🏋️ 15 Kniebeugen", desc: "Alle machen sofort 15 langsame, saubere Kniebeugen." },
                     { title: "⏱️ 30 Sek. Planke", desc: "Alle halten 30 Sekunden Unterarmstütz / Planke. Wer früher aufhört: 1 Schluck (TRINKEN)." },
@@ -740,24 +740,24 @@
                 thirstShort: "Thirst",
                 energyShort: "Tiredness",
                 wheelSectors: [
-                    { title: "🍻 [DRINK] Chug 500 ml", desc: "DRINK: Everyone immediately chugs about 500 ml (half a liter) of their drink." },
-                    { title: "🍻 [DRINK] Big Sip", desc: "DRINK: Everyone immediately takes a clearly big sip." },
-                    { title: "🍻 [DRINK] Give Out Double Sip", desc: "DRINK: Everyone chooses another person and hands out 2 sips – that person must drink." },
-                    { title: "💧 [DRINK] Chug a Glass of Water", desc: "DRINK: Everyone chugs a full glass of water or a drink of their choice (or still drink) without stopping if possible." },
-                    { title: "💧 [DRINK] Water Substitute", desc: "DRINK: Anyone who currently doesn't have an alcoholic drink chugs a glass of water instead." },
-                    { title: "🍻 [DRINK] Cheers Round", desc: "DRINK: Everyone clinks glasses and drinks a normal sip together." },
-                    { title: "🍻 [DRINK] Left-Hand Sip", desc: "DRINK: Everyone takes a sip." },
-                    { title: "🚫 Bathroom Ban (3 Rounds)", desc: "No one is allowed to go to the bathroom for the next 3 wheel spins / turns. (Stay fair – in a real emergency, use the leak button.)" },
-                    { title: "🤫 2 Rounds of Silence", desc: "No one is allowed to speak for the next 2 player turns. Only nodding/gestures allowed." },
-                    { title: "🤫 2 Rounds Noiseless", desc: "No loud noises, no audible laughing – try to stay as quiet as possible for 2 rounds." },
-                    { title: "⚡ Bladder Pressure (30 sec)", desc: "Everyone puts their flat hand on their lower abdomen and presses lightly (on the bladder) for 30 seconds while standing or sitting calmly." },
-                    { title: "⚡ Bladder Pressure (45 sec)", desc: "Like Bladder Pressure, but press as hard as you can on the bladder for 45 seconds. Whoever stops early takes a penalty sip (DRINK)." },
-                    { title: "⏱️ Jumping for 30 Seconds", desc: "Everyone jumps on the spot for 30 seconds (small hops are fine)." },
-                    { title: "🏋️ 15 Squats", desc: "Everyone immediately does 15 slow, proper squats." },
-                    { title: "⏱️ 30 Sec. Plank", desc: "Everyone holds a forearm plank for 30 seconds. Whoever gives up early: 1 sip (DRINK)." },
-                    { title: "🦵 One-Leg Stand (20 sec)", desc: "Everyone stands on one leg for 20 seconds (choice of leg is free). If you lose balance: 1 sip (DRINK)." },
-                    { title: "🔄 Switch Seats", desc: "Everyone gets up briefly and sits down in a different seat / swaps seating positions." },
-                    { title: "🎯 Index Finger on Forehead (15 sec)", desc: "Hold your index finger to your forehead for 15 seconds without laughing – whoever laughs: 1 sip (DRINK)." }
+                    { title: "🍻 [DRINK] 500 ml chug", desc: "DRINK: Everyone immediately drinks about 500 ml (half a liter) of their beverage – ideally in one go." },
+                    { title: "🍻 [DRINK] Big sip", desc: "DRINK: Everyone takes one clearly big sip (at least 3 seconds on the glass)." },
+                    { title: "🍻 [DRINK] Give 2 sips", desc: "DRINK: Everyone picks another person and gives them 2 sips – that person must drink." },
+                    { title: "💧 [DRINK] Water glass chug", desc: "DRINK: Everyone finishes a full glass of water (or non-alcoholic drink) with as little pause as possible." },
+                    { title: "💧 [DRINK] Water substitute", desc: "DRINK: Anyone without an alcoholic drink must chug a glass of water instead." },
+                    { title: "🍻 [DRINK] Cheers round", desc: "DRINK: Everyone clinks glasses and takes one normal sip together." },
+                    { title: "🍻 [DRINK] Weak-hand sip", desc: "DRINK: Everyone takes a sip using only their non-dominant hand." },
+                    { title: "🚫 Bathroom ban 3 rounds", desc: "No bathroom for the next 3 wheel rounds / turns. (Stay fair – use the leak button in a real emergency.)" },
+                    { title: "🤫 Silence for 2 turns", desc: "No one may speak for the next 2 player turns. Nodding/gestures only." },
+                    { title: "🤫 Quiet for 2 turns", desc: "No loud sounds, no loud laughing – stay as quiet as possible for 2 turns." },
+                    { title: "⚡ Bladder press 30 sec", desc: "Everyone places a flat hand on the lower belly and presses lightly for 30 seconds – stand or sit still." },
+                    { title: "⚡ Bladder press 45 sec", desc: "Same as bladder press, but 45 seconds. If you stop early: take one sip (DRINK)." },
+                    { title: "⏱️ Hop 30 seconds", desc: "Everyone hops in place for 30 seconds (small hops are fine)." },
+                    { title: "🏋️ 15 squats", desc: "Everyone immediately does 15 slow, proper squats." },
+                    { title: "⏱️ 30 sec plank", desc: "Everyone holds a forearm plank for 30 seconds. Stop early: 1 sip (DRINK)." },
+                    { title: "🦵 One-leg stand 20 sec", desc: "Everyone stands on one leg for 20 seconds (side of choice). Lose balance: 1 sip (DRINK)." },
+                    { title: "🔄 Swap seats", desc: "Everyone stands up briefly and switches to a different seat/position." },
+                    { title: "🎯 Finger-to-forehead 15 sec", desc: "Hold your index finger to your forehead for 15 seconds without laughing – if you laugh: 1 sip (DRINK)." }
                 ]
             }
         };
@@ -1095,8 +1095,8 @@
             const startBtn = document.getElementById("start-btn"); if (startBtn) startBtn.innerText = t.startBtn;
             const localDesc = document.getElementById("ui-local-players-desc");
             if (localDesc) localDesc.innerText = currentLang === "de"
-                ? "📱 Mehrere Leute auf einem Gerät? Namen hinzufügen und Gerät weitergeben."
-                : "📱 Several people on one device? Add names and pass the device.";
+                ? "📱 Mitspieler ohne Gerät? Namen hier hinzufügen – nur du steuerst diese Sitze auf deinem Gerät."
+                : "📱 Player without a device? Add their name here – only you control that seat on your device.";
             const addLocalBtn = document.getElementById("ui-add-local-player-btn");
             if (addLocalBtn) addLocalBtn.innerText = currentLang === "de" ? "+ Hinzufügen" : "+ Add";
             const localInput = document.getElementById("local-player-name-input");
@@ -3662,7 +3662,9 @@
                             accessory: p.accessory || "",
                             eliminated: !!p.eliminated,
                             isSpectator: !!p.isSpectator,
-                            isLocal: true
+                            isLocal: true,
+                            localOwner: p.localOwner || "",
+                            localOwnerEmail: p.localOwnerEmail || ""
                         });
                         seenNames.add(key);
                     });
@@ -4081,6 +4083,11 @@
             document.getElementById("leave-lobby-btn").classList.remove("hidden");
             document.getElementById("display-code").innerText = String(code).toUpperCase();
             document.getElementById("client-wait-msg").classList.toggle("hidden", !client);
+            const localBox = document.getElementById("local-players-box");
+            if (localBox) {
+                if (!gameStarted && !isSpectator) localBox.classList.remove("hidden");
+                else localBox.classList.add("hidden");
+            }
             saveLobbySession();
             updateOnlineStatus(true);
         }
@@ -4541,7 +4548,29 @@
         }
 
         function handleIncomingData(data) {
-            if (data.type === 'UPDATE_PLAYERS') {
+            if (data.type === 'ADD_LOCAL_PLAYER') {
+                if (isHost && !gameStarted && data.player && data.player.name) {
+                    const nm = getUserDisplayName(data.player);
+                    if (nm && !players.some(p => namesEqual(p, nm))) {
+                        players.push(normalizePlayerEntry(data.player));
+                        updatePlayerList();
+                        saveLobbyPlayers();
+                        broadcastLobbyData({ type: "UPDATE_PLAYERS", players: serializePlayersForSync() });
+                        scheduleSaveGameState();
+                    }
+                }
+            } else if (data.type === 'REMOVE_LOCAL_PLAYER') {
+                if (isHost && !gameStarted && data.playerName) {
+                    const idx = players.findIndex(p => namesEqual(p, data.playerName) && isLocalSeat(p));
+                    if (idx >= 0) {
+                        players.splice(idx, 1);
+                        updatePlayerList();
+                        saveLobbyPlayers();
+                        broadcastLobbyData({ type: "UPDATE_PLAYERS", players: serializePlayersForSync() });
+                        scheduleSaveGameState();
+                    }
+                }
+            } else if (data.type === 'UPDATE_PLAYERS') {
                 const incoming = Array.isArray(data.players) ? data.players : [];
                 const prevList = players || [];
                 // Eingehende Liste + lokale Sitze mergen (Clients können isLocal verlieren)
@@ -4695,9 +4724,15 @@
                 const isSpec = !!p.isSpectator;
                 if (!isSpec) nonSpectatorCount++;
                 const specBadge = isSpec ? ` <span style="font-size:10px;color:#b388ff;font-weight:normal;">[${currentLang === "de" ? "Zuschauer" : "Spectator"}]</span>` : "";
-                const localBadge = isLocalSeat(p) ? ` <span style="font-size:10px;color:#67e8f9;font-weight:normal;">[${currentLang === "de" ? "dieses Gerät" : "this device"}]</span>` : "";
+                let localBadge = "";
+                if (isLocalSeat(p)) {
+                    const ownerLabel = p.localOwner
+                        ? (currentLang === "de" ? `Gerät von ${p.localOwner}` : `${p.localOwner}'s device`)
+                        : (currentLang === "de" ? "dieses Gerät" : "this device");
+                    localBadge = ` <span style="font-size:10px;color:#67e8f9;font-weight:normal;">[${ownerLabel}]</span>`;
+                }
                 let removeBtn = "";
-                if (isHost && !gameStarted && isLocalSeat(p)) {
+                if (!gameStarted && isLocalSeat(p) && (ownsLocalSeat(p) || isHost)) {
                     const safe = String(playerName).replace(/\\/g, "\\").replace(/'/g, "\\'");
                     removeBtn = ` <button type="button" onclick="removeLocalPlayer('${safe}')" style="padding:1px 6px;font-size:10px;margin-left:4px;cursor:pointer;">✕</button>`;
                 }
@@ -4705,7 +4740,8 @@
             });
             const localBox = document.getElementById("local-players-box");
             if (localBox) {
-                if (isHost && !gameStarted) localBox.classList.remove("hidden");
+                // Jeder Mitspieler (nicht Zuschauer) darf vor dem Start lokale Namen hinzufügen
+                if (!gameStarted && !isSpectator && activeLobbyCode) localBox.classList.remove("hidden");
                 else localBox.classList.add("hidden");
             }
             if (isHost && nonSpectatorCount >= 1) {
@@ -4839,13 +4875,7 @@
             nextTurnVotedPlayers = [];
             nextRoundVotedPlayers = [];
             saveLobbyPlayers();
-            sendData({ type: 'START_GAME', players: players.map(p => ({
-                name: getUserDisplayName(p),
-                accessory: p.accessory || "",
-                eliminated: !!p.eliminated,
-                isSpectator: !!p.isSpectator,
-                isLocal: !!p.isLocal
-            })) });
+            sendData({ type: 'START_GAME', players: serializePlayersForSync() });
             startGameUI();
             scheduleSaveGameState();
         }
@@ -4877,27 +4907,43 @@
 
         function normalizePlayerEntry(p, prev) {
             const prevMatch = prev || null;
+            const owner = (p && p.localOwner) || (prevMatch && prevMatch.localOwner) || "";
+            const ownerEmail = (p && p.localOwnerEmail) || (prevMatch && prevMatch.localOwnerEmail) || "";
             return {
                 name: (p && p.name) != null ? p.name : (prevMatch && prevMatch.name) || "",
                 accessory: (p && p.accessory) || (prevMatch && prevMatch.accessory) || "",
                 eliminated: !!(p && p.eliminated) || !!(prevMatch && prevMatch.eliminated),
                 isSpectator: !!(p && p.isSpectator) || !!(prevMatch && prevMatch.isSpectator),
-                isLocal: !!(p && p.isLocal) || !!(prevMatch && prevMatch.isLocal)
+                isLocal: !!(p && p.isLocal) || !!(prevMatch && prevMatch.isLocal),
+                localOwner: owner,
+                localOwnerEmail: ownerEmail
             };
+        }
+
+        /** Besitzt dieser Account den lokalen Pass-&-Play-Sitz? */
+        function ownsLocalSeat(p) {
+            if (!isLocalSeat(p)) return false;
+            if (p.localOwnerEmail && myEmail &&
+                String(p.localOwnerEmail).toLowerCase() === String(myEmail).toLowerCase()) {
+                return true;
+            }
+            if (p.localOwner && namesEqual(p.localOwner, myName)) return true;
+            // Alte Sitze ohne Owner: nur Host (Rückwärtskompatibilität)
+            if (!p.localOwner && !p.localOwnerEmail && isHost) return true;
+            return false;
         }
 
         /**
          * Darf dieser Client den Zug für playerName steuern?
          * - eigener Account immer
-         * - Host: alle isLocal-Sitze (Pass & Play auf einem Gerät)
+         * - lokale Sitze nur, wenn man sie selbst hinzugefügt hat
          */
         function canControlPlayer(playerName) {
             if (isSpectator) return false;
             if (!playerName) return false;
             if (namesEqual(playerName, myName)) return true;
-            if (!isHost) return false;
             const p = players.find(x => namesEqual(x, playerName));
-            return isLocalSeat(p);
+            return ownsLocalSeat(p);
         }
 
         /** Nächster Name auf diesem Gerät, der noch nicht abgestimmt hat (Pass & Play) */
@@ -4913,11 +4959,29 @@
             return null;
         }
 
+        function serializePlayersForSync() {
+            return (players || []).map(p => ({
+                name: getUserDisplayName(p),
+                accessory: p.accessory || "",
+                eliminated: !!p.eliminated,
+                isSpectator: !!p.isSpectator,
+                isLocal: !!p.isLocal,
+                localOwner: p.localOwner || "",
+                localOwnerEmail: p.localOwnerEmail || ""
+            }));
+        }
+
         function addLocalPlayer() {
-            if (!isHost) {
+            if (isSpectator) {
                 alert(currentLang === "de"
-                    ? "Nur der Host kann Spieler auf diesem Gerät hinzufügen."
-                    : "Only the host can add players on this device.");
+                    ? "Zuschauer können keine Spieler hinzufügen."
+                    : "Spectators cannot add players.");
+                return;
+            }
+            if (!activeLobbyCode) {
+                alert(currentLang === "de"
+                    ? "Zuerst einer Lobby beitreten oder eine erstellen."
+                    : "Join or create a lobby first.");
                 return;
             }
             if (gameStarted) {
@@ -4940,38 +5004,50 @@
                 alert(currentLang === "de" ? "Dieser Name ist schon in der Lobby." : "That name is already in the lobby.");
                 return;
             }
-            players.push({
+            const entry = {
                 name: raw,
                 accessory: "",
                 eliminated: false,
                 isSpectator: false,
-                isLocal: true
-            });
-            if (input) input.value = "";
-            updatePlayerList();
-            saveLobbyPlayers();
+                isLocal: true,
+                localOwner: myName || "",
+                localOwnerEmail: myEmail || ""
+            };
             if (isHost) {
-                broadcastLobbyData({ type: "UPDATE_PLAYERS", players: players.map(p => ({
-                    name: getUserDisplayName(p),
-                    accessory: p.accessory || "",
-                    eliminated: !!p.eliminated,
-                    isSpectator: !!p.isSpectator,
-                    isLocal: !!p.isLocal
-                })) });
+                players.push(entry);
+                if (input) input.value = "";
+                updatePlayerList();
+                saveLobbyPlayers();
+                broadcastLobbyData({ type: "UPDATE_PLAYERS", players: serializePlayersForSync() });
                 scheduleSaveGameState();
+            } else {
+                // Client: an Host senden; optimistisch lokal anzeigen
+                players.push(entry);
+                if (input) input.value = "";
+                updatePlayerList();
+                sendData({ type: "ADD_LOCAL_PLAYER", player: entry });
             }
         }
 
         function removeLocalPlayer(name) {
-            if (!isHost || gameStarted) return;
+            if (gameStarted) return;
             const idx = players.findIndex(p => namesEqual(p, name) && isLocalSeat(p));
             if (idx < 0) return;
-            players.splice(idx, 1);
-            updatePlayerList();
-            saveLobbyPlayers();
+            const seat = players[idx];
+            if (!ownsLocalSeat(seat) && !isHost) {
+                alert(currentLang === "de"
+                    ? "Du kannst nur Spieler entfernen, die du selbst hinzugefügt hast."
+                    : "You can only remove players you added yourself.");
+                return;
+            }
             if (isHost) {
-                broadcastLobbyData({ type: "UPDATE_PLAYERS", players });
+                players.splice(idx, 1);
+                updatePlayerList();
+                saveLobbyPlayers();
+                broadcastLobbyData({ type: "UPDATE_PLAYERS", players: serializePlayersForSync() });
                 scheduleSaveGameState();
+            } else {
+                sendData({ type: "REMOVE_LOCAL_PLAYER", playerName: getUserDisplayName(seat) });
             }
         }
 
@@ -5828,7 +5904,9 @@
                         accessory: p.accessory || "",
                         eliminated: !!p.eliminated,
                         isSpectator: !!p.isSpectator,
-                        isLocal: !!p.isLocal
+                        isLocal: !!p.isLocal,
+                        localOwner: p.localOwner || "",
+                        localOwnerEmail: p.localOwnerEmail || ""
                     })),
                     eliminatedName: eliminatedName
                 });
@@ -5842,7 +5920,9 @@
                         accessory: p.accessory || "",
                         eliminated: !!p.eliminated,
                         isSpectator: !!p.isSpectator,
-                        isLocal: !!p.isLocal
+                        isLocal: !!p.isLocal,
+                        localOwner: p.localOwner || "",
+                        localOwnerEmail: p.localOwnerEmail || ""
                     })),
                     eliminatedName: eliminatedName
                 });
