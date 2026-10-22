@@ -5519,124 +5519,15 @@
             return (players || []).filter(p => !p.eliminated && !p.isSpectator).length;
         }
 
-        function shouldShowMinigame() {
-            // Nur während laufendem Spiel, wenn man wartet und genug Spieler da sind
-            if (!gameStarted || isSpectator) return false;
-            if (getActivePlayerCount() <= 3) return false;
-            const waitBox = document.getElementById("waiting-for-player-box");
-            return !!(waitBox && !waitBox.classList.contains("hidden"));
-        }
-
-        function refreshMiniGameLabels() {
-            const t = translations[currentLang] || translations.de;
-            const btn = document.getElementById("mini-react-btn");
-            const label = document.getElementById("ui-mini-btn-label");
-            if (!btn || !label) return;
-            if (miniState === "idle" || miniState === "done") {
-                label.innerText = miniState === "done" ? (t.miniAgain || "Nochmal") : (t.miniReady || "Tippen zum Start");
-            } else if (miniState === "wait") {
-                label.innerText = t.miniWait || "Warten…";
-            } else if (miniState === "go") {
-                label.innerText = t.miniGo || "JETZT!";
-            }
-            const bestEl = document.getElementById("mini-react-best");
-            if (bestEl && miniBestMs != null) {
-                const tmpl = t.miniBest || "Bestzeit: {ms} ms";
-                bestEl.innerText = tmpl.replace("{ms}", String(miniBestMs));
-            }
-        }
-
-        function resetMinigameUI() {
-            if (miniTimer) {
-                clearTimeout(miniTimer);
-                miniTimer = null;
-            }
-            miniState = "idle";
-            miniGoAt = 0;
-            const btn = document.getElementById("mini-react-btn");
-            if (btn) {
-                btn.classList.remove("mini-react-wait", "mini-react-go", "mini-react-early");
-                btn.classList.add("mini-react-idle");
-            }
-            const res = document.getElementById("mini-react-result");
-            if (res) res.innerText = "";
-            refreshMiniGameLabels();
-        }
-
+        // Minispiel entfernt – Stubs bleiben, damit alte Aufrufe nicht crashen
+        function shouldShowMinigame() { return false; }
+        function resetMinigameUI() {}
         function updateMinigameVisibility() {
-            const box = document.getElementById("mini-wait-game");
-            if (!box) return;
-            if (shouldShowMinigame()) {
-                box.classList.remove("hidden");
-                // Labels aktualisieren, Zustand behalten wenn schon gespielt
-                refreshMiniGameLabels();
-            } else {
-                box.classList.add("hidden");
-                resetMinigameUI();
-            }
+            const mini = document.getElementById("mini-wait-game");
+            if (mini) mini.classList.add("hidden");
         }
-
-        function miniGameClick() {
-            if (!shouldShowMinigame()) return;
-            const t = translations[currentLang] || translations.de;
-            const btn = document.getElementById("mini-react-btn");
-            const label = document.getElementById("ui-mini-btn-label");
-            const res = document.getElementById("mini-react-result");
-            if (!btn || !label) return;
-
-            if (miniState === "idle" || miniState === "done") {
-                // Start: warte zufällig 1.2–4.0 s
-                miniState = "wait";
-                btn.classList.remove("mini-react-idle", "mini-react-go", "mini-react-early");
-                btn.classList.add("mini-react-wait");
-                label.innerText = t.miniWait || "Warten…";
-                if (res) res.innerText = "";
-                const delay = 1200 + Math.floor(Math.random() * 2800);
-                if (miniTimer) clearTimeout(miniTimer);
-                miniTimer = setTimeout(() => {
-                    if (miniState !== "wait") return;
-                    miniState = "go";
-                    miniGoAt = performance.now();
-                    btn.classList.remove("mini-react-wait");
-                    btn.classList.add("mini-react-go");
-                    label.innerText = t.miniGo || "JETZT!";
-                }, delay);
-                return;
-            }
-
-            if (miniState === "wait") {
-                // Zu früh
-                if (miniTimer) {
-                    clearTimeout(miniTimer);
-                    miniTimer = null;
-                }
-                miniState = "done";
-                btn.classList.remove("mini-react-wait", "mini-react-go");
-                btn.classList.add("mini-react-early");
-                label.innerText = t.miniEarly || "Zu früh!";
-                if (res) res.innerText = t.miniEarly || "Zu früh! Nochmal";
-                setTimeout(() => {
-                    if (miniState === "done") {
-                        btn.classList.remove("mini-react-early");
-                        btn.classList.add("mini-react-idle");
-                        refreshMiniGameLabels();
-                    }
-                }, 900);
-                return;
-            }
-
-            if (miniState === "go") {
-                const ms = Math.max(1, Math.round(performance.now() - miniGoAt));
-                miniState = "done";
-                btn.classList.remove("mini-react-go", "mini-react-wait");
-                btn.classList.add("mini-react-idle");
-                if (miniBestMs == null || ms < miniBestMs) miniBestMs = ms;
-                const tmpl = t.miniResult || "Reaktion: {ms} ms";
-                if (res) res.innerText = tmpl.replace("{ms}", String(ms));
-                refreshMiniGameLabels();
-            }
-        }
-
+        function refreshMiniGameLabels() {}
+        function miniGameClick() {}
 
         let lastEliminatedChatKey = "";
         let lastEliminatedAt = 0;
