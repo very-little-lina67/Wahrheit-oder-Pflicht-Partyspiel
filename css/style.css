@@ -1408,3 +1408,104 @@ textarea:focus {
     transform: translateY(-1px);
     box-shadow: 0 8px 22px rgba(124, 58, 237, 0.38) !important;
 }
+
+
+/* ==========================================================
+   WARTE-MINISPIEL (Blitz-Reaktion)
+   ========================================================== */
+.mini-wait-game {
+    margin-top: 14px;
+    padding: 12px;
+    border-radius: 14px;
+    border: 1px solid rgba(192, 132, 252, 0.28);
+    background: linear-gradient(145deg, rgba(30, 20, 50, 0.55), rgba(15, 20, 40, 0.65));
+    text-align: center;
+}
+.mini-wait-head {
+    font-size: 13px;
+    font-weight: 700;
+    color: #c084fc;
+    margin-bottom: 4px;
+}
+.mini-wait-desc {
+    font-size: 12px;
+    color: #a8b4c4;
+    margin: 0 0 10px 0;
+}
+.mini-react-btn {
+    width: 100%;
+    max-width: 280px;
+    margin: 0 auto;
+    display: block;
+    padding: 16px 12px !important;
+    font-size: 15px !important;
+    font-weight: 700 !important;
+    border-radius: 14px !important;
+    border: 1px solid rgba(255,255,255,0.15) !important;
+    cursor: pointer;
+    transition: background 120ms ease, transform 100ms ease, box-shadow 140ms ease, filter 120ms ease;
+    color: #fff !important;
+}
+.mini-react-idle {
+    background: linear-gradient(145deg, #64748b, #475569) !important;
+    box-shadow: 0 4px 14px rgba(71, 85, 105, 0.35) !important;
+}
+.mini-react-wait {
+    background: linear-gradient(145deg, #f87171, #dc2626) !important;
+    box-shadow: 0 4px 16px rgba(220, 38, 38, 0.35) !important;
+}
+.mini-react-go {
+    background: linear-gradient(145deg, #34d399, #059669) !important;
+    box-shadow: 0 6px 20px rgba(5, 150, 105, 0.4) !important;
+    animation: mini-pulse 0.6s ease infinite alternate;
+}
+.mini-react-early {
+    background: linear-gradient(145deg, #fb923c, #ea580c) !important;
+}
+@keyframes mini-pulse {
+    from { transform: scale(1); }
+    to { transform: scale(1.03); }
+}
+.mini-wait-result {
+    margin: 10px 0 0;
+    font-size: 13px;
+    font-weight: 650;
+    color: #e2e8f0;
+    min-height: 1.2em;
+}
+.mini-wait-best {
+    margin: 4px 0 0;
+    font-size: 11px;
+    color: #94a3b8;
+}
+
+
+/* ==========================================================
+   iOS: kein Auto-Zoom bei Fokus auf Inputs (font-size >= 16px)
+   ========================================================== */
+@supports (-webkit-touch-callout: none) {
+    input,
+    select,
+    textarea {
+        font-size: 16px !important;
+    }
+}
+
+/* Fallback für alle Geräte – verhindert Zoom auf vielen Mobile-Browsern */
+@media screen and (max-width: 900px) {
+    input,
+    select,
+    textarea,
+    .modal-content input,
+    .modal-content select,
+    .modal-content textarea,
+    #chat-input,
+    #lobby-code-input,
+    #auth-email,
+    #auth-username,
+    #auth-password,
+    #custom-task-input,
+    #player-answer-input {
+        font-size: 16px !important;
+    }
+}
