@@ -228,6 +228,9 @@
                 statTruth: "Wahrheiten",
                 statDare: "Pflichten",
                 statTotal: "Aufgaben gesamt",
+                statJokersUsed: "Joker verwendet",
+                statJokersSkipUsed: "Skip-Joker genutzt",
+                statJokersForceUsed: "Force-Joker genutzt",
                 statBadges: "Badges",
                 statItems: "Items",
                 statThemes: "Themes",
@@ -310,6 +313,15 @@
                 hudStreakText: "Streak",
                 hudCoinsText: "Coins",
                 hudJokersText: "Joker",
+                miniTitle: "⏱️ Warte-Mini: Blitz-Reaktion",
+                miniDesc: "Sobald der Button grün wird – tippen!",
+                miniReady: "Tippen zum Start",
+                miniWait: "Warten…",
+                miniGo: "JETZT!",
+                miniEarly: "Zu früh! Nochmal",
+                miniResult: "Reaktion: {ms} ms",
+                miniBest: "Bestzeit: {ms} ms",
+                miniAgain: "Nochmal spielen",
                 btnShop: "🛒 Shop",
                 btnAdmin: "🛡️ Admin",
                 btnLeaderboard: "🏆 Rangliste",
@@ -488,6 +500,9 @@
                 statTruth: "Truths",
                 statDare: "Dares",
                 statTotal: "Total tasks",
+                statJokersUsed: "Jokers used",
+                statJokersSkipUsed: "Skip jokers used",
+                statJokersForceUsed: "Force jokers used",
                 statBadges: "Badges",
                 statItems: "Items",
                 statThemes: "Themes",
@@ -570,6 +585,15 @@
                 hudStreakText: "Streak",
                 hudCoinsText: "Coins",
                 hudJokersText: "Joker",
+                miniTitle: "⏱️ Wait Mini: Reaction Blitz",
+                miniDesc: "When the button turns green – tap!",
+                miniReady: "Tap to start",
+                miniWait: "Wait…",
+                miniGo: "NOW!",
+                miniEarly: "Too early! Try again",
+                miniResult: "Reaction: {ms} ms",
+                miniBest: "Best: {ms} ms",
+                miniAgain: "Play again",
                 btnShop: "🛒 Shop",
                 btnAdmin: "🛡️ Admin",
                 btnLeaderboard: "🏆 Ranking",
@@ -785,6 +809,9 @@
                 "ui-stat-truth-label": t.statTruth || (currentLang === "de" ? "Wahrheiten" : "Truths"),
                 "ui-stat-dare-label": t.statDare || (currentLang === "de" ? "Pflichten" : "Dares"),
                 "ui-stat-total-label": t.statTotal || (currentLang === "de" ? "Aufgaben gesamt" : "Total tasks"),
+                "ui-stat-jokers-used-label": t.statJokersUsed || (currentLang === "de" ? "Joker verwendet" : "Jokers used"),
+                "ui-stat-jokers-skip-used-label": t.statJokersSkipUsed || (currentLang === "de" ? "Skip-Joker genutzt" : "Skip jokers used"),
+                "ui-stat-jokers-force-used-label": t.statJokersForceUsed || (currentLang === "de" ? "Force-Joker genutzt" : "Force jokers used"),
                 "ui-stat-badges-label": t.statBadges || "Badges",
                 "ui-stat-items-label": t.statItems || "Items",
                 "ui-stat-themes-label": t.statThemes || "Themes"
@@ -957,6 +984,9 @@
             const hudStreak = document.getElementById("ui-hud-streak-text"); if (hudStreak) hudStreak.innerText = t.hudStreakText;
             const hudCoins = document.getElementById("ui-hud-coins-text"); if (hudCoins) hudCoins.innerText = t.hudCoinsText;
             const hudJokers = document.getElementById("ui-hud-jokers-text"); if (hudJokers) hudJokers.innerText = t.hudJokersText || "Joker";
+            const miniTitle = document.getElementById("ui-mini-title"); if (miniTitle) miniTitle.innerText = t.miniTitle || "⏱️ Blitz-Reaktion";
+            const miniDesc = document.getElementById("ui-mini-desc"); if (miniDesc) miniDesc.innerText = t.miniDesc || "";
+            refreshMiniGameLabels();
             // HUD-Action-Buttons: Labels in Spans setzen, damit Badge/Icons erhalten bleiben
             const setHudLabel = (btnId, labelId, text) => {
                 const lbl = document.getElementById(labelId);
@@ -1162,6 +1192,9 @@
         let monthlyCoins = 0;
         let monthlyCoinsMonth = "";
         let userStreak = 0;
+        let lastLoginDate = ""; // YYYY-MM-DD – für tägliche Login-Streak
+        let jokersUsedSkip = 0;
+        let jokersUsedForce = 0;
         let userLevel = 1;
         let equippedAccessory = "";
         let avatarEmote = "😊";
@@ -1303,6 +1336,9 @@
                     dareCount: dareCount,
                     jokerSkip: jokerSkipCount,
                     jokerForce: jokerForceCount,
+                    jokersUsedSkip: jokersUsedSkip,
+                    jokersUsedForce: jokersUsedForce,
+                    lastLoginDate: lastLoginDate || "",
                     theme: (typeof document !== "undefined" && document.body) ? document.body.className : "",
                     savedAt: Date.now()
                 };
@@ -1371,6 +1407,9 @@
                 d.dareCount = backup.dareCount;
                 d.jokerSkip = backup.jokerSkip;
                 d.jokerForce = backup.jokerForce;
+                d.jokersUsedSkip = backup.jokersUsedSkip;
+                d.jokersUsedForce = backup.jokersUsedForce;
+                if (backup.lastLoginDate) d.lastLoginDate = backup.lastLoginDate;
                 if (backup.theme) d.theme = backup.theme;
                 if (backup.name && !d.name) d.name = backup.name;
                 return d;
@@ -1381,6 +1420,44 @@
                 d.xp = backup.xp;
             }
             return d;
+        }
+
+
+        function getTodayKey() {
+            const d = new Date();
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, "0");
+            const day = String(d.getDate()).padStart(2, "0");
+            return y + "-" + m + "-" + day;
+        }
+
+        function getYesterdayKey() {
+            const d = new Date();
+            d.setDate(d.getDate() - 1);
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, "0");
+            const day = String(d.getDate()).padStart(2, "0");
+            return y + "-" + m + "-" + day;
+        }
+
+        /**
+         * Login-Streak: +1 pro Tag, an dem man sich einloggt.
+         * Gleicher Tag → unverändert. Gestern → +1. Lücke → auf 1 (heute).
+         */
+        function applyDailyLoginStreak() {
+            const today = getTodayKey();
+            const yesterday = getYesterdayKey();
+            if (lastLoginDate === today) {
+                return false; // schon heute gezählt
+            }
+            if (lastLoginDate === yesterday) {
+                userStreak = Math.max(1, (Number(userStreak) || 0) + 1);
+            } else {
+                // Erster Login oder unterbrochene Serie
+                userStreak = 1;
+            }
+            lastLoginDate = today;
+            return true;
         }
 
         async function loadUserDataFromCloud() {
@@ -1431,6 +1508,9 @@
                     dareCount = numOr(data.dareCount, 0);
                     jokerSkipCount = numOr(data.jokerSkip, 0);
                     jokerForceCount = numOr(data.jokerForce, 0);
+                    jokersUsedSkip = numOr(data.jokersUsedSkip, 0);
+                    jokersUsedForce = numOr(data.jokersUsedForce, 0);
+                    lastLoginDate = (typeof data.lastLoginDate === "string") ? data.lastLoginDate : "";
                     {
                         const raw = Array.isArray(data.friends) ? data.friends : [];
                         myFriends = [...new Set(raw.map(e => String(e || "").trim().toLowerCase()).filter(Boolean))];
@@ -1445,17 +1525,17 @@
                 const badgesBefore = (unlockedBadges || []).slice().sort().join("|");
                 checkBadges();
                 const badgesAfter = (unlockedBadges || []).slice().sort().join("|");
+                // Tägliche Login-Streak (einmal pro Kalendertag +1)
+                const streakChanged = applyDailyLoginStreak();
                 updateHUD();
                 updateProfileModal();
                 userDataHydrated = true;
                 saveProgressBackup();
-                // Nur speichern, wenn sich wirklich etwas geändert hat (z. B. neue Badges)
-                // oder Backup den Cloud-Stand repariert hat – kein blindes Überschreiben.
-                const needPersist = badgesBefore !== badgesAfter;
+                // Speichern bei neuen Badges oder geänderter Login-Streak
+                const needPersist = badgesBefore !== badgesAfter || streakChanged;
                 if (needPersist) {
                     await saveUserDataToCloud();
                 } else {
-                    // Leiser Heartbeat-Status, ohne Fortschritt zu überschreiben
                     updateOnlineStatus(true);
                 }
                 checkAdminPermissions();
@@ -1526,7 +1606,16 @@
                         unlockedEmotes = union(unlockedEmotes, remote.emotes);
                         truthCount = Math.max(numOr(truthCount, 0), numOr(remote.truthCount, 0));
                         dareCount = Math.max(numOr(dareCount, 0), numOr(remote.dareCount, 0));
-                        userStreak = Math.max(numOr(userStreak, 0), numOr(remote.streak, 0));
+                        jokersUsedSkip = Math.max(numOr(jokersUsedSkip, 0), numOr(remote.jokersUsedSkip, 0));
+                        jokersUsedForce = Math.max(numOr(jokersUsedForce, 0), numOr(remote.jokersUsedForce, 0));
+                        // Login-Streak: nur mergen wenn gleicher Login-Tag, sonst neuerer Stand gewinnt
+                        const rLogin = (typeof remote.lastLoginDate === "string") ? remote.lastLoginDate : "";
+                        if (rLogin && rLogin === lastLoginDate) {
+                            userStreak = Math.max(numOr(userStreak, 0), numOr(remote.streak, 0));
+                        } else if (rLogin && (!lastLoginDate || rLogin > lastLoginDate)) {
+                            lastLoginDate = rLogin;
+                            userStreak = numOr(remote.streak, userStreak);
+                        }
                     }
                 } catch (e) {}
 
@@ -1548,6 +1637,9 @@
                     dareCount: dareCount,
                     jokerSkip: jokerSkipCount,
                     jokerForce: jokerForceCount,
+                    jokersUsedSkip: jokersUsedSkip,
+                    jokersUsedForce: jokersUsedForce,
+                    lastLoginDate: lastLoginDate || "",
                     theme: document.body.className,
                     lastActive: firebase.firestore.FieldValue.serverTimestamp(),
                     isOnline: true,
@@ -1850,8 +1942,35 @@
 // ==============================================================================
 // 7. LEVEL-BERECHNUNG, HUD & PROFIL-MODAL
 // ==============================================================================
+        /**
+         * Progressives Level-System: je höher das Level, desto mehr XP braucht man.
+         * Level 1→2: 120 XP, 2→3: 170, 3→4: 220, … (+50 pro Stufe)
+         * Formeln: XP für Stufe L→L+1 = 120 + (L-1)*50
+         */
+        function xpNeededForLevelUp(fromLevel) {
+            const L = Math.max(1, Number(fromLevel) || 1);
+            return 120 + (L - 1) * 50;
+        }
+
         function calculateLevel() {
-            userLevel = Math.floor(userXP / 100) + 1;
+            let level = 1;
+            let remaining = Math.max(0, Number(userXP) || 0);
+            // Schutz vor Endlosschleife bei extrem hohen XP-Werten
+            for (let i = 0; i < 500; i++) {
+                const need = xpNeededForLevelUp(level);
+                if (remaining < need) break;
+                remaining -= need;
+                level++;
+            }
+            userLevel = level;
+        }
+
+        /** XP bis zum nächsten Level (für Anzeige optional) */
+        function xpToNextLevel() {
+            calculateLevel();
+            let spent = 0;
+            for (let L = 1; L < userLevel; L++) spent += xpNeededForLevelUp(L);
+            return Math.max(0, xpNeededForLevelUp(userLevel) - (Math.max(0, userXP) - spent));
         }
 
         function updateHUD() {
@@ -1927,6 +2046,9 @@
             setStat("stat-truth", truthCount);
             setStat("stat-dare", dareCount);
             setStat("stat-total", (Number(truthCount) || 0) + (Number(dareCount) || 0));
+            setStat("stat-jokers-used", (Number(jokersUsedSkip) || 0) + (Number(jokersUsedForce) || 0));
+            setStat("stat-jokers-skip-used", Number(jokersUsedSkip) || 0);
+            setStat("stat-jokers-force-used", Number(jokersUsedForce) || 0);
             setStat("stat-badges", (unlockedBadges || []).length);
             setStat("stat-items", (unlockedItems || []).length);
             setStat("stat-themes", (unlockedThemes || []).length);
@@ -2022,7 +2144,7 @@
             userXP += xpGain;
             userCoins += coinGain;
             addMonthlyCoins(coinGain);
-            userStreak++;
+            // Streak ist Login-Tages-Serie (applyDailyLoginStreak) – nicht pro Aufgabe
             
             if(isDare) dareCount++;
             else truthCount++;
@@ -2304,8 +2426,10 @@
             }
 
             jokerSkipCount--;
+            jokersUsedSkip = (Number(jokersUsedSkip) || 0) + 1;
             taskCompleted = true;
             updateHUD();
+            updateProfileModal();
             saveUserDataToCloud();
 
             const resultData = {
@@ -2366,7 +2490,9 @@
             }
 
             jokerForceCount--;
+            jokersUsedForce = (Number(jokersUsedForce) || 0) + 1;
             updateHUD();
+            updateProfileModal();
             saveUserDataToCloud();
 
             const forceData = {
@@ -2863,6 +2989,9 @@
                 userXP = 0;
                 userCoins = 50;
                 userStreak = 0;
+                lastLoginDate = "";
+                jokersUsedSkip = 0;
+                jokersUsedForce = 0;
                 userLevel = 1;
                 equippedAccessory = "";
                 unlockedItems = [];
@@ -3332,7 +3461,7 @@
         // ==========================================================
         const LOBBY_STORAGE_KEY = "wop_active_lobby_v8";
         const LOBBY_COOKIE_NAME = "wop_lobby_session_v8";
-        const RECONNECT_DELAY = 1500;
+        const RECONNECT_DELAY = 800;
         let reconnectTimer = null;
         let leavingLobbyManually = false;
         let restoringLobby = false;
@@ -3668,11 +3797,11 @@
         function scheduleSaveGameState() {
             if (!isHost || !activeLobbyCode || leavingLobbyManually) return;
             if (saveStateTimer) clearTimeout(saveStateTimer);
-            // Debounce ~400ms, damit schnelle Updates keine Lags erzeugen
+            // Kurzer Debounce (~120ms) für schnellere Lobby-Sync-Reaktion
             saveStateTimer = setTimeout(() => {
                 saveStateTimer = null;
                 saveGameStateToFirebase();
-            }, 400);
+            }, 120);
         }
 
         async function saveGameStateToFirebase() {
@@ -4521,7 +4650,7 @@
             document.getElementById("creator-input-area").classList.add("hidden");
             document.getElementById("active-task-area").classList.add("hidden");
             document.getElementById("result-feedback-area").classList.add("hidden");
-            document.getElementById("waiting-for-player-box").classList.add("hidden");
+            document.getElementById("waiting-for-player-box").classList.add("hidden"); updateMinigameVisibility();
 
             // Zwischenzustand: Aufgabe bereits zugewiesen → Task-Screen wiederherstellen
             if (currentTaskText && pendingChoice) {
@@ -4535,7 +4664,7 @@
                     setupCreatorUI(currentPlayerName, pendingChoice, currentTaskCreator);
                     return;
                 }
-                document.getElementById("waiting-for-player-box").classList.remove("hidden");
+                document.getElementById("waiting-for-player-box").classList.remove("hidden"); updateMinigameVisibility();
                 const creatorHint = currentTaskCreator ? ` (${currentTaskCreator})` : "";
                 document.getElementById("waiting-info-text").innerText = currentLang === "de"
                     ? (isSpectator
@@ -4553,7 +4682,7 @@
 
             // Frischer Zug: Wahrheits-/Pflicht-Auswahl
             if (isSpectator) {
-                document.getElementById("waiting-for-player-box").classList.remove("hidden");
+                document.getElementById("waiting-for-player-box").classList.remove("hidden"); updateMinigameVisibility();
                 document.getElementById("waiting-info-text").innerText = (currentLang === 'de'
                     ? `[Zuschauer] Warte, bis ${currentPlayerName} wählt...`
                     : `[Spectating] Waiting for ${currentPlayerName} to choose...`);
@@ -4562,7 +4691,7 @@
                 if (selectBtn) selectBtn.disabled = false;
                 document.getElementById("wop-choice-area").classList.remove("hidden");
             } else {
-                document.getElementById("waiting-for-player-box").classList.remove("hidden");
+                document.getElementById("waiting-for-player-box").classList.remove("hidden"); updateMinigameVisibility();
                 document.getElementById("waiting-info-text").innerText = (currentLang === 'de' ? `Warte, bis ${currentPlayerName} wählt...` : `Waiting for ${currentPlayerName} to choose...`);
             }
         }
@@ -4582,7 +4711,7 @@
             if (button) button.disabled = true;
             // Sofort lokal warten, damit kein Doppelklick / kein erneutes Anzeigen der Auswahl
             document.getElementById("wop-choice-area")?.classList.add("hidden");
-            document.getElementById("waiting-for-player-box")?.classList.remove("hidden");
+            document.getElementById("waiting-for-player-box")?.classList.remove("hidden"); updateMinigameVisibility();
             document.getElementById("waiting-info-text").innerText = currentLang === "de"
                 ? "Warte auf die Aufgabe von einem Mitspieler…"
                 : "Waiting for a task from another player…";
@@ -4632,7 +4761,7 @@
                 : (isTruth ? `Choose a truth question for ${targetPlayer}:` : `Choose a dare for ${targetPlayer}:`);
 
             document.getElementById("wop-choice-area").classList.add("hidden");
-            document.getElementById("waiting-for-player-box").classList.add("hidden");
+            document.getElementById("waiting-for-player-box").classList.add("hidden"); updateMinigameVisibility();
             document.getElementById("creator-input-area").classList.add("hidden");
             document.getElementById("creator-instruction-title").innerText = instruction;
             document.getElementById("creator-target-info").innerText = currentLang === 'de'
@@ -4645,7 +4774,7 @@
                     ? (isTruth ? `Wahrheitsfrage für ${targetPlayer} eingeben...` : `Pflicht-Aufgabe für ${targetPlayer} eingeben...`)
                     : (isTruth ? `Enter a truth question for ${targetPlayer}...` : `Enter a dare for ${targetPlayer}...`);
             } else {
-                document.getElementById("waiting-for-player-box").classList.remove("hidden");
+                document.getElementById("waiting-for-player-box").classList.remove("hidden"); updateMinigameVisibility();
                 document.getElementById("waiting-info-text").innerText = (currentLang === 'de'
                     ? (isSpectator ? `[Zuschauer] Warte auf ${creatorName}...` : `Warte auf ${creatorName}...`)
                     : (isSpectator ? `[Spectating] Waiting for ${creatorName}...` : `Waiting for ${creatorName}...`));
@@ -4679,7 +4808,7 @@
 
             document.getElementById("wop-choice-area").classList.add("hidden");
             document.getElementById("creator-input-area").classList.add("hidden");
-            document.getElementById("waiting-for-player-box").classList.add("hidden");
+            document.getElementById("waiting-for-player-box").classList.add("hidden"); updateMinigameVisibility();
             document.getElementById("result-feedback-area")?.classList.add("hidden");
 
             if (namesEqual(targetPlayer, myName) && !isSpectator) {
@@ -4714,7 +4843,7 @@
                 document.getElementById("joker-force-box")?.classList.add("hidden");
             } else {
                 document.getElementById("active-task-area").classList.add("hidden");
-                document.getElementById("waiting-for-player-box").classList.remove("hidden");
+                document.getElementById("waiting-for-player-box").classList.remove("hidden"); updateMinigameVisibility();
                 const tp = getUserDisplayName({ name: targetPlayer }, targetPlayer);
                 const rolePrefix = isSpectator ? "[Zuschauer] " : "";
                 document.getElementById("waiting-info-text").innerText = currentLang === 'de'
@@ -4833,7 +4962,7 @@
             document.getElementById("active-task-area").classList.add("hidden");
             document.getElementById("creator-input-area").classList.add("hidden");
             document.getElementById("wop-choice-area").classList.add("hidden");
-            document.getElementById("waiting-for-player-box").classList.add("hidden");
+            document.getElementById("waiting-for-player-box").classList.add("hidden"); updateMinigameVisibility();
             document.getElementById("joker-skip-box")?.classList.add("hidden");
             document.getElementById("joker-force-box")?.classList.add("hidden");
             document.getElementById("result-feedback-area").classList.remove("hidden");
@@ -4934,7 +5063,7 @@
             document.getElementById("result-feedback-area").classList.add("hidden");
             document.getElementById("active-task-area").classList.add("hidden");
             document.getElementById("creator-input-area").classList.add("hidden");
-            document.getElementById("waiting-for-player-box").classList.add("hidden");
+            document.getElementById("waiting-for-player-box").classList.add("hidden"); updateMinigameVisibility();
             document.getElementById("wop-choice-area")?.classList.add("hidden");
             const nextBtn = document.getElementById("next-turn-btn");
             if (nextBtn) {
@@ -5041,6 +5170,139 @@
             if (partial.length === 1) return partial[0];
             return null;
         }
+
+
+
+// ==============================================================================
+// WARTE-MINISPIEL: Blitz-Reaktion (bei >3 aktiven Spielern)
+// ==============================================================================
+        let miniState = "idle"; // idle | wait | go | done
+        let miniTimer = null;
+        let miniGoAt = 0;
+        let miniBestMs = null;
+
+        function getActivePlayerCount() {
+            return (players || []).filter(p => !p.eliminated && !p.isSpectator).length;
+        }
+
+        function shouldShowMinigame() {
+            // Nur während laufendem Spiel, wenn man wartet und genug Spieler da sind
+            if (!gameStarted || isSpectator) return false;
+            if (getActivePlayerCount() <= 3) return false;
+            const waitBox = document.getElementById("waiting-for-player-box");
+            return !!(waitBox && !waitBox.classList.contains("hidden"));
+        }
+
+        function refreshMiniGameLabels() {
+            const t = translations[currentLang] || translations.de;
+            const btn = document.getElementById("mini-react-btn");
+            const label = document.getElementById("ui-mini-btn-label");
+            if (!btn || !label) return;
+            if (miniState === "idle" || miniState === "done") {
+                label.innerText = miniState === "done" ? (t.miniAgain || "Nochmal") : (t.miniReady || "Tippen zum Start");
+            } else if (miniState === "wait") {
+                label.innerText = t.miniWait || "Warten…";
+            } else if (miniState === "go") {
+                label.innerText = t.miniGo || "JETZT!";
+            }
+            const bestEl = document.getElementById("mini-react-best");
+            if (bestEl && miniBestMs != null) {
+                const tmpl = t.miniBest || "Bestzeit: {ms} ms";
+                bestEl.innerText = tmpl.replace("{ms}", String(miniBestMs));
+            }
+        }
+
+        function resetMinigameUI() {
+            if (miniTimer) {
+                clearTimeout(miniTimer);
+                miniTimer = null;
+            }
+            miniState = "idle";
+            miniGoAt = 0;
+            const btn = document.getElementById("mini-react-btn");
+            if (btn) {
+                btn.classList.remove("mini-react-wait", "mini-react-go", "mini-react-early");
+                btn.classList.add("mini-react-idle");
+            }
+            const res = document.getElementById("mini-react-result");
+            if (res) res.innerText = "";
+            refreshMiniGameLabels();
+        }
+
+        function updateMinigameVisibility() {
+            const box = document.getElementById("mini-wait-game");
+            if (!box) return;
+            if (shouldShowMinigame()) {
+                box.classList.remove("hidden");
+                // Labels aktualisieren, Zustand behalten wenn schon gespielt
+                refreshMiniGameLabels();
+            } else {
+                box.classList.add("hidden");
+                resetMinigameUI();
+            }
+        }
+
+        function miniGameClick() {
+            if (!shouldShowMinigame()) return;
+            const t = translations[currentLang] || translations.de;
+            const btn = document.getElementById("mini-react-btn");
+            const label = document.getElementById("ui-mini-btn-label");
+            const res = document.getElementById("mini-react-result");
+            if (!btn || !label) return;
+
+            if (miniState === "idle" || miniState === "done") {
+                // Start: warte zufällig 1.2–4.0 s
+                miniState = "wait";
+                btn.classList.remove("mini-react-idle", "mini-react-go", "mini-react-early");
+                btn.classList.add("mini-react-wait");
+                label.innerText = t.miniWait || "Warten…";
+                if (res) res.innerText = "";
+                const delay = 1200 + Math.floor(Math.random() * 2800);
+                if (miniTimer) clearTimeout(miniTimer);
+                miniTimer = setTimeout(() => {
+                    if (miniState !== "wait") return;
+                    miniState = "go";
+                    miniGoAt = performance.now();
+                    btn.classList.remove("mini-react-wait");
+                    btn.classList.add("mini-react-go");
+                    label.innerText = t.miniGo || "JETZT!";
+                }, delay);
+                return;
+            }
+
+            if (miniState === "wait") {
+                // Zu früh
+                if (miniTimer) {
+                    clearTimeout(miniTimer);
+                    miniTimer = null;
+                }
+                miniState = "done";
+                btn.classList.remove("mini-react-wait", "mini-react-go");
+                btn.classList.add("mini-react-early");
+                label.innerText = t.miniEarly || "Zu früh!";
+                if (res) res.innerText = t.miniEarly || "Zu früh! Nochmal";
+                setTimeout(() => {
+                    if (miniState === "done") {
+                        btn.classList.remove("mini-react-early");
+                        btn.classList.add("mini-react-idle");
+                        refreshMiniGameLabels();
+                    }
+                }, 900);
+                return;
+            }
+
+            if (miniState === "go") {
+                const ms = Math.max(1, Math.round(performance.now() - miniGoAt));
+                miniState = "done";
+                btn.classList.remove("mini-react-go", "mini-react-wait");
+                btn.classList.add("mini-react-idle");
+                if (miniBestMs == null || ms < miniBestMs) miniBestMs = ms;
+                const tmpl = t.miniResult || "Reaktion: {ms} ms";
+                if (res) res.innerText = tmpl.replace("{ms}", String(ms));
+                refreshMiniGameLabels();
+            }
+        }
+
 
         let lastEliminatedChatKey = "";
         let lastEliminatedAt = 0;
@@ -5266,12 +5528,8 @@
             target.eliminated = true;
             const eliminatedName = getUserDisplayName(target);
 
-            // Nur der tatsächlich ausgeschiedene Spieler verliert seinen Streak.
+            // Login-Streak bleibt bei Ausscheiden erhalten (nur Tages-Lücke setzt zurück).
             if (eliminatedName === myName || target.name === myName) {
-                userStreak = 0;
-                try {
-                    await saveUserDataToCloud();
-                } catch (e) {}
                 updateHUD();
                 updateProfileModal();
             }
