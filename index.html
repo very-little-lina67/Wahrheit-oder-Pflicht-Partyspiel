@@ -388,7 +388,12 @@
                 <button id="ui-btn-logout" class="btn-danger" onclick="logoutUser()" style="flex: 1; padding: 8px; font-size: 13px;">Logout</button>
                 <button id="ui-profile-close-btn" class="btn-blue" onclick="closeProfileModal()" style="flex: 1; padding: 8px; font-size: 13px;">Schließen</button>
             </div>
-            <button id="ui-btn-delete-account" class="btn-danger" onclick="deleteOwnAccount()" style="width: 100%; padding: 8px; font-size: 12px; margin-top: 8px; background: #8b0000; box-shadow: 0 4px 15px rgba(139,0,0,0.4);">Konto löschen</button>
+            <div id="delete-account-box" class="delete-account-box">
+                <p id="ui-delete-account-warning" class="delete-account-warning">
+                    ⚠️ Achtung: Konto löschen ist endgültig. XP, Coins, Badges, Streaks und Shop-Items gehen verloren und können nicht wiederhergestellt werden.
+                </p>
+                <button id="ui-btn-delete-account" class="btn-danger btn-delete-account" onclick="deleteOwnAccount()">Konto löschen</button>
+            </div>
         </div>
     </div>
 
