@@ -407,7 +407,7 @@
                 fbDesc: "Hast du einen Bug gefunden oder eine Idee? Sende es direkt an die Admins!",
                 fbTypeLabel: "Art des Feedbacks:",
                 fbOptBug: "🐛 Bug / technischer Fehler",
-                fbOptImp: "💡 Verbesserung / Feature-Wunsch",
+                fbOptImp: "💡 Vorschlag / Verbesserung",
                 fbMsgLabel: "Deine Nachricht:",
                 fbPlaceholder: "Beschreibe den Bug oder deine Idee...",
                 fbSendBtn: "Feedback absenden",
@@ -679,7 +679,7 @@
                 fbDesc: "Found a bug or have an improvement suggestion? Send it directly!",
                 fbTypeLabel: "Feedback Type:",
                 fbOptBug: "🐛 Bug / Technical Issue",
-                fbOptImp: "💡 Improvement / Feature Request",
+                fbOptImp: "💡 Suggestion / Improvement",
                 fbMsgLabel: "Your Message:",
                 fbPlaceholder: "Describe the bug or your idea...",
                 fbSendBtn: "Send Feedback",
@@ -1073,6 +1073,14 @@
             }
             const shareCode = document.getElementById("ui-share-code"); if (shareCode) shareCode.innerText = t.shareCode;
             const startBtn = document.getElementById("start-btn"); if (startBtn) startBtn.innerText = t.startBtn;
+            const localDesc = document.getElementById("ui-local-players-desc");
+            if (localDesc) localDesc.innerText = currentLang === "de"
+                ? "📱 Mehrere Leute auf einem Gerät? Namen hinzufügen und Gerät weitergeben."
+                : "📱 Several people on one device? Add names and pass the device.";
+            const addLocalBtn = document.getElementById("ui-add-local-player-btn");
+            if (addLocalBtn) addLocalBtn.innerText = currentLang === "de" ? "+ Hinzufügen" : "+ Add";
+            const localInput = document.getElementById("local-player-name-input");
+            if (localInput) localInput.placeholder = currentLang === "de" ? "Name des Mitspielers" : "Player name";
             const clientWait = document.getElementById("client-wait-msg"); if (clientWait) clientWait.innerText = t.clientWaitMsg;
 
             // Wahrheit / Pflicht
@@ -2432,7 +2440,7 @@
                 return;
             }
             const currentP = players[currentPlayerIndex];
-            if (!currentP || !namesEqual(currentP, myName)) return;
+            if (!currentP || !canControlPlayer(getUserDisplayName(currentP))) return;
             if (!pendingChoice) return;
 
             if (!confirm(currentLang === "de"
@@ -2919,10 +2927,16 @@
                     let fb = doc.data();
                     let docId = doc.id;
                     let typeColor = fb.type === 'bug' ? '#ff3300' : '#00bfff';
+                    let typeLabel;
+                    if (fb.type === 'bug') {
+                        typeLabel = currentLang === "de" ? "Bug" : "Bug";
+                    } else {
+                        typeLabel = currentLang === "de" ? "Vorschlag / Verbesserung" : "Suggestion / Improvement";
+                    }
                     let displayMail = fb.emailMasked || maskEmail(fb.email || "");
                     const deleteBtnText = currentLang === "de" ? "Löschen" : "Delete";
                     container.innerHTML += `<div style="background:rgba(255,255,255,0.05); padding:6px; border-radius:6px; margin-bottom:5px; font-size:12px; border-left:4px solid ${typeColor};">
-                        <div><b>${fb.author}</b> (${displayMail}) - <span style="color:${typeColor}; font-weight:bold;">${fb.type.toUpperCase()}</span></div>
+                        <div><b>${fb.author}</b> (${displayMail}) - <span style="color:${typeColor}; font-weight:bold;">${typeLabel}</span></div>
                         <div style="margin-top:2px; color:#fff;">${fb.text}</div>
                         ${myRole === 'master' || myRole === 'admin' ? `<button class="btn-danger" style="padding:2px 5px; font-size:9px; margin-top:3px;" onclick="deleteFeedback('${docId}')">${deleteBtnText}</button>` : ''}
                     </div>`;
@@ -4579,8 +4593,19 @@
                 const isSpec = !!p.isSpectator;
                 if (!isSpec) nonSpectatorCount++;
                 const specBadge = isSpec ? ` <span style="font-size:10px;color:#b388ff;font-weight:normal;">[${currentLang === "de" ? "Zuschauer" : "Spectator"}]</span>` : "";
-                list.innerHTML += `<li><b>${index + 1}.</b> ${accessory} ${playerName} ${p.eliminated ? '❌' : ''}${specBadge}</li>`;
+                const localBadge = isLocalSeat(p) ? ` <span style="font-size:10px;color:#67e8f9;font-weight:normal;">[${currentLang === "de" ? "dieses Gerät" : "this device"}]</span>` : "";
+                let removeBtn = "";
+                if (isHost && !gameStarted && isLocalSeat(p)) {
+                    const safe = String(playerName).replace(/\\/g, "\\").replace(/'/g, "\\'");
+                    removeBtn = ` <button type="button" onclick="removeLocalPlayer('${safe}')" style="padding:1px 6px;font-size:10px;margin-left:4px;cursor:pointer;">✕</button>`;
+                }
+                list.innerHTML += `<li><b>${index + 1}.</b> ${accessory} ${playerName} ${p.eliminated ? '❌' : ''}${specBadge}${localBadge}${removeBtn}</li>`;
             });
+            const localBox = document.getElementById("local-players-box");
+            if (localBox) {
+                if (isHost && !gameStarted) localBox.classList.remove("hidden");
+                else localBox.classList.add("hidden");
+            }
             if (isHost && nonSpectatorCount >= 1) {
                 document.getElementById("start-btn").classList.remove("hidden");
             } else if (isHost) {
@@ -4730,6 +4755,75 @@
 // ==============================================================================
 // 14. SPIELABLAUF: WAHRHEIT ODER PFLICHT RUNDENLOGIK
 // ==============================================================================
+        /** Pass & Play: lokaler Mitspieler auf diesem Gerät? */
+        function isLocalSeat(p) {
+            return !!(p && p.isLocal === true);
+        }
+
+        /**
+         * Darf dieser Client den Zug für playerName steuern?
+         * - eigener Account immer
+         * - Host: alle isLocal-Sitze (mehrere Personen, ein Gerät)
+         */
+        function canControlPlayer(playerName) {
+            if (isSpectator) return false;
+            if (!playerName) return false;
+            if (namesEqual(playerName, myName)) return true;
+            if (!isHost) return false;
+            const p = players.find(x => namesEqual(x, playerName));
+            return isLocalSeat(p);
+        }
+
+        function addLocalPlayer() {
+            if (!isHost) {
+                alert(currentLang === "de"
+                    ? "Nur der Host kann Spieler auf diesem Gerät hinzufügen."
+                    : "Only the host can add players on this device.");
+                return;
+            }
+            if (gameStarted) {
+                alert(currentLang === "de"
+                    ? "Während des Spiels keine neuen Spieler mehr."
+                    : "Cannot add players after the game has started.");
+                return;
+            }
+            const input = document.getElementById("local-player-name-input");
+            const raw = (input && input.value || "").trim();
+            if (!raw || raw.length < 2) {
+                alert(currentLang === "de" ? "Bitte einen Namen eingeben (min. 2 Zeichen)." : "Please enter a name (min. 2 characters).");
+                return;
+            }
+            if (raw.length > 20) {
+                alert(currentLang === "de" ? "Name zu lang (max. 20 Zeichen)." : "Name too long (max. 20 characters).");
+                return;
+            }
+            if (players.some(p => namesEqual(p, raw))) {
+                alert(currentLang === "de" ? "Dieser Name ist schon in der Lobby." : "That name is already in the lobby.");
+                return;
+            }
+            players.push({
+                name: raw,
+                accessory: "",
+                eliminated: false,
+                isSpectator: false,
+                isLocal: true
+            });
+            if (input) input.value = "";
+            updatePlayerList();
+            saveLobbyPlayers();
+            if (isHost) scheduleSaveGameState();
+        }
+
+        function removeLocalPlayer(name) {
+            if (!isHost || gameStarted) return;
+            const idx = players.findIndex(p => namesEqual(p, name) && isLocalSeat(p));
+            if (idx < 0) return;
+            players.splice(idx, 1);
+            updatePlayerList();
+            saveLobbyPlayers();
+            if (isHost) scheduleSaveGameState();
+        }
+
         function updateWopTurn() {
             if (currentSharedResult) {
                 showFeedbackScreen(
@@ -4774,7 +4868,7 @@
 
             // Zwischenzustand: Wahl bereits getroffen, Creator erstellt noch die Aufgabe
             if (pendingChoice) {
-                if (currentTaskCreator && namesEqual(currentTaskCreator, myName) && !isSpectator) {
+                if (currentTaskCreator && canControlPlayer(currentTaskCreator) && !isSpectator) {
                     setupCreatorUI(currentPlayerName, pendingChoice, currentTaskCreator);
                     return;
                 }
@@ -4783,12 +4877,12 @@
                 document.getElementById("waiting-info-text").innerText = currentLang === "de"
                     ? (isSpectator
                         ? `[Zuschauer] Warte auf Aufgabe für ${currentPlayerName}${creatorHint}…`
-                        : (namesEqual(currentPlayerName, myName)
+                        : (canControlPlayer(currentPlayerName)
                             ? `Warte auf die Aufgabe von ${currentTaskCreator || "einem Mitspieler"}…`
                             : `Warte, bis die Aufgabe für ${currentPlayerName} erstellt wird…`))
                     : (isSpectator
                         ? `[Spectating] Waiting for task for ${currentPlayerName}${creatorHint}…`
-                        : (namesEqual(currentPlayerName, myName)
+                        : (canControlPlayer(currentPlayerName)
                             ? `Waiting for a task from ${currentTaskCreator || "another player"}…`
                             : `Waiting for a task to be created for ${currentPlayerName}…`));
                 return;
@@ -4800,7 +4894,7 @@
                 document.getElementById("waiting-info-text").innerText = (currentLang === 'de'
                     ? `[Zuschauer] Warte, bis ${currentPlayerName} wählt...`
                     : `[Spectating] Waiting for ${currentPlayerName} to choose...`);
-            } else if (namesEqual(currentPlayerName, myName)) {
+            } else if (canControlPlayer(currentPlayerName)) {
                 const selectBtn = document.getElementById("ui-select-btn");
                 if (selectBtn) selectBtn.disabled = false;
                 document.getElementById("wop-choice-area").classList.remove("hidden");
@@ -4813,7 +4907,7 @@
         function submitWopChoice() {
             if (isSpectator) return;
             const currentP = players[currentPlayerIndex];
-            if (!currentP || !namesEqual(currentP, myName)) return;
+            if (!currentP || !canControlPlayer(getUserDisplayName(currentP))) return;
 
             const button = document.getElementById("ui-select-btn");
             if (button && button.disabled) return;
@@ -4882,7 +4976,7 @@
                 ? `${isTruth ? "Wahrheit" : "Pflicht"} für ${targetPlayer}`
                 : `${isTruth ? "Truth" : "Dare"} for ${targetPlayer}`;
 
-            if (namesEqual(creatorName, myName) && !isSpectator) {
+            if (canControlPlayer(creatorName) && !isSpectator) {
                 document.getElementById("creator-input-area").classList.remove("hidden");
                 document.getElementById("custom-task-input").placeholder = currentLang === 'de'
                     ? (isTruth ? `Wahrheitsfrage für ${targetPlayer} eingeben...` : `Pflicht-Aufgabe für ${targetPlayer} eingeben...`)
@@ -4925,7 +5019,7 @@
             document.getElementById("waiting-for-player-box").classList.add("hidden"); updateMinigameVisibility();
             document.getElementById("result-feedback-area")?.classList.add("hidden");
 
-            if (namesEqual(targetPlayer, myName) && !isSpectator) {
+            if (canControlPlayer(targetPlayer) && !isSpectator) {
                 document.getElementById("active-task-area").classList.remove("hidden");
                 document.getElementById("task-title-text").innerText = choice === "truth" ? (currentLang === 'de' ? "💡 WAHRHEIT" : "💡 TRUTH") : (currentLang === 'de' ? "🔥 PFLICHT" : "🔥 DARE");
                 document.getElementById("task-assigner-info").innerText = creator
@@ -4967,7 +5061,7 @@
                 // Force-Skip-Button für andere Spieler (nicht Zuschauer, Joker vorhanden)
                 const forceBox = document.getElementById("joker-force-box");
                 if (forceBox) {
-                    if (!isSpectator && jokerForceCount > 0 && !namesEqual(targetPlayer, myName)) {
+                    if (!isSpectator && jokerForceCount > 0 && !canControlPlayer(targetPlayer)) {
                         forceBox.classList.remove("hidden");
                         const cnt = document.getElementById("joker-force-btn-count");
                         if (cnt) cnt.innerText = String(jokerForceCount);
@@ -4982,7 +5076,7 @@
         function submitAnswer() {
             if (isSpectator || taskCompleted) return;
             const currentP = players[currentPlayerIndex];
-            if (!currentP || !namesEqual(currentP, myName)) return;
+            if (!currentP || !canControlPlayer(getUserDisplayName(currentP))) return;
             if (!pendingChoice || pendingChoice !== "truth") return;
 
             const ans = document.getElementById("player-answer-input").value.trim();
@@ -5019,7 +5113,7 @@
         function submitDareDone() {
             if (isSpectator || taskCompleted) return;
             const currentP = players[currentPlayerIndex];
-            if (!currentP || !namesEqual(currentP, myName)) return;
+            if (!currentP || !canControlPlayer(getUserDisplayName(currentP))) return;
             if (!pendingChoice || pendingChoice !== "dare") return;
 
             taskCompleted = true;
@@ -5051,7 +5145,7 @@
 
         function finishTaskAndReward(choice) {
             const currentPlayer = players[currentPlayerIndex];
-            if (!currentPlayer || !namesEqual(currentPlayer, myName)) return;
+            if (!currentPlayer || !canControlPlayer(getUserDisplayName(currentPlayer))) return;
 
             addRewards(choice === "dare");
         }
