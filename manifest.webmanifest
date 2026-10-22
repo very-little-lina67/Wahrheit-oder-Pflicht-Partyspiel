@@ -1,11 +1,12 @@
 {
+  "id": "/",
   "name": "Wahrheit oder Pflicht Partyspiel",
   "short_name": "WOP Party",
   "description": "Multiplayer Wahrheit oder Pflicht – Lobby, Rad, Shop & Chat",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
-  "orientation": "portrait-primary",
+  "orientation": "any",
   "background_color": "#0f0c29",
   "theme_color": "#7c3aed",
   "lang": "de",
@@ -35,6 +36,12 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
+    },
+    {
+      "src": "apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
     }
   ]
 }
