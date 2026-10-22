@@ -4,6 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Wahrheit oder Pflicht Partyspiel / Truth or Dare Party Game</title>
+
+    <!-- PWA: als App installierbar (Chrome / Edge / Android) -->
+    <link rel="manifest" href="manifest.webmanifest">
+    <meta name="theme-color" content="#7c3aed">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="WOP Party">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
     
     <!-- Firebase SDKs (Compat-Modus für direkten Browser-Einsatz) -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
@@ -721,5 +732,15 @@
 
     <!-- Ausgelagerte Spiellogik, Firebase-Sync & Client-Interaktionen -->
     <script src="js/app.js"></script>
+    <script>
+      // Service Worker registrieren → Chrome zeigt „App installieren“ statt nur Verknüpfung
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", function () {
+          navigator.serviceWorker.register("./sw.js").catch(function (err) {
+            console.warn("Service Worker Registration:", err);
+          });
+        });
+      }
+    </script>
 </body>
 </html>
