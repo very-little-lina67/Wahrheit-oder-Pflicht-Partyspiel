@@ -561,6 +561,15 @@
             <p id="ui-share-code" style="font-size: 12px;">Teile diesen Code mit deinen Mitspielern!</p>
             <ul id="player-list" style="list-style: none; padding: 0; text-align: left; font-size: 13px;"></ul>
 
+            <!-- Host: zusätzliche Spieler auf DIESEM Gerät (Pass & Play) -->
+            <div id="local-players-box" class="hidden" style="margin: 10px 0; padding: 10px; background: rgba(56,189,248,0.08); border-radius: 10px; border: 1px solid rgba(56,189,248,0.3); text-align: left;">
+                <p id="ui-local-players-desc" style="font-size:12px; color:#a5f3fc; margin:0 0 8px 0;">📱 Mehrere Leute auf einem Gerät? Namen hinzufügen und Gerät weitergeben.</p>
+                <div style="display:flex; gap:6px; align-items:center;">
+                    <input type="text" id="local-player-name-input" maxlength="20" placeholder="Name des Mitspielers" style="flex:1; font-size:13px; padding:8px; margin:0;">
+                    <button type="button" class="btn-blue" id="ui-add-local-player-btn" onclick="addLocalPlayer()" style="width:auto; padding:8px 12px; font-size:12px; margin:0;">+ Hinzufügen</button>
+                </div>
+            </div>
+
             <!-- Host: Mitspieler-Suche an/aus -->
             <div id="looking-toggle-box" class="hidden" style="margin: 10px 0; padding: 8px; background: rgba(255,204,0,0.08); border-radius: 8px; border: 1px solid rgba(255,204,0,0.25);">
                 <label style="display:flex; align-items:center; justify-content:center; gap:8px; font-size:13px; cursor:pointer;">
