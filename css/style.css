@@ -1524,3 +1524,33 @@ textarea:focus {
 .round-stats-grid .stat-card {
     padding: 10px 8px;
 }
+
+
+/* Profil: XP-Fortschrittsbalken zum nächsten Level */
+.xp-progress-wrap {
+    margin: 10px auto 4px;
+    max-width: 280px;
+    text-align: center;
+}
+.xp-progress-bar {
+    height: 12px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(103, 232, 249, 0.25);
+    overflow: hidden;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+.xp-progress-fill {
+    height: 100%;
+    width: 0%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #06b6d4, #3b82f6, #a855f7);
+    box-shadow: 0 0 12px rgba(56, 189, 248, 0.45);
+    transition: width 0.35s ease;
+}
+.xp-progress-text {
+    margin-top: 5px;
+    font-size: 11px;
+    color: #a5f3fc;
+    letter-spacing: 0.02em;
+}
