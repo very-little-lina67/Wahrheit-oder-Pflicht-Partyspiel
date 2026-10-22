@@ -300,6 +300,26 @@
 
 
     <!-- PROFILE / STATS MODAL -->
+
+    <!-- Runden-Statistik nach Leave / Leak -->
+    <div id="round-stats-modal" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 380px; text-align: center;">
+            <h2 id="ui-round-stats-title" style="color: var(--accent-color); margin-top: 0; font-size: 1.15rem;">📊 Runden-Statistik</h2>
+            <p id="ui-round-stats-reason" style="font-size: 13px; color: #aaa; margin: 0 0 12px 0;"></p>
+            <div class="round-stats-grid" id="round-stats-grid">
+                <div class="stat-card"><span class="stat-label" id="ui-rs-truth-label">Wahrheiten</span><span class="stat-value" id="rs-truth">0</span></div>
+                <div class="stat-card"><span class="stat-label" id="ui-rs-dare-label">Pflichten</span><span class="stat-value" id="rs-dare">0</span></div>
+                <div class="stat-card"><span class="stat-label" id="ui-rs-total-label">Aufgaben</span><span class="stat-value" id="rs-total">0</span></div>
+                <div class="stat-card"><span class="stat-label" id="ui-rs-xp-label">XP verdient</span><span class="stat-value" id="rs-xp">0</span></div>
+                <div class="stat-card"><span class="stat-label" id="ui-rs-coins-label">Coins verdient</span><span class="stat-value" id="rs-coins">0</span></div>
+                <div class="stat-card"><span class="stat-label" id="ui-rs-streak-label">Beste Streak</span><span class="stat-value" id="rs-streak">0</span></div>
+                <div class="stat-card"><span class="stat-label" id="ui-rs-jokers-label">Joker genutzt</span><span class="stat-value" id="rs-jokers">0</span></div>
+                <div class="stat-card"><span class="stat-label" id="ui-rs-daily-label">Tages-Streak</span><span class="stat-value" id="rs-daily">0</span></div>
+            </div>
+            <button type="button" class="btn-blue" id="ui-round-stats-close" onclick="closeRoundStatsModal()" style="width:100%; margin-top:14px; padding:10px;">OK</button>
+        </div>
+    </div>
+
     <div id="profile-modal" class="modal-overlay hidden">
         <div class="modal-content" style="max-width: 440px;">
             <h2 id="ui-profile-title" style="color: var(--accent-color); margin-top: 0; text-align: center; font-size: 1.2rem;">👤 Profil & Statistiken</h2>
@@ -333,7 +353,7 @@
                     <div class="stat-card"><span class="stat-label" id="ui-stat-xp-label">XP</span><span class="stat-value" id="stat-xp">0</span></div>
                     <div class="stat-card"><span class="stat-label" id="ui-stat-coins-label">Coins</span><span class="stat-value" id="stat-coins">0</span></div>
                     <div class="stat-card"><span class="stat-label" id="ui-stat-monthly-label">Diesen Monat</span><span class="stat-value" id="stat-monthly">0</span></div>
-                    <div class="stat-card"><span class="stat-label" id="ui-stat-streak-label">Streak</span><span class="stat-value" id="stat-streak">0</span></div>
+                    <div class="stat-card"><span class="stat-label" id="ui-stat-streak-label">Tages-Streak</span><span class="stat-value" id="stat-streak">0</span></div>
                     <div class="stat-card"><span class="stat-label" id="ui-stat-truth-label">Wahrheiten</span><span class="stat-value" id="stat-truth">0</span></div>
                     <div class="stat-card"><span class="stat-label" id="ui-stat-dare-label">Pflichten</span><span class="stat-value" id="stat-dare">0</span></div>
                     <div class="stat-card"><span class="stat-label" id="ui-stat-total-label">Aufgaben gesamt</span><span class="stat-value" id="stat-total">0</span></div>
