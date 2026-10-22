@@ -162,12 +162,14 @@
                 <h3>Welche Daten werden verarbeitet?</h3>
                 <ul>
                     <li><strong>Registrierungsdaten:</strong> E-Mail-Adresse, Benutzername, Passwort-Hash (SHA-256)</li>
-                    <li><strong>Spieldaten:</strong> XP, Coins, Streak, Level, Badges, freigeschaltete Items/Themes, Wahrheits-/Pflicht-Zähler</li>
+                    <li><strong>Spieldaten:</strong> XP, Coins, Level, Tages-Streak, Spiel-Streak, Badges, freigeschaltete Items/Themes, Wahrheits-/Pflicht-Zähler, Joker-Bestand und genutzte Joker</li>
+                    <li><strong>Login-Datum:</strong> letztes Login-Datum (für die Tages-Streak)</li>
                     <li><strong>Online-Status:</strong> isOnline, lastActive, aktuelle Lobby</li>
                     <li><strong>Freundesliste &amp; Anfragen:</strong> E-Mail-Adressen der Freunde / Anfragen</li>
                     <li><strong>Lobby-Daten:</strong> Lobby-Code, Rolle (Host/Client), Spielerlisten, Chat-Nachrichten (temporär)</li>
                     <li><strong>Feedback:</strong> Typ und Nachricht, die du über das Feedback-Formular sendest</li>
                     <li><strong>Technische Daten:</strong> IP-Adresse und Browser-Informationen können durch den Hosting-Anbieter bzw. Firebase anfallen</li>
+                    <li><strong>Lokale Zwischenspeicherung:</strong> Zur optionalen Installation als App (PWA) kann ein Service Worker statische Dateien (HTML/CSS/JS/Icons) lokal cachen. Fortschritts-Backups können im localStorage des Browsers liegen. Runden-Statistiken am Sessionende werden nur lokal angezeigt und nicht dauerhaft in der Cloud gespeichert.</li>
                 </ul>
             </div>
 
@@ -285,12 +287,14 @@
                 <h3>What data is processed?</h3>
                 <ul>
                     <li><strong>Registration data:</strong> Email address, username, password hash (SHA-256)</li>
-                    <li><strong>Game data:</strong> XP, coins, streak, level, badges, unlocked items/themes, truth/dare counters</li>
+                    <li><strong>Game data:</strong> XP, coins, level, daily streak, game streak, badges, unlocked items/themes, truth/dare counters, joker inventory and jokers used</li>
+                    <li><strong>Login date:</strong> last login date (for the daily streak)</li>
                     <li><strong>Online status:</strong> isOnline, lastActive, current lobby</li>
                     <li><strong>Friends list &amp; requests:</strong> Email addresses of friends / requests</li>
                     <li><strong>Lobby data:</strong> Lobby code, role (host/client), player lists, chat messages (temporary)</li>
                     <li><strong>Feedback:</strong> Type and message you send via the feedback form</li>
                     <li><strong>Technical data:</strong> IP address and browser information may be collected by the hosting provider or Firebase</li>
+                    <li><strong>Local caching:</strong> For optional install as an app (PWA), a service worker may cache static files (HTML/CSS/JS/icons) locally. Progress backups may be stored in the browser’s localStorage. Round summaries at session end are shown only locally and are not stored permanently in the cloud.</li>
                 </ul>
             </div>
 
