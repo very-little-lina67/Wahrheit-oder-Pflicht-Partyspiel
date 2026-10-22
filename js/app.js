@@ -355,6 +355,13 @@
                 lbTabFriends: "👥 Freunde",
                 lbMetricTotal: "💰 Gesamt",
                 lbMetricMonthly: "📅 Monat",
+                lbMetricLevel: "⭐ Level",
+                lbMetricStreak: "🔥 Tages-Streak",
+                lbLevelTitle: "Level-Rangliste (nach XP)",
+                lbStreakTitle: "Tages-Streak-Rangliste",
+                lbLevelUnit: "Level",
+                lbStreakUnit: "Tage",
+                lbXpHint: "XP",
                 lbClose: "Schließen",
                 langLabelText: "Sprache",
                 title: "Wahrheit oder Pflicht Partyspiel 🍻🚻",
@@ -637,6 +644,13 @@
                 lbTabFriends: "👥 Friends",
                 lbMetricTotal: "💰 Total",
                 lbMetricMonthly: "📅 Month",
+                lbMetricLevel: "⭐ Level",
+                lbMetricStreak: "🔥 Daily Streak",
+                lbLevelTitle: "Level ranking (by XP)",
+                lbStreakTitle: "Daily streak ranking",
+                lbLevelUnit: "Level",
+                lbStreakUnit: "days",
+                lbXpHint: "XP",
                 lbClose: "Close",
                 langLabelText: "Language",
                 title: "Truth or Dare Party Game 🍻🚻",
@@ -976,6 +990,8 @@
             const lbTabFr = document.getElementById("lb-tab-friends"); if (lbTabFr) lbTabFr.innerText = t.lbTabFriends;
             const lbMetricTotal = document.getElementById("lb-metric-total"); if (lbMetricTotal) lbMetricTotal.innerText = t.lbMetricTotal || (currentLang === "de" ? "💰 Gesamt" : "💰 Total");
             const lbMetricMonthly = document.getElementById("lb-metric-monthly"); if (lbMetricMonthly) lbMetricMonthly.innerText = t.lbMetricMonthly || (currentLang === "de" ? "📅 Monat" : "📅 Month");
+            const lbMetricLevel = document.getElementById("lb-metric-level"); if (lbMetricLevel) lbMetricLevel.innerText = t.lbMetricLevel || (currentLang === "de" ? "⭐ Level" : "⭐ Level");
+            const lbMetricStreak = document.getElementById("lb-metric-streak"); if (lbMetricStreak) lbMetricStreak.innerText = t.lbMetricStreak || (currentLang === "de" ? "🔥 Tages-Streak" : "🔥 Daily Streak");
 
             // Online Players Modal
             const opTitleEl = document.getElementById("ui-op-title"); if (opTitleEl) opTitleEl.innerText = t.opTitle;
@@ -1759,8 +1775,26 @@
             if (friendsBtn) friendsBtn.className = currentLbTab === "friends" ? "btn-green" : "btn-blue";
             const metricTotalBtn = document.getElementById("lb-metric-total");
             const metricMonthlyBtn = document.getElementById("lb-metric-monthly");
+            const metricLevelBtn = document.getElementById("lb-metric-level");
+            const metricStreakBtn = document.getElementById("lb-metric-streak");
             if (metricTotalBtn) metricTotalBtn.className = currentLbMetric === "total" ? "btn-green" : "btn-blue";
             if (metricMonthlyBtn) metricMonthlyBtn.className = currentLbMetric === "monthly" ? "btn-green" : "btn-blue";
+            if (metricLevelBtn) metricLevelBtn.className = currentLbMetric === "level" ? "btn-green" : "btn-blue";
+            if (metricStreakBtn) metricStreakBtn.className = currentLbMetric === "streak" ? "btn-green" : "btn-blue";
+
+            // Beschreibungstext anpassen
+            const lbDescEl = document.getElementById("ui-lb-desc");
+            if (lbDescEl) {
+                if (currentLbMetric === "monthly") {
+                    lbDescEl.innerText = currentLang === "de" ? "Die Spieler mit den meisten Coins diesen Monat:" : "Players with the most coins this month:";
+                } else if (currentLbMetric === "level") {
+                    lbDescEl.innerText = currentLang === "de" ? "Die Spieler mit dem höchsten Level (sortiert nach XP):" : "Players with the highest level (sorted by XP):";
+                } else if (currentLbMetric === "streak") {
+                    lbDescEl.innerText = currentLang === "de" ? "Die Spieler mit der längsten Tages-Streak:" : "Players with the longest daily streak:";
+                } else {
+                    lbDescEl.innerText = t.lbDesc || (currentLang === "de" ? "Die Spieler mit den meisten Coins:" : "Players with the most coins:");
+                }
+            }
 
             try {
                 let users = [];
@@ -1773,12 +1807,16 @@
                         let m = Number(data.monthlyCoins) || 0;
                         const mm = data.monthlyCoinsMonth || "";
                         if (mm !== getCurrentMonthKey()) m = 0;
+                        const xp = Number(data.xp) || 0;
                         users.push({
                             email: doc.id,
                             name: (typeof data.name === "string" && data.name.trim()) ? data.name.trim() : (currentLang === "de" ? "Party-Spieler" : "Party Player"),
                             accessory: data.accessory || "",
                             coins: Number(data.coins) || 0,
-                            monthlyCoins: m
+                            monthlyCoins: m,
+                            xp: xp,
+                            level: levelFromXp(xp),
+                            streak: Number(data.streak) || 0
                         });
                     });
                     leaderboardCache = users;
@@ -1824,8 +1862,14 @@
                             left.appendChild(a);
                         }
                         const val = document.createElement("div");
-                        val.style.cssText = "color:#ffcc00;font-weight:bold";
-                        val.textContent = `${icon} ${data[key]} ${t.lbCoins || 'Coins'}`;
+                        val.style.cssText = "color:#ffcc00;font-weight:bold;text-align:right;font-size:12px;";
+                        if (key === "xp") {
+                            val.textContent = `⭐ ${data.level} · ${data.xp} ${t.lbXpHint || "XP"}`;
+                        } else if (key === "streak") {
+                            val.textContent = `${icon} ${data.streak} ${t.lbStreakUnit || (currentLang === "de" ? "Tage" : "days")}`;
+                        } else {
+                            val.textContent = `${icon} ${data[key]} ${t.lbCoins || "Coins"}`;
+                        }
                         row.append(left, val);
                         section.appendChild(row);
                     });
@@ -1836,9 +1880,14 @@
                 const prefix = currentLbTab === "friends"
                     ? (currentLang === "de" ? "👥 Freunde – " : "👥 Friends – ")
                     : (currentLang === "de" ? "🌍 " : "🌍 ");
-                // Nur eine Liste: Gesamt ODER Monat – auswählbar, kein doppeltes Scrollen
+                // Eine Liste je Metrik – Level-Rangliste sortiert nach XP
                 if (currentLbMetric === "monthly") {
                     render(prefix + (t.lbMonthlyTitle || (currentLang === "de" ? "Monatliche Coin-Rangliste" : "Monthly coin ranking")), "monthlyCoins", "🪙");
+                } else if (currentLbMetric === "level") {
+                    // Sortierung über XP (key), Anzeige Level + XP
+                    render(prefix + (t.lbLevelTitle || (currentLang === "de" ? "Level-Rangliste (nach XP)" : "Level ranking (by XP)")), "xp", "⭐");
+                } else if (currentLbMetric === "streak") {
+                    render(prefix + (t.lbStreakTitle || (currentLang === "de" ? "Tages-Streak-Rangliste" : "Daily streak ranking")), "streak", "🔥");
                 } else {
                     render(prefix + (t.lbGlobalTitle || (currentLang === "de" ? "Allgemeine Coin-Rangliste" : "All-time coin ranking")), "coins", "💰");
                 }
@@ -1998,6 +2047,18 @@
         function xpNeededForLevelUp(fromLevel) {
             const L = Math.max(1, Number(fromLevel) || 1);
             return 120 + (L - 1) * 50;
+        }
+
+        function levelFromXp(xp) {
+            let level = 1;
+            let remaining = Math.max(0, Number(xp) || 0);
+            for (let i = 0; i < 500; i++) {
+                const need = xpNeededForLevelUp(level);
+                if (remaining < need) break;
+                remaining -= need;
+                level++;
+            }
+            return level;
         }
 
         function calculateLevel() {
@@ -3116,7 +3177,7 @@
         let myFriends = [];          // Array of friend emails
         let myFriendRequests = [];   // Incoming: [{fromEmail, fromName, id}]
         let currentLbTab = "global";
-        let currentLbMetric = "total"; // "total" | "monthly"
+        let currentLbMetric = "total"; // "total" | "monthly" | "level" | "streak"
         let friendReqUnsubscribe = null;
 
         async function loadFriendsData() {
@@ -3497,11 +3558,16 @@
         }
 
         function switchLeaderboardMetric(metric) {
-            currentLbMetric = (metric === "monthly") ? "monthly" : "total";
+            const allowed = ["total", "monthly", "level", "streak"];
+            currentLbMetric = allowed.includes(metric) ? metric : "total";
             const metricTotalBtn = document.getElementById("lb-metric-total");
             const metricMonthlyBtn = document.getElementById("lb-metric-monthly");
+            const metricLevelBtn = document.getElementById("lb-metric-level");
+            const metricStreakBtn = document.getElementById("lb-metric-streak");
             if (metricTotalBtn) metricTotalBtn.className = currentLbMetric === "total" ? "btn-green" : "btn-blue";
             if (metricMonthlyBtn) metricMonthlyBtn.className = currentLbMetric === "monthly" ? "btn-green" : "btn-blue";
+            if (metricLevelBtn) metricLevelBtn.className = currentLbMetric === "level" ? "btn-green" : "btn-blue";
+            if (metricStreakBtn) metricStreakBtn.className = currentLbMetric === "streak" ? "btn-green" : "btn-blue";
             openLeaderboard();
         }
 
