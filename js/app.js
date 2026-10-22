@@ -420,6 +420,10 @@
                 adminUsersHead: "👥 Benutzer:",
                 adminFbHead: "📥 Feedback:",
                 adminCloseBtn: "Schließen",
+                footerDiscord: "Discord",
+                footerDiscordHint: "Fragen? Schreib mir auf Discord.",
+                fbDiscordLink: "💬 Discord öffnen – direkt schreiben",
+                fbDesc: "Teile Bugs oder Verbesserungsvorschläge – oder schreib mir auf Discord!",
                 footerRules: "Regelwerk",
                 footerImprint: "Impressum",
                 footerPrivacy: "Datenschutz",
@@ -676,7 +680,7 @@
                 leakBtn: "🚨 I leaked / had to pee (Lost!)",
                 adminKickBtn: "🛡️ Kick player (Admin)",
                 fbTitle: "📝 Report Bug & Feedback",
-                fbDesc: "Found a bug or have an improvement suggestion? Send it directly!",
+                fbDesc: "Found a bug or have a suggestion? Send feedback – or message me on Discord!",
                 fbTypeLabel: "Feedback Type:",
                 fbOptBug: "🐛 Bug / Technical Issue",
                 fbOptImp: "💡 Suggestion / Improvement",
@@ -934,6 +938,12 @@
             // Feedback Modal
             const fbTitle = document.getElementById("ui-fb-title"); if (fbTitle) fbTitle.innerText = t.fbTitle;
             const fbDesc = document.getElementById("ui-fb-desc"); if (fbDesc) fbDesc.innerText = t.fbDesc;
+            const fbDiscord = document.getElementById("ui-fb-discord-link");
+            if (fbDiscord) fbDiscord.innerText = t.fbDiscordLink || (currentLang === "de" ? "💬 Discord öffnen – direkt schreiben" : "💬 Open Discord – message me");
+            const footDiscord = document.getElementById("ui-footer-discord");
+            if (footDiscord) footDiscord.innerText = t.footerDiscord || "Discord";
+            const footDiscordHint = document.getElementById("ui-footer-discord-hint");
+            if (footDiscordHint) footDiscordHint.innerText = t.footerDiscordHint || (currentLang === "de" ? "Fragen? Schreib mir auf Discord." : "Questions? Message me on Discord.");
             const fbTypeLabel = document.getElementById("ui-fb-type-label"); if (fbTypeLabel) fbTypeLabel.innerText = t.fbTypeLabel;
             const fbOptBug = document.getElementById("ui-fb-opt-bug"); if (fbOptBug) fbOptBug.innerText = t.fbOptBug;
             const fbOptImp = document.getElementById("ui-fb-opt-imp"); if (fbOptImp) fbOptImp.innerText = t.fbOptImp;
