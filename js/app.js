@@ -1987,12 +1987,38 @@
             userLevel = level;
         }
 
-        /** XP bis zum nächsten Level (für Anzeige optional) */
+        /** XP bis zum nächsten Level */
         function xpToNextLevel() {
             calculateLevel();
             let spent = 0;
             for (let L = 1; L < userLevel; L++) spent += xpNeededForLevelUp(L);
             return Math.max(0, xpNeededForLevelUp(userLevel) - (Math.max(0, userXP) - spent));
+        }
+
+        /** XP bereits im aktuellen Level + Bedarf bis Level-up */
+        function getLevelXpProgress() {
+            calculateLevel();
+            let spent = 0;
+            for (let L = 1; L < userLevel; L++) spent += xpNeededForLevelUp(L);
+            const need = xpNeededForLevelUp(userLevel);
+            const into = Math.max(0, Math.min(need, (Number(userXP) || 0) - spent));
+            const remaining = Math.max(0, need - into);
+            const pct = need > 0 ? Math.min(100, Math.round((into / need) * 100)) : 100;
+            return { into, need, remaining, pct, level: userLevel };
+        }
+
+        function updateProfileXpBar() {
+            const prog = getLevelXpProgress();
+            const fill = document.getElementById("profile-xp-bar-fill");
+            const text = document.getElementById("profile-xp-bar-text");
+            if (fill) fill.style.width = prog.pct + "%";
+            if (text) {
+                if (currentLang === "de") {
+                    text.innerText = `${prog.into} / ${prog.need} XP · noch ${prog.remaining} XP bis Level ${prog.level + 1}`;
+                } else {
+                    text.innerText = `${prog.into} / ${prog.need} XP · ${prog.remaining} XP to level ${prog.level + 1}`;
+                }
+            }
         }
 
         function updateHUD() {
@@ -2091,6 +2117,7 @@
                     ? `Partystufe ${userLevel} (${userXP} XP)`
                     : `Party Level ${userLevel} (${userXP} XP)`;
             }
+            updateProfileXpBar();
             const pCoins = document.getElementById("profile-display-coins");
             if (pCoins) pCoins.innerText = userCoins;
             const pCoinsTxt = document.getElementById("ui-profile-coins-text");
