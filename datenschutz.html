@@ -166,7 +166,7 @@
                     <li><strong>Login-Datum:</strong> letztes Login-Datum (für die Tages-Streak)</li>
                     <li><strong>Online-Status:</strong> isOnline, lastActive, aktuelle Lobby</li>
                     <li><strong>Freundesliste &amp; Anfragen:</strong> E-Mail-Adressen der Freunde / Anfragen</li>
-                    <li><strong>Lobby-Daten:</strong> Lobby-Code, Rolle (Host/Client), Spielerlisten, Chat-Nachrichten (temporär)</li>
+                    <li><strong>Lobby-Daten:</strong> Lobby-Code, Rolle (Host/Client), Spielerlisten (inkl. optionaler Pass-&amp;-Play-Namen ohne eigenes Konto), Chat-Nachrichten (temporär, nur für die laufende Session)</li>
                     <li><strong>Feedback:</strong> Typ und Nachricht, die du über das Feedback-Formular sendest</li>
                     <li><strong>Technische Daten:</strong> IP-Adresse und Browser-Informationen können durch den Hosting-Anbieter bzw. Firebase anfallen</li>
                     <li><strong>Lokale Zwischenspeicherung:</strong> Zur optionalen Installation als App (PWA) kann ein Service Worker statische Dateien (HTML/CSS/JS/Icons) lokal cachen. Fortschritts-Backups können im localStorage des Browsers liegen. Runden-Statistiken am Sessionende werden nur lokal angezeigt und nicht dauerhaft in der Cloud gespeichert.</li>
@@ -204,7 +204,7 @@
                 <h2>5. Speicherdauer</h2>
                 <ul>
                     <li>Kontodaten bleiben gespeichert, solange dein Konto existiert.</li>
-                    <li>Lobby- und Chat-Daten sind flüchtig und werden nach Verlassen der Lobby bzw. Sessionende nicht dauerhaft vorgehalten.</li>
+                    <li>Lobby- und Chat-Daten sind flüchtig und werden nach Verlassen der Lobby bzw. Sessionende nicht dauerhaft vorgehalten. Pass-&amp;-Play-Namen ohne Konto erzeugen kein eigenes Nutzerprofil in der Datenbank.</li>
                     <li>Online-Status und lastActive werden regelmäßig aktualisiert und dienen der Anzeige „wer ist online“.</li>
                     <li>Feedback-Einträge werden bis zur Bearbeitung durch den Admin gespeichert und können danach gelöscht werden.</li>
                 </ul>
@@ -291,7 +291,7 @@
                     <li><strong>Login date:</strong> last login date (for the daily streak)</li>
                     <li><strong>Online status:</strong> isOnline, lastActive, current lobby</li>
                     <li><strong>Friends list &amp; requests:</strong> Email addresses of friends / requests</li>
-                    <li><strong>Lobby data:</strong> Lobby code, role (host/client), player lists, chat messages (temporary)</li>
+                    <li><strong>Lobby data:</strong> Lobby code, role (host/client), player lists (including optional Pass &amp; Play names without their own account), chat messages (temporary, only for the current session)</li>
                     <li><strong>Feedback:</strong> Type and message you send via the feedback form</li>
                     <li><strong>Technical data:</strong> IP address and browser information may be collected by the hosting provider or Firebase</li>
                     <li><strong>Local caching:</strong> For optional install as an app (PWA), a service worker may cache static files (HTML/CSS/JS/icons) locally. Progress backups may be stored in the browser’s localStorage. Round summaries at session end are shown only locally and are not stored permanently in the cloud.</li>
@@ -329,7 +329,7 @@
                 <h2>5. Storage duration</h2>
                 <ul>
                     <li>Account data remains stored as long as your account exists.</li>
-                    <li>Lobby and chat data is temporary and is not permanently retained after leaving the lobby or end of session.</li>
+                    <li>Lobby and chat data is temporary and is not permanently retained after leaving the lobby or end of session. Pass &amp; Play names without an account do not create a separate user profile in the database.</li>
                     <li>Online status and lastActive are regularly updated and serve to display “who is online”.</li>
                     <li>Feedback entries are stored until processed by the admin and may be deleted afterwards.</li>
                 </ul>
