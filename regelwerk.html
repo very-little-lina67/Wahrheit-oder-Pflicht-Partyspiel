@@ -193,7 +193,7 @@
                     dreht sich das <strong>Glücksrad</strong> für alle.
                 </p>
                 <p class="note">
-                    Ein Konto (E-Mail + Benutzername + Passwort) speichert XP, Coins, Streak, Badges und Shop-Items.
+                    Ein Konto (E-Mail + Benutzername + Passwort) speichert XP, Coins, Tages-Streak, Spiel-Streak, Badges, Joker-Statistiken und Shop-Items.
                     Ohne Login ist der Fortschritt nicht cloud-gesichert.
                 </p>
             </div>
@@ -252,7 +252,9 @@
                     <li>
                         <span class="badge warn">Leak / Klo</span>
                         Wer den Notfall-Button „Ich habe geleakt / musste pinkeln“ nutzt (bzw. genannt wird),
-                        <strong>scheidet aus</strong>. Streak wird auf 0 gesetzt. Du landest wieder im Lobby-Setup.
+                        <strong>scheidet aus</strong>. Die <strong>Spiel-Streak</strong> (HUD) wird auf 0 gesetzt;
+                        die <strong>Tages-Streak</strong> bleibt erhalten. Anschließend siehst du eine kurze
+                        <strong>Runden-Statistik</strong> und landest wieder im Lobby-Setup.
                     </li>
                     <li>
                         <span class="badge">Admin-Kick</span>
@@ -284,10 +286,13 @@
             <div class="card">
                 <h2>8. Fortschritt &amp; Shop</h2>
                 <ul>
-                    <li><strong>XP &amp; Level:</strong> Durch Züge und Rad.</li>
+                    <li><strong>XP &amp; Level:</strong> Durch Züge und Rad. Höhere Level brauchen progressiv mehr XP.</li>
                     <li><strong>Coins:</strong> Für Shop-Items (Emojis, Accessoires, Themes, Joker).</li>
-                    <li><strong>Streak:</strong> Serie ohne Ausscheiden – geht bei Leak/Ausscheiden verloren.</li>
+                    <li><strong>Spiel-Streak (HUD):</strong> +1 pro erfolgreiche Runde ohne Leak. Bei Leak/Ausscheiden auf 0. Ab 5er-Serie erhöhter Coin-Bonus.</li>
+                    <li><strong>Tages-Streak (Profil):</strong> +1 pro Kalendertag mit Login. Bleibt bei Leak erhalten; bricht nur bei einem verpassten Tag ab.</li>
+                    <li><strong>Joker-Statistiken:</strong> Im Profil siehst du, wie viele Skip-/Force-Joker du insgesamt genutzt hast.</li>
                     <li><strong>Badges:</strong> Automatische Trophäen für Meilensteine.</li>
+                    <li><strong>Runden-Statistik:</strong> Beim Verlassen der Lobby oder nach einem Leak wird eine kurze Übersicht der aktuellen Session angezeigt (Aufgaben, XP, Coins, Streaks, Joker).</li>
                 </ul>
                 <p class="note">
                     Fortschritt wird in der Cloud (pro Konto) und zusätzlich lokal gesichert.
@@ -333,7 +338,7 @@
                     the <strong>wheel</strong> spins for everyone.
                 </p>
                 <p class="note">
-                    An account (email + username + password) stores XP, coins, streak, badges and shop items.
+                    An account (email + username + password) stores XP, coins, daily streak, game streak, badges, joker stats and shop items.
                     Without login, progress is not cloud-saved.
                 </p>
             </div>
@@ -392,7 +397,9 @@
                     <li>
                         <span class="badge warn">Leak / restroom</span>
                         Using (or being named for) the emergency “I leaked / had to pee” action
-                        <strong>eliminates</strong> you. Streak resets to 0. You return to lobby setup.
+                        <strong>eliminates</strong> you. The <strong>game streak</strong> (HUD) resets to 0;
+                        the <strong>daily streak</strong> stays. You then see a short
+                        <strong>round summary</strong> and return to lobby setup.
                     </li>
                     <li>
                         <span class="badge">Admin kick</span>
@@ -424,10 +431,13 @@
             <div class="card">
                 <h2>8. Progress &amp; shop</h2>
                 <ul>
-                    <li><strong>XP &amp; level:</strong> From turns and the wheel.</li>
+                    <li><strong>XP &amp; level:</strong> From turns and the wheel. Higher levels need progressively more XP.</li>
                     <li><strong>Coins:</strong> For shop items (emotes, accessories, themes, jokers).</li>
-                    <li><strong>Streak:</strong> Run without elimination – lost on leak/elimination.</li>
+                    <li><strong>Game streak (HUD):</strong> +1 per successful round without leak. Resets to 0 on leak/elimination. Coin bonus from a streak of 5+.</li>
+                    <li><strong>Daily streak (profile):</strong> +1 per calendar day you log in. Survives leaks; only breaks if you miss a day.</li>
+                    <li><strong>Joker stats:</strong> Your profile shows how many skip/force jokers you have used in total.</li>
                     <li><strong>Badges:</strong> Automatic trophies for milestones.</li>
+                    <li><strong>Round summary:</strong> When you leave the lobby or after a leak, a short overview of the current session is shown (tasks, XP, coins, streaks, jokers).</li>
                 </ul>
                 <p class="note">
                     Progress is saved in the cloud (per account) and backed up locally.
@@ -463,12 +473,11 @@
         <footer>
             <a href="index.html">Spiel</a>
             <span>·</span>
+            <a href="regelwerk.html">Regelwerk</a>
+            <span>·</span>
             <a href="impressum.html">Impressum</a>
             <span>·</span>
             <a href="datenschutz.html">Datenschutz</a>
-            <span>·</span>
-            <a href="regelwerk.html">Regelwerk</a>
-            <p style="margin-top:12px;">© Wahrheit oder Pflicht Partyspiel – Regeln zum aktuellen Spielstand</p>
         </footer>
     </div>
 
