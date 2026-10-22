@@ -1509,3 +1509,18 @@ textarea:focus {
         font-size: 16px !important;
     }
 }
+
+
+/* Runden-Statistik Modal */
+#round-stats-modal .modal-content {
+    background: rgba(15, 12, 41, 0.96);
+    border: 1px solid rgba(124, 58, 237, 0.35);
+}
+.round-stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+.round-stats-grid .stat-card {
+    padding: 10px 8px;
+}
