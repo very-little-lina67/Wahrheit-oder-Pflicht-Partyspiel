@@ -3559,19 +3559,23 @@
                     if (!isHost || leavingLobbyManually) return;
 
                     const nextPlayers = [];
+                    const seenNames = new Set();
                     snapshot.forEach(doc => {
                         const d = doc.data() || {};
                         const name = getUserDisplayName(d, "Spieler");
 
                         if (d.currentLobby === activeLobbyCode && name) {
-                            const oldPlayer = players.find(p => p.name === name);
+                            const oldPlayer = players.find(p => namesEqual(p, name));
                             const playerIsSpec = !!d.isSpectator || d.lobbyRole === "spectator";
-                            nextPlayers.push({
+                            const entry = {
                                 name,
-                                accessory: d.accessory || "",
-                                eliminated: !!oldPlayer?.eliminated,
-                                isSpectator: playerIsSpec
-                            });
+                                accessory: d.accessory || (oldPlayer && oldPlayer.accessory) || "",
+                                eliminated: !!(oldPlayer && oldPlayer.eliminated),
+                                isSpectator: playerIsSpec,
+                                isLocal: false
+                            };
+                            nextPlayers.push(entry);
+                            seenNames.add(String(name).trim().toLowerCase());
 
                             if (doc.id !== myEmail) {
                                 const msg = d.lobbyMessage;
@@ -3601,6 +3605,36 @@
                         }
                     });
 
+                    // Pass & Play: lokale Sitze (kein Firebase-Account) behalten
+                    (players || []).forEach(p => {
+                        if (!p || !p.isLocal) return;
+                        const key = String(getUserDisplayName(p) || "").trim().toLowerCase();
+                        if (!key || seenNames.has(key)) return;
+                        nextPlayers.push({
+                            name: getUserDisplayName(p),
+                            accessory: p.accessory || "",
+                            eliminated: !!p.eliminated,
+                            isSpectator: !!p.isSpectator,
+                            isLocal: true
+                        });
+                        seenNames.add(key);
+                    });
+
+                    // Host immer in der Liste (falls Snapshot verzögert)
+                    if (myName) {
+                        const hostKey = String(myName).trim().toLowerCase();
+                        if (!seenNames.has(hostKey)) {
+                            const oldHost = (players || []).find(p => namesEqual(p, myName));
+                            nextPlayers.unshift({
+                                name: myName,
+                                accessory: (oldHost && oldHost.accessory) || equippedAccessory || "",
+                                eliminated: !!(oldHost && oldHost.eliminated),
+                                isSpectator: !!(oldHost && oldHost.isSpectator),
+                                isLocal: false
+                            });
+                        }
+                    }
+
                     const changed = JSON.stringify(players) !== JSON.stringify(nextPlayers);
                     players = nextPlayers;
 
@@ -3608,7 +3642,6 @@
                         updatePlayerList();
                         saveLobbyPlayers();
                         broadcastLobbyData({ type: "UPDATE_PLAYERS", players });
-                        // Mid-Game-Join: neuer Spieler wird in Firebase-State übernommen
                         scheduleSaveGameState();
                     } else {
                         updatePlayerList();
@@ -4462,12 +4495,35 @@
 
         function handleIncomingData(data) {
             if (data.type === 'UPDATE_PLAYERS') {
-                players = data.players;
+                const incoming = Array.isArray(data.players) ? data.players : [];
+                const prevList = players || [];
+                // Eingehende Liste + lokale Sitze mergen (Clients können isLocal verlieren)
+                const merged = incoming.map(ip => {
+                    const prev = prevList.find(p => namesEqual(p, ip));
+                    return normalizePlayerEntry(ip, prev);
+                });
+                prevList.forEach(p => {
+                    if (p && p.isLocal && !merged.some(m => namesEqual(m, p))) {
+                        merged.push(normalizePlayerEntry(p, p));
+                    }
+                });
+                players = merged;
                 updatePlayerList();
             } else if (data.type === 'LEAVE_LOBBY') {
                 handlePlayerLeaving(data.playerName);
             } else if (data.type === 'START_GAME') {
-                players = data.players;
+                const incoming = Array.isArray(data.players) ? data.players : [];
+                const prevList = players || [];
+                players = incoming.map(ip => {
+                    const prev = prevList.find(p => namesEqual(p, ip));
+                    return normalizePlayerEntry(ip, prev);
+                });
+                // Lokale Sitze nicht verlieren, falls Start-Payload unvollständig
+                prevList.forEach(p => {
+                    if (p && p.isLocal && !players.some(m => namesEqual(m, p))) {
+                        players.push(normalizePlayerEntry(p, p));
+                    }
+                });
                 startGameUI();
             } else if (data.type === 'SUBMIT_CHOICE') {
                 pendingChoice = data.choice;
@@ -4723,13 +4779,26 @@
 
         function startOnlineGame() {
             if (!isHost) return;
+            if (!Array.isArray(players) || players.filter(p => !p.isSpectator).length < 1) {
+                alert(currentLang === "de" ? "Keine Spieler in der Lobby." : "No players in the lobby.");
+                return;
+            }
+            // isLocal-Flags explizit sichern vor dem Start
+            players = players.map(p => normalizePlayerEntry(p, p));
             gameStarted = true;
             gamePhase = "wop";
             currentPlayerIndex = 0;
             currentSharedResult = null;
             nextTurnVotedPlayers = [];
             nextRoundVotedPlayers = [];
-            sendData({ type: 'START_GAME', players: players });
+            saveLobbyPlayers();
+            sendData({ type: 'START_GAME', players: players.map(p => ({
+                name: getUserDisplayName(p),
+                accessory: p.accessory || "",
+                eliminated: !!p.eliminated,
+                isSpectator: !!p.isSpectator,
+                isLocal: !!p.isLocal
+            })) });
             startGameUI();
             scheduleSaveGameState();
         }
@@ -4834,7 +4903,16 @@
             if (input) input.value = "";
             updatePlayerList();
             saveLobbyPlayers();
-            if (isHost) scheduleSaveGameState();
+            if (isHost) {
+                broadcastLobbyData({ type: "UPDATE_PLAYERS", players: players.map(p => ({
+                    name: getUserDisplayName(p),
+                    accessory: p.accessory || "",
+                    eliminated: !!p.eliminated,
+                    isSpectator: !!p.isSpectator,
+                    isLocal: !!p.isLocal
+                })) });
+                scheduleSaveGameState();
+            }
         }
 
         function removeLocalPlayer(name) {
@@ -4844,7 +4922,10 @@
             players.splice(idx, 1);
             updatePlayerList();
             saveLobbyPlayers();
-            if (isHost) scheduleSaveGameState();
+            if (isHost) {
+                broadcastLobbyData({ type: "UPDATE_PLAYERS", players });
+                scheduleSaveGameState();
+            }
         }
 
         function updateWopTurn() {
@@ -4875,7 +4956,12 @@
 
             let currentP = players[currentPlayerIndex];
             const currentPlayerName = getUserDisplayName(currentP, "Spieler");
-            document.getElementById("wop-turn-title").innerHTML = translations[currentLang].turnTitle + `<span style="color: var(--primary-color);">${currentPlayerName}</span>`;
+            const localHint = isLocalSeat(currentP)
+                ? (currentLang === "de"
+                    ? ` <span style="font-size:12px;color:#67e8f9;">(dieses Gerät – bitte weitergeben)</span>`
+                    : ` <span style="font-size:12px;color:#67e8f9;">(this device – pass it over)</span>`)
+                : "";
+            document.getElementById("wop-turn-title").innerHTML = translations[currentLang].turnTitle + `<span style="color: var(--primary-color);">${currentPlayerName}</span>${localHint}`;
             
             document.getElementById("wop-choice-area").classList.add("hidden");
             document.getElementById("creator-input-area").classList.add("hidden");
