@@ -1554,3 +1554,31 @@ textarea:focus {
     color: #a5f3fc;
     letter-spacing: 0.02em;
 }
+
+
+/* Profil: Konto löschen – Warnbox */
+.delete-account-box {
+    margin-top: 14px;
+    padding: 12px 12px 10px;
+    border-radius: 12px;
+    background: rgba(139, 0, 0, 0.28);
+    border: 1px solid rgba(255, 80, 80, 0.55);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04), 0 4px 18px rgba(139, 0, 0, 0.25);
+}
+.delete-account-warning {
+    margin: 0 0 10px 0;
+    font-size: 11px;
+    line-height: 1.45;
+    color: #fecaca;
+    text-align: left;
+}
+.btn-delete-account {
+    width: 100%;
+    padding: 10px;
+    font-size: 13px;
+    font-weight: 700;
+    margin: 0;
+    background: #8b0000 !important;
+    border: 1px solid rgba(255, 120, 120, 0.5);
+    box-shadow: 0 4px 15px rgba(139, 0, 0, 0.45);
+}
