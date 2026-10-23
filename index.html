@@ -409,7 +409,7 @@
                 <button id="lb-metric-total" class="btn-green" onclick="switchLeaderboardMetric('total')" style="flex:1; min-width:42%; padding:6px; font-size:12px;">💰 Gesamt</button>
                 <button id="lb-metric-monthly" class="btn-blue" onclick="switchLeaderboardMetric('monthly')" style="flex:1; min-width:42%; padding:6px; font-size:12px;">📅 Monat</button>
                 <button id="lb-metric-level" class="btn-blue" onclick="switchLeaderboardMetric('level')" style="flex:1; min-width:42%; padding:6px; font-size:12px;">⭐ Level</button>
-                            </div>
+            </div>
             <p id="ui-lb-desc" style="font-size: 12px; color: #ccc;">Die Spieler mit den meisten Coins:</p>
             
             <div id="leaderboard-list" style="max-height: 280px; overflow-y: auto; margin-bottom: 12px;">
@@ -452,8 +452,12 @@
         <div class="modal-content">
             <h2 id="ui-fb-title" style="color: var(--primary-color); margin-top:0; font-size: 1.2rem;">📝 Bug melden / Feedback</h2>
             <p id="ui-fb-desc" style="font-size: 12px; color: #ccc;">Teile Bugs oder Verbesserungsvorschläge direkt mit!</p>
-            <p id="ui-fb-discord-line" style="font-size: 12px; margin: 8px 0 12px 0;">
+            <p id="ui-fb-discord-line" style="font-size: 12px; margin: 8px 0 12px 0; display:flex; flex-wrap:wrap; align-items:center; gap:8px;">
                 <a id="ui-fb-discord-link" href="https://discord.com/users/1098681560426881096" target="_blank" rel="noopener noreferrer" style="color: #5865F2; font-weight: 600; text-decoration: none;">💬 Discord öffnen – direkt schreiben</a>
+                <span id="discord-status-feedback" class="discord-status-badge discord-status-unknown" title="Discord-Status">
+                    <span class="discord-status-dot"></span>
+                    <span id="discord-status-feedback-text">…</span>
+                </span>
             </p>
             
             <label id="ui-fb-type-label" style="font-size:12px; color:#ccc;">Art des Feedbacks:</label>
@@ -768,6 +772,10 @@
             <a id="ui-footer-privacy" href="datenschutz.html" style="color: #00bfff; text-decoration: none; margin: 0 8px;">Datenschutz</a>
             <span style="color: #666;">·</span>
             <a id="ui-footer-discord" href="https://discord.com/users/1098681560426881096" target="_blank" rel="noopener noreferrer" style="color: #5865F2; text-decoration: none; margin: 0 8px;">Discord</a>
+            <span id="discord-status-footer" class="discord-status-badge discord-status-unknown" title="Discord-Status">
+                <span class="discord-status-dot"></span>
+                <span id="discord-status-footer-text">…</span>
+            </span>
             <p id="ui-footer-discord-hint" style="margin: 8px 0 0 0; font-size: 11px; color: #888;">Fragen? Schreib mir auf Discord.</p>
         </div>
     </div>
