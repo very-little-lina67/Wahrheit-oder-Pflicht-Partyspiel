@@ -428,7 +428,7 @@
                 footerDiscord: "Profil öffnen",
                 discordCardTitle: "Discord Support",
                 discordCardSub: "Fragen zum Spiel? Schreib mir auf Discord.",
-                discordCardHint: "Status aktualisiert sich automatisch. Grün = online.",
+                discordCardHint: "Status aktualisiert sich automatisch. Grün = online · Gelb = abwesend · Rot = bitte nicht stören · Grau = offline.",
                 fbDiscordLink: "Profil öffnen",
                 footerDiscordHint: "Fragen? Schreib mir auf Discord.",
                 fbDesc: "Teile Bugs oder Verbesserungsvorschläge – oder schreib mir auf Discord!",
@@ -699,6 +699,11 @@
                 adminKickBtn: "🛡️ Kick player (Admin)",
                 fbTitle: "📝 Report Bug & Feedback",
                 fbDesc: "Found a bug or have a suggestion? Send feedback – or message me on Discord!",
+                footerDiscord: "Open profile",
+                discordCardTitle: "Discord Support",
+                discordCardSub: "Questions about the game? Message me on Discord.",
+                discordCardHint: "Status updates automatically. Green = online · Yellow = idle · Red = do not disturb · Gray = offline.",
+                fbDiscordLink: "Open profile",
                 fbTypeLabel: "Feedback Type:",
                 fbOptBug: "🐛 Bug / Technical Issue",
                 fbOptImp: "💡 Suggestion / Improvement",
@@ -1042,8 +1047,8 @@
             });
             const footDiscordHint = document.getElementById("ui-footer-discord-hint");
             if (footDiscordHint) footDiscordHint.innerText = t.discordCardHint || (currentLang === "de"
-                ? "Status aktualisiert sich automatisch. Grün = online."
-                : "Status updates automatically. Green = online.");
+                ? "Status aktualisiert sich automatisch. Grün = online · Gelb = abwesend · Rot = bitte nicht stören · Grau = offline."
+                : "Status updates automatically. Green = online · Yellow = idle · Red = do not disturb · Gray = offline.");
             if (typeof applyDiscordStatusUI === "function") applyDiscordStatusUI(lastDiscordStatus || "unknown");
             const fbTypeLabel = document.getElementById("ui-fb-type-label"); if (fbTypeLabel) fbTypeLabel.innerText = t.fbTypeLabel;
             const fbOptBug = document.getElementById("ui-fb-opt-bug"); if (fbOptBug) fbOptBug.innerText = t.fbOptBug;
