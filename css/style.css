@@ -1582,3 +1582,37 @@ textarea:focus {
     border: 1px solid rgba(255, 120, 120, 0.5);
     box-shadow: 0 4px 15px rgba(139, 0, 0, 0.45);
 }
+
+
+/* Discord Online-Status (Lanyard) */
+.discord-status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 9px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    vertical-align: middle;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: #c9cdd4;
+}
+.discord-status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #747f8d;
+    box-shadow: 0 0 6px currentColor;
+    flex-shrink: 0;
+}
+.discord-status-online { color: #3ba55d; border-color: rgba(59, 165, 93, 0.35); }
+.discord-status-online .discord-status-dot { background: #3ba55d; color: #3ba55d; }
+.discord-status-idle { color: #faa61a; border-color: rgba(250, 166, 26, 0.35); }
+.discord-status-idle .discord-status-dot { background: #faa61a; color: #faa61a; }
+.discord-status-dnd { color: #ed4245; border-color: rgba(237, 66, 69, 0.35); }
+.discord-status-dnd .discord-status-dot { background: #ed4245; color: #ed4245; }
+.discord-status-offline { color: #747f8d; }
+.discord-status-offline .discord-status-dot { background: #747f8d; color: #747f8d; }
+.discord-status-unknown { color: #99a2ad; }
+.discord-status-unknown .discord-status-dot { background: #99a2ad; color: #99a2ad; }
