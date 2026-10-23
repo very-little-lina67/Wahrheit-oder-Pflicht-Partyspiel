@@ -452,13 +452,22 @@
         <div class="modal-content">
             <h2 id="ui-fb-title" style="color: var(--primary-color); margin-top:0; font-size: 1.2rem;">📝 Bug melden / Feedback</h2>
             <p id="ui-fb-desc" style="font-size: 12px; color: #ccc;">Teile Bugs oder Verbesserungsvorschläge direkt mit!</p>
-            <p id="ui-fb-discord-line" style="font-size: 12px; margin: 8px 0 12px 0; display:flex; flex-wrap:wrap; align-items:center; gap:8px;">
-                <a id="ui-fb-discord-link" href="https://discord.com/users/1098681560426881096" target="_blank" rel="noopener noreferrer" style="color: #5865F2; font-weight: 600; text-decoration: none;">💬 Discord öffnen – direkt schreiben</a>
-                <span id="discord-status-feedback" class="discord-status-badge discord-status-unknown" title="Discord-Status">
-                    <span class="discord-status-dot"></span>
-                    <span id="discord-status-feedback-text">…</span>
-                </span>
-            </p>
+            <div class="discord-contact-card" id="discord-card-feedback">
+                <div class="discord-contact-left">
+                    <div class="discord-contact-icon" aria-hidden="true">💬</div>
+                    <div class="discord-contact-meta">
+                        <div class="discord-contact-title" id="ui-discord-card-title-fb">Discord Support</div>
+                        <div class="discord-contact-sub" id="ui-discord-card-sub-fb">Fragen? Schreib mir direkt.</div>
+                    </div>
+                </div>
+                <div class="discord-contact-right">
+                    <span id="discord-status-feedback" class="discord-status-badge discord-status-unknown" title="Discord-Status">
+                        <span class="discord-status-dot"></span>
+                        <span id="discord-status-feedback-text">…</span>
+                    </span>
+                    <a id="ui-fb-discord-link" class="discord-contact-btn" href="https://discord.com/users/1098681560426881096" target="_blank" rel="noopener noreferrer">Profil öffnen</a>
+                </div>
+            </div>
             
             <label id="ui-fb-type-label" style="font-size:12px; color:#ccc;">Art des Feedbacks:</label>
             <select id="feedback-type" style="font-size: 13px; padding: 8px;">
@@ -763,20 +772,32 @@
             <button onclick="adminKickPlayer()" class="btn-admin-kick hidden" id="ui-admin-kick-btn" style="font-size: 12px; padding: 8px; margin-top: 8px;">🛡️ Spieler kicken (Admin)</button>
         </div>
 
+        <!-- Discord Kontakt / Online-Status -->
+        <div class="discord-contact-card discord-contact-card--page" id="discord-card-page">
+            <div class="discord-contact-left">
+                <div class="discord-contact-icon" aria-hidden="true">💬</div>
+                <div class="discord-contact-meta">
+                    <div class="discord-contact-title" id="ui-discord-card-title">Discord Support</div>
+                    <div class="discord-contact-sub" id="ui-discord-card-sub">Fragen zum Spiel? Schreib mir auf Discord.</div>
+                </div>
+            </div>
+            <div class="discord-contact-right">
+                <span id="discord-status-footer" class="discord-status-badge discord-status-unknown" title="Discord-Status">
+                    <span class="discord-status-dot"></span>
+                    <span id="discord-status-footer-text">…</span>
+                </span>
+                <a id="ui-footer-discord" class="discord-contact-btn" href="https://discord.com/users/1098681560426881096" target="_blank" rel="noopener noreferrer">Profil öffnen</a>
+            </div>
+        </div>
+        <p id="ui-footer-discord-hint" class="discord-contact-hint">Status aktualisiert sich automatisch. Grün = online.</p>
+
         <!-- Rechtliche Links -->
-        <div id="legal-footer" style="margin-top: 24px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.15); text-align: center; font-size: 12px;">
+        <div id="legal-footer" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.15); text-align: center; font-size: 12px;">
             <a id="ui-footer-rules" href="regelwerk.html" style="color: #00bfff; text-decoration: none; margin: 0 8px;">Regelwerk</a>
             <span style="color: #666;">·</span>
             <a id="ui-footer-imprint" href="impressum.html" style="color: #00bfff; text-decoration: none; margin: 0 8px;">Impressum</a>
             <span style="color: #666;">·</span>
             <a id="ui-footer-privacy" href="datenschutz.html" style="color: #00bfff; text-decoration: none; margin: 0 8px;">Datenschutz</a>
-            <span style="color: #666;">·</span>
-            <a id="ui-footer-discord" href="https://discord.com/users/1098681560426881096" target="_blank" rel="noopener noreferrer" style="color: #5865F2; text-decoration: none; margin: 0 8px;">Discord</a>
-            <span id="discord-status-footer" class="discord-status-badge discord-status-unknown" title="Discord-Status">
-                <span class="discord-status-dot"></span>
-                <span id="discord-status-footer-text">…</span>
-            </span>
-            <p id="ui-footer-discord-hint" style="margin: 8px 0 0 0; font-size: 11px; color: #888;">Fragen? Schreib mir auf Discord.</p>
         </div>
     </div>
 
