@@ -425,9 +425,12 @@
                 adminUsersHead: "👥 Benutzer:",
                 adminFbHead: "📥 Feedback:",
                 adminCloseBtn: "Schließen",
-                footerDiscord: "Discord",
+                footerDiscord: "Profil öffnen",
+                discordCardTitle: "Discord Support",
+                discordCardSub: "Fragen zum Spiel? Schreib mir auf Discord.",
+                discordCardHint: "Status aktualisiert sich automatisch. Grün = online.",
+                fbDiscordLink: "Profil öffnen",
                 footerDiscordHint: "Fragen? Schreib mir auf Discord.",
-                fbDiscordLink: "💬 Discord öffnen – direkt schreiben",
                 fbDesc: "Teile Bugs oder Verbesserungsvorschläge – oder schreib mir auf Discord!",
                 footerRules: "Regelwerk",
                 footerImprint: "Impressum",
@@ -1022,13 +1025,25 @@
             // Feedback Modal
             const fbTitle = document.getElementById("ui-fb-title"); if (fbTitle) fbTitle.innerText = t.fbTitle;
             const fbDesc = document.getElementById("ui-fb-desc"); if (fbDesc) fbDesc.innerText = t.fbDesc;
+            const discordBtnLabel = currentLang === "de" ? "Profil öffnen" : "Open profile";
             const fbDiscord = document.getElementById("ui-fb-discord-link");
-            if (fbDiscord) fbDiscord.innerText = t.fbDiscordLink || (currentLang === "de" ? "💬 Discord öffnen – direkt schreiben" : "💬 Open Discord – message me");
+            if (fbDiscord) fbDiscord.innerText = t.fbDiscordLink || discordBtnLabel;
             const footDiscord = document.getElementById("ui-footer-discord");
-            if (footDiscord) footDiscord.innerText = t.footerDiscord || "Discord";
+            if (footDiscord) footDiscord.innerText = t.footerDiscord || discordBtnLabel;
+            const titles = document.querySelectorAll("#ui-discord-card-title, #ui-discord-card-title-fb");
+            titles.forEach(el => {
+                el.innerText = t.discordCardTitle || (currentLang === "de" ? "Discord Support" : "Discord Support");
+            });
+            const subs = document.querySelectorAll("#ui-discord-card-sub, #ui-discord-card-sub-fb");
+            subs.forEach(el => {
+                el.innerText = t.discordCardSub || (currentLang === "de"
+                    ? "Fragen zum Spiel? Schreib mir auf Discord."
+                    : "Questions about the game? Message me on Discord.");
+            });
             const footDiscordHint = document.getElementById("ui-footer-discord-hint");
-            if (footDiscordHint) footDiscordHint.innerText = t.footerDiscordHint || (currentLang === "de" ? "Fragen? Schreib mir auf Discord." : "Questions? Message me on Discord.");
-            // Discord-Status-Texte an Sprache anpassen
+            if (footDiscordHint) footDiscordHint.innerText = t.discordCardHint || (currentLang === "de"
+                ? "Status aktualisiert sich automatisch. Grün = online."
+                : "Status updates automatically. Green = online.");
             if (typeof applyDiscordStatusUI === "function") applyDiscordStatusUI(lastDiscordStatus || "unknown");
             const fbTypeLabel = document.getElementById("ui-fb-type-label"); if (fbTypeLabel) fbTypeLabel.innerText = t.fbTypeLabel;
             const fbOptBug = document.getElementById("ui-fb-opt-bug"); if (fbOptBug) fbOptBug.innerText = t.fbOptBug;
