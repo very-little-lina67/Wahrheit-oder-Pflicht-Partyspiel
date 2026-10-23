@@ -1094,6 +1094,8 @@
 
             // HUD & Navigation
             const hudStreak = document.getElementById("ui-hud-streak-text"); if (hudStreak) hudStreak.innerText = t.hudStreakText;
+            const hudTimer = document.getElementById("ui-hud-timer-text");
+            if (hudTimer) hudTimer.innerText = currentLang === "de" ? "Spielzeit" : "Play time";
             const hudCoins = document.getElementById("ui-hud-coins-text"); if (hudCoins) hudCoins.innerText = t.hudCoinsText;
             const hudJokers = document.getElementById("ui-hud-jokers-text"); if (hudJokers) hudJokers.innerText = t.hudJokersText || "Joker";
             const miniTitle = document.getElementById("ui-mini-title"); if (miniTitle) miniTitle.innerText = t.miniTitle || "⏱️ Blitz-Reaktion";
@@ -4173,6 +4175,8 @@
                 document.getElementById("chat-box-container")?.classList.remove("hidden");
                 document.getElementById("emergency-box")?.classList.remove("hidden");
                 document.getElementById("player-status-panel")?.classList.remove("hidden");
+                // Timer nur starten, wenn noch keiner läuft (Reload / Mid-Join)
+                if (!roundTimerInterval && !roundTimerStart) startRoundTimer();
 
                 if (phase === "wop") {
                     document.getElementById("woP-phase")?.classList.remove("hidden");
@@ -4493,6 +4497,55 @@
         }
 
 
+        let roundTimerStart = 0;
+        let roundTimerInterval = null;
+        let sessionPlaySeconds = 0; // Spielzeit der gesamten Session (ein Timer bis Spielende)
+
+        function formatTimer(sec) {
+            sec = Math.max(0, Math.floor(Number(sec) || 0));
+            const m = Math.floor(sec / 60);
+            const s = sec % 60;
+            return String(m).padStart(2, "0") + ":" + String(s).padStart(2, "0");
+        }
+
+        function getRoundElapsedSeconds() {
+            if (!roundTimerStart) return 0;
+            return Math.max(0, Math.floor((Date.now() - roundTimerStart) / 1000));
+        }
+
+        function updateRoundTimerDisplay() {
+            const el = document.getElementById("hud-round-timer");
+            if (el) el.innerText = formatTimer(getRoundElapsedSeconds());
+        }
+
+        function startRoundTimer() {
+            // Ein Timer pro Spielsession – nicht neu starten, wenn schon läuft
+            if (roundTimerStart && roundTimerInterval) {
+                updateRoundTimerDisplay();
+                return;
+            }
+            if (roundTimerInterval) {
+                clearInterval(roundTimerInterval);
+                roundTimerInterval = null;
+            }
+            if (!roundTimerStart) roundTimerStart = Date.now();
+            updateRoundTimerDisplay();
+            roundTimerInterval = setInterval(updateRoundTimerDisplay, 1000);
+        }
+
+        /** @param {boolean} [addToSession=true] vergangene Zeit zur Session addieren */
+        function stopRoundTimer(addToSession = true) {
+            if (roundTimerInterval) {
+                clearInterval(roundTimerInterval);
+                roundTimerInterval = null;
+            }
+            if (addToSession && roundTimerStart) {
+                sessionPlaySeconds += getRoundElapsedSeconds();
+            }
+            roundTimerStart = 0;
+            updateRoundTimerDisplay();
+        }
+
         function resetSessionStats() {
             sessionTruth = 0;
             sessionDare = 0;
@@ -4500,6 +4553,10 @@
             sessionCoins = 0;
             sessionJokers = 0;
             sessionPeakStreak = 0;
+            sessionPlaySeconds = 0;
+            stopRoundTimer(false);
+            const el = document.getElementById("hud-round-timer");
+            if (el) el.innerText = "00:00";
         }
 
         function trackSessionReward(isDare, xpGain, coinGain) {
@@ -4543,12 +4600,16 @@
             set("rs-streak", sessionPeakStreak);
             set("rs-jokers", sessionJokers);
             set("rs-daily", userStreak);
+            // Aktuelle Runde + bisherige Session
+            const totalSec = sessionPlaySeconds + getRoundElapsedSeconds();
+            set("rs-time", formatTimer(totalSec));
 
             // Labels
             const L = (id, deT, enT) => {
                 const el = document.getElementById(id);
                 if (el) el.innerText = de ? deT : enT;
             };
+            L("ui-rs-time-label", "Spielzeit", "Play time");
             L("ui-rs-truth-label", "Wahrheiten", "Truths");
             L("ui-rs-dare-label", "Pflichten", "Dares");
             L("ui-rs-total-label", "Aufgaben", "Tasks");
@@ -4590,6 +4651,7 @@
         }
 
         function _doLeaveLobbyCleanup() {
+            stopRoundTimer(true);
             leavingLobbyManually = true;
             stopReconnectTimer();
             try { sendData({ type: 'LEAVE_LOBBY', playerName: myName }); } catch (e) {}
@@ -5026,6 +5088,7 @@
             document.getElementById("chat-box-container").classList.remove("hidden");
             document.getElementById("player-status-panel")?.classList.remove("hidden");
             document.getElementById("leave-lobby-btn").classList.remove("hidden");
+            startRoundTimer();
             updateWopTurn();
             if (isHost) scheduleSaveGameState();
         }
@@ -5732,6 +5795,7 @@
         }
 
         function nextRound() {
+            // Timer läuft weiter bis die ganze Spielsession endet (nicht nach jedem Glücksrad)
             currentPlayerIndex = 0;
             nextRoundVotedPlayers = [];
             pendingChoice = "";
