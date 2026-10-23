@@ -772,6 +772,66 @@
             }
         };
 
+
+        // Discord-Profil + Online-Status (über Lanyard-API)
+        const DISCORD_USER_ID = "1098681560426881096";
+        const DISCORD_PROFILE_URL = "https://discord.com/users/1098681560426881096";
+        let discordStatusTimer = null;
+        let lastDiscordStatus = "unknown";
+
+        function discordStatusLabel(status) {
+            const de = currentLang === "de";
+            switch (status) {
+                case "online": return de ? "Online" : "Online";
+                case "idle": return de ? "Abwesend" : "Idle";
+                case "dnd": return de ? "Bitte nicht stören" : "Do not disturb";
+                case "offline": return de ? "Offline" : "Offline";
+                default: return de ? "Status unbekannt" : "Status unknown";
+            }
+        }
+
+        function applyDiscordStatusUI(status) {
+            lastDiscordStatus = status || "unknown";
+            const cls = "discord-status-" + (
+                ["online", "idle", "dnd", "offline"].includes(lastDiscordStatus)
+                    ? lastDiscordStatus
+                    : "unknown"
+            );
+            const label = discordStatusLabel(lastDiscordStatus);
+            ["discord-status-footer", "discord-status-feedback"].forEach(id => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                el.className = "discord-status-badge " + cls;
+                el.title = "Discord: " + label;
+            });
+            ["discord-status-footer-text", "discord-status-feedback-text"].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.innerText = label;
+            });
+        }
+
+        async function refreshDiscordStatus() {
+            try {
+                const res = await fetch("https://api.lanyard.rest/v1/users/" + DISCORD_USER_ID, { cache: "no-store" });
+                if (!res.ok) throw new Error("http " + res.status);
+                const json = await res.json();
+                if (json && json.success && json.data && json.data.discord_status) {
+                    applyDiscordStatusUI(json.data.discord_status);
+                } else {
+                    applyDiscordStatusUI("unknown");
+                }
+            } catch (e) {
+                applyDiscordStatusUI("unknown");
+            }
+        }
+
+        function startDiscordStatusPolling() {
+            refreshDiscordStatus();
+            if (discordStatusTimer) clearInterval(discordStatusTimer);
+            // Alle 45s aktualisieren
+            discordStatusTimer = setInterval(refreshDiscordStatus, 45000);
+        }
+
         function changeLanguage(forcedLang) {
             const authSelect = document.getElementById("auth-lang-select");
             const appSelect = document.getElementById("lang-select");
@@ -968,6 +1028,8 @@
             if (footDiscord) footDiscord.innerText = t.footerDiscord || "Discord";
             const footDiscordHint = document.getElementById("ui-footer-discord-hint");
             if (footDiscordHint) footDiscordHint.innerText = t.footerDiscordHint || (currentLang === "de" ? "Fragen? Schreib mir auf Discord." : "Questions? Message me on Discord.");
+            // Discord-Status-Texte an Sprache anpassen
+            if (typeof applyDiscordStatusUI === "function") applyDiscordStatusUI(lastDiscordStatus || "unknown");
             const fbTypeLabel = document.getElementById("ui-fb-type-label"); if (fbTypeLabel) fbTypeLabel.innerText = t.fbTypeLabel;
             const fbOptBug = document.getElementById("ui-fb-opt-bug"); if (fbOptBug) fbOptBug.innerText = t.fbOptBug;
             const fbOptImp = document.getElementById("ui-fb-opt-imp"); if (fbOptImp) fbOptImp.innerText = t.fbOptImp;
@@ -1805,6 +1867,7 @@
                             monthlyCoins: m,
                             xp: xp,
                             level: levelFromXp(xp),
+                            streak: Number(data.streak) || 0
                         });
                     });
                     leaderboardCache = users;
@@ -2689,6 +2752,7 @@
             }
 
             changeLanguage(currentLang);
+            startDiscordStatusPolling();
         });
 
         // Kein beforeunload mehr!
@@ -6056,3 +6120,4 @@
             }
             input.value = "";
         }
+
