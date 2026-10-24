@@ -2312,15 +2312,7 @@
                 }
             }
             applyAccessoryStyle(equippedAccessory);
-            const badgeBox = document.getElementById("profile-badge-container");
-            if (badgeBox) {
-                badgeBox.innerHTML = unlockedBadges.length > 0
-                    ? ""
-                    : `<span style='font-size:11px; color:#888;'>${currentLang === "de" ? "Noch keine Badges freigeschaltet." : "No badges unlocked yet."}</span>`;
-                unlockedBadges.forEach(b => {
-                    badgeBox.innerHTML += `<span class="badge-tag">${getBadgeDisplayName(b)}</span>`;
-                });
-            }
+            renderBadgeShowcase();
         }
 
         function openProfileModal() {
@@ -2334,7 +2326,115 @@
             if (modal) modal.classList.add("hidden");
         }
 
+
+        /** Badge-Katalog für die Showcase-Anzeige (Kategorien wie im Profil) */
+        function getBadgeCatalog() {
+            const de = currentLang === "de";
+            const totalTasks = (Number(truthCount) || 0) + (Number(dareCount) || 0);
+            const bestStreak = Math.max(Number(gameStreak) || 0, Number(userStreak) || 0);
+            return [
+                {
+                    id: "start",
+                    title: de ? "🌟 Erste Schritte" : "🌟 First Steps",
+                    items: [
+                        { id: "🌟 Erste Schritte", icon: "🌟", name: de ? "Erste Schritte" : "First Steps", current: totalTasks, target: 1 }
+                    ]
+                },
+                {
+                    id: "coins",
+                    title: de ? "💰 Coin-Erfolge" : "💰 Coin Achievements",
+                    items: [
+                        { id: "💰 Coin-Sammler", icon: "💰", name: de ? "Coin-Sammler" : "Coin Collector", current: Number(userCoins) || 0, target: 200 },
+                        { id: "💰 Coin-König", icon: "👑", name: de ? "Coin-König" : "Coin King", current: Number(userCoins) || 0, target: 500 }
+                    ]
+                },
+                {
+                    id: "streak",
+                    title: de ? "⚡ Streak-Meilensteine" : "⚡ Streak Milestones",
+                    items: [
+                        { id: "⚡ Streak-Monster", icon: "⚡", name: de ? "Streak-Monster" : "Streak Monster", current: bestStreak, target: 5 },
+                        { id: "⚡ Streak-Legende", icon: "⚡", name: de ? "Streak-Legende" : "Streak Legend", current: bestStreak, target: 15 },
+                        { id: "⚡ Unstoppable", icon: "💫", name: "Unstoppable", current: bestStreak, target: 30 }
+                    ]
+                },
+                {
+                    id: "party",
+                    title: de ? "🎉 Party-Ränge" : "🎉 Party Ranks",
+                    items: [
+                        { id: "🏆 Partystufe 10", icon: "🏆", name: de ? "Partystufe 10" : "Party Level 10", current: Number(userLevel) || 1, target: 10 },
+                        { id: "🍻 Party-Animal", icon: "🍻", name: "Party-Animal", current: totalTasks >= 30 && bestStreak >= 10 ? 1 : 0, target: 1 },
+                        { id: "🏆 Partystufe 25", icon: "🏆", name: de ? "Partystufe 25" : "Party Level 25", current: Number(userLevel) || 1, target: 25 },
+                        { id: "🏆 Partystufe 50", icon: "👑", name: de ? "Partystufe 50" : "Party Level 50", current: Number(userLevel) || 1, target: 50 }
+                    ]
+                },
+                {
+                    id: "truth",
+                    title: de ? "💡 Wahrheits-Meister" : "💡 Truth Master",
+                    items: [
+                        { id: "💡 10 Wahrheiten", icon: "💡", name: de ? "10 Wahrheiten" : "10 Truths", current: Number(truthCount) || 0, target: 10 },
+                        { id: "💡 25 Wahrheiten", icon: "❓", name: de ? "25 Wahrheiten" : "25 Truths", current: Number(truthCount) || 0, target: 25 }
+                    ]
+                },
+                {
+                    id: "dare",
+                    title: de ? "🔥 Pflicht-Herausforderungen" : "🔥 Dare Challenges",
+                    items: [
+                        { id: "🔥 10 Pflichten", icon: "🔥", name: de ? "10 Pflichten" : "10 Dares", current: Number(dareCount) || 0, target: 10 },
+                        { id: "🔥 25 Pflichten", icon: "🔥", name: de ? "25 Pflichten" : "25 Dares", current: Number(dareCount) || 0, target: 25 },
+                        { id: "🔥 50 Pflichten", icon: "🔥", name: de ? "50 Pflichten" : "50 Dares", current: Number(dareCount) || 0, target: 50 }
+                    ]
+                },
+                {
+                    id: "tasks",
+                    title: de ? "🎯 Aufgaben-König" : "🎯 Task King",
+                    items: [
+                        { id: "🎯 25 Aufgaben", icon: "🎯", name: de ? "25 Aufgaben" : "25 Tasks", current: totalTasks, target: 25 },
+                        { id: "🎯 50 Aufgaben", icon: "🎯", name: de ? "50 Aufgaben" : "50 Tasks", current: totalTasks, target: 50 },
+                        { id: "🎯 100 Aufgaben", icon: "🎯", name: de ? "100 Aufgaben" : "100 Tasks", current: totalTasks, target: 100 }
+                    ]
+                }
+            ];
+        }
+
+        function renderBadgeShowcase() {
+            const box = document.getElementById("profile-badge-container");
+            if (!box) return;
+            const de = currentLang === "de";
+            const catalog = getBadgeCatalog();
+            let total = 0;
+            let unlocked = 0;
+            let html = "";
+            catalog.forEach(cat => {
+                total += cat.items.length;
+                html += `<div class="badge-cat badge-cat-${cat.id}">`;
+                html += `<div class="badge-cat-title">${cat.title}</div>`;
+                html += `<div class="badge-cat-items">`;
+                cat.items.forEach(item => {
+                    const has = (unlockedBadges || []).includes(item.id);
+                    if (has) unlocked++;
+                    const cur = Math.min(Number(item.current) || 0, item.target);
+                    const prog = has
+                        ? (de ? "Complete" : "Complete")
+                        : `${cur} / ${item.target}`;
+                    html += `<div class="badge-tile${has ? " unlocked" : ""}" title="${getBadgeDisplayName(item.id)}">`;
+                    html += `<div class="badge-tile-icon">${item.icon}</div>`;
+                    html += `<div class="badge-tile-name">${item.name}</div>`;
+                    html += `<div class="badge-tile-prog">${prog}</div>`;
+                    html += `</div>`;
+                });
+                html += `</div></div>`;
+            });
+            box.innerHTML = html;
+            const totalEl = document.getElementById("profile-badge-total");
+            if (totalEl) {
+                totalEl.innerText = de
+                    ? `Gesamt: ${unlocked} / ${total} Badges`
+                    : `Total: ${unlocked} / ${total} badges`;
+            }
+        }
+
         function getBadgeDisplayName(badge) {
+
             if (currentLang === "en") {
                 const map = {
                     "🔥 10 Pflichten": "🔥 10 Dares",
