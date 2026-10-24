@@ -462,8 +462,13 @@
                 <div id="admin-user-list"></div>
             </div>
 
-            <div class="box-section" style="max-height: 150px; overflow-y: auto; padding: 8px;">
+            <div class="box-section" style="max-height: 200px; overflow-y: auto; padding: 8px;">
                 <h4 id="ui-admin-fb-head" style="margin:0 0 6px 0; color:var(--primary-color); font-size: 12px;">📥 Feedback:</h4>
+                <div class="admin-fb-filters" id="admin-fb-filters">
+                    <button type="button" id="admin-fb-filter-all" class="admin-fb-filter active" onclick="setAdminFeedbackFilter('all')">Alle</button>
+                    <button type="button" id="admin-fb-filter-bug" class="admin-fb-filter" onclick="setAdminFeedbackFilter('bug')">Bugs</button>
+                    <button type="button" id="admin-fb-filter-improvement" class="admin-fb-filter" onclick="setAdminFeedbackFilter('improvement')">Vorschläge</button>
+                </div>
                 <div id="admin-feedback-list"></div>
             </div>
 
