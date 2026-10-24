@@ -2344,7 +2344,7 @@
                     id: "coins",
                     title: de ? "💰 Coin-Erfolge" : "💰 Coin Achievements",
                     items: [
-                        { id: "💰 Coin-Sammler", icon: "💰", name: de ? "Coin-Sammler" : "Coin Collector", current: Number(userCoins) || 0, target: 200 },
+                        { id: "💰 Coin-Sammler", icon: "💵", name: de ? "Coin-Sammler" : "Coin Collector", current: Number(userCoins) || 0, target: 200 },
                         { id: "💰 Coin-König", icon: "👑", name: de ? "Coin-König" : "Coin King", current: Number(userCoins) || 0, target: 500 }
                     ]
                 },
@@ -2354,7 +2354,7 @@
                     items: [
                         { id: "⚡ Streak-Monster", icon: "⚡", name: de ? "Streak-Monster" : "Streak Monster", current: bestStreak, target: 5 },
                         { id: "⚡ Streak-Legende", icon: "⚡", name: de ? "Streak-Legende" : "Streak Legend", current: bestStreak, target: 15 },
-                        { id: "⚡ Unstoppable", icon: "💫", name: "Unstoppable", current: bestStreak, target: 30 }
+                        { id: "⚡ Unstoppable", icon: "🌟", name: "Unstoppable", current: bestStreak, target: 30 }
                     ]
                 },
                 {
@@ -2414,8 +2414,8 @@
                     if (has) unlocked++;
                     const cur = Math.min(Number(item.current) || 0, item.target);
                     const prog = has
-                        ? (de ? "Complete" : "Complete")
-                        : `${cur} / ${item.target}`;
+                        ? "Complete"
+                        : `${cur}/${item.target}`;
                     html += `<div class="badge-tile${has ? " unlocked" : ""}" title="${getBadgeDisplayName(item.id)}">`;
                     html += `<div class="badge-tile-icon">${item.icon}</div>`;
                     html += `<div class="badge-tile-name">${item.name}</div>`;
