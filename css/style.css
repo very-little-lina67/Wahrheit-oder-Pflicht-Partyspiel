@@ -2074,3 +2074,62 @@ textarea:focus {
     padding: 12px !important;
     font-size: 14px !important;
 }
+
+
+#admin-modal .admin-tools-box {
+    margin-top: 10px;
+    padding: 12px;
+    border: 1px solid rgba(248, 113, 113, 0.25);
+    background: rgba(248, 113, 113, 0.06);
+}
+#admin-modal #admin-filter-panel {
+    margin-top: 4px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(255,255,255,0.08);
+}
+
+
+/* Privatnachrichten (außerhalb Lobby) */
+.dm-messages {
+    max-height: 260px;
+    min-height: 120px;
+    overflow-y: auto;
+    background: rgba(0,0,0,0.28);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px;
+    padding: 10px;
+    text-align: left;
+    font-size: 13px;
+}
+.dm-msg {
+    margin-bottom: 8px;
+    padding: 6px 8px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.05);
+    line-height: 1.35;
+}
+.dm-msg.own {
+    background: rgba(96, 165, 250, 0.18);
+    border: 1px solid rgba(96, 165, 250, 0.25);
+}
+.dm-msg .dm-meta {
+    font-size: 10px;
+    color: #94a3b8;
+    margin-bottom: 2px;
+}
+.dm-toast {
+    position: fixed;
+    bottom: 18px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9999;
+    max-width: 90vw;
+    background: rgba(30, 27, 50, 0.96);
+    border: 1px solid rgba(168, 85, 247, 0.45);
+    color: #fff;
+    padding: 10px 14px;
+    border-radius: 12px;
+    font-size: 13px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+    cursor: pointer;
+}
