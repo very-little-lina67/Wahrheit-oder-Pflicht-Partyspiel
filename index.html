@@ -546,8 +546,8 @@
             <p id="ui-dm-with" style="font-size:12px;color:#aaa;margin:0 0 8px 0;"></p>
             <div id="dm-messages" class="dm-messages"></div>
             <div style="display:flex; gap:6px; margin-top:8px;">
-                <input type="text" id="dm-input" placeholder="Nachricht…" style="flex:1; font-size:13px; padding:10px; margin:0;" onkeydown="if(event.key==='Enter') sendDirectMessage()">
-                <button type="button" class="btn-blue" id="ui-dm-send-btn" onclick="sendDirectMessage()" style="width:auto; padding:10px 14px; font-size:13px; margin:0;">Senden</button>
+                <input type="text" id="dm-input" placeholder="Nachricht…" style="flex:1; font-size:13px; padding:10px; margin:0;" onkeydown="if(event.key==='Enter'){event.preventDefault();window.sendDirectMessage&&sendDirectMessage();}">
+                <button type="button" class="btn-blue" id="ui-dm-send-btn" onclick="event.preventDefault();window.sendDirectMessage&&sendDirectMessage();" style="width:auto; padding:10px 14px; font-size:13px; margin:0;">Senden</button>
             </div>
             <button type="button" id="ui-dm-close-btn" class="btn-blue" onclick="closeDmModal()" style="width:100%; padding:8px; font-size:13px; margin-top:10px;">Schließen</button>
         </div>
