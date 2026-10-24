@@ -329,6 +329,10 @@
                 msgNoFeedback: "Kein Feedback vorhanden.",
                 msgNoFeedbackFilter: "Kein Feedback in diesem Filter.",
                 msgLoadingFeedback: "Lade Feedback…",
+                msgChatBlocked: "Nachricht blockiert: Beleidigungen sind nicht erlaubt.",
+                msgNoActiveLobby: "Keine aktive Lobby.",
+                msgNoActiveRound: "Es läuft gerade keine Spielrunde.",
+                msgConfirmEndRound: "Laufende Runde wirklich beenden? Alle kehren in die Lobby zurück (niemand wird gekickt).",
                 alertDeleteOwnConfirm: "Möchtest du dein Konto wirklich unwiderruflich löschen?\n\nAlle deine Daten (XP, Coins, Badges, Freunde, …) werden gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.",
                 alertDeleteOwnSuccess: "Dein Konto wurde erfolgreich gelöscht.",
                 alertDeleteOwnError: "Fehler beim Löschen des Kontos. Bitte versuche es später erneut.",
@@ -641,6 +645,10 @@
                 msgNoFeedback: "No feedback yet.",
                 msgNoFeedbackFilter: "No feedback in this filter.",
                 msgLoadingFeedback: "Loading feedback…",
+                msgChatBlocked: "Message blocked: insults are not allowed.",
+                msgNoActiveLobby: "No active lobby.",
+                msgNoActiveRound: "No round is in progress.",
+                msgConfirmEndRound: "Really end the current round? Everyone returns to the lobby (nobody is kicked).",
                 alertDeleteOwnConfirm: "Do you really want to permanently delete your account?\n\nAll your data (XP, coins, badges, friends, …) will be deleted. This action cannot be undone.",
                 alertDeleteOwnSuccess: "Your account has been successfully deleted.",
                 alertDeleteOwnError: "Error deleting the account. Please try again later.",
@@ -2077,8 +2085,9 @@
                             : "";
                         container.innerHTML += `<div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.05); padding:8px; border-radius:6px; margin-bottom:6px; font-size:12px;">
                             <div><b>${safeAccessory} ${safeDisplayName}</b> <br><span style="color:#28a745; font-size:10px;">${lobbyInfo}</span></div>
-                            <div style="display:flex;gap:3px;">
+                            <div style="display:flex;gap:3px;flex-wrap:wrap;justify-content:flex-end;">
                                 ${spectateBtnHtml}
+                                <button class="btn-blue" style="padding:4px 6px; font-size:10px; margin:0; width:auto;" onclick="openDirectMessage('${safeEmail}', '${safeName}')">💬</button>
                                 <button class="btn-blue" style="padding:4px 6px; font-size:10px; margin:0; width:auto;" onclick="sendFriendRequest('${safeEmail}', '${safeName}')">👥</button>
                                 <button class="btn-green" style="padding:4px 8px; font-size:11px; margin:0; width:auto;" onclick="sendGameInvite('${safeEmail}', '${safeName}')">${currentLang === "de" ? "Einladen 📨" : "Invite 📨"}</button>
                             </div>
@@ -2984,6 +2993,7 @@
                 showLoggedInState();
                 startOnlineHeartbeat();
                 listenForInvitations();
+                listenForDirectMessages();
                 loadFriendsData();
                 listenForFriendRequests();
 
@@ -3090,6 +3100,7 @@
                 showLoggedInState();
                 startOnlineHeartbeat();
                 listenForInvitations();
+                listenForDirectMessages();
                 loadFriendsData();
                 listenForFriendRequests();
             } catch (e) {
@@ -3147,6 +3158,7 @@
                         showLoggedInState();
                         startOnlineHeartbeat();
                         listenForInvitations();
+                        listenForDirectMessages();
                         loadFriendsData();
                         listenForFriendRequests();
                     } else {
@@ -3278,6 +3290,7 @@
                 return;
             }
             updateAdminFeedbackFilterLabels();
+            updateAdminChatFilterUI();
             renderAdminUserList();
             renderAdminFeedbackList(false);
             document.getElementById("admin-modal").classList.remove("hidden");
@@ -3623,6 +3636,215 @@
                 }, err => console.error("Friend request listener:", err));
         }
 
+
+        // --- Privatnachrichten ohne Lobby (Firebase Inbox) ---
+        let dmUnsubscribe = null;
+        let dmTargetEmail = "";
+        let dmTargetName = "";
+        let dmThreadCache = [];
+        let dmSeenIds = new Set();
+
+        function openDirectMessage(targetEmail, targetName) {
+            if (!myEmail) {
+                alert(msg("msgLoginFirst", "Bitte zuerst einloggen.", "Please log in first."));
+                return;
+            }
+            targetEmail = String(targetEmail || "").trim().toLowerCase();
+            if (!targetEmail || targetEmail === String(myEmail).toLowerCase()) {
+                alert(msg("msgDmSelf", "Du kannst dir keine Nachricht an dich selbst schicken.", "You cannot message yourself."));
+                return;
+            }
+            dmTargetEmail = targetEmail;
+            dmTargetName = targetName || targetEmail.split("@")[0];
+            const withEl = document.getElementById("ui-dm-with");
+            if (withEl) {
+                withEl.innerText = (currentLang === "de" ? "Chat mit " : "Chat with ") + dmTargetName;
+            }
+            const title = document.getElementById("ui-dm-title");
+            if (title) title.innerText = currentLang === "de" ? "💬 Privatnachricht" : "💬 Private message";
+            const inp = document.getElementById("dm-input");
+            if (inp) {
+                inp.value = "";
+                inp.placeholder = currentLang === "de"
+                    ? "Nachricht… (z. B. Lust auf eine Runde?)"
+                    : "Message… (e.g. want to play?)";
+            }
+            const sendBtn = document.getElementById("ui-dm-send-btn");
+            if (sendBtn) sendBtn.innerText = currentLang === "de" ? "Senden" : "Send";
+            const closeBtn = document.getElementById("ui-dm-close-btn");
+            if (closeBtn) closeBtn.innerText = currentLang === "de" ? "Schließen" : "Close";
+            document.getElementById("dm-modal")?.classList.remove("hidden");
+            // Freunde/Online-Modal können offen bleiben oder zu – schließen für Fokus
+            try { document.getElementById("friends-modal")?.classList.add("hidden"); } catch (e) {}
+            try { document.getElementById("online-players-modal")?.classList.add("hidden"); } catch (e) {}
+            loadDmThread();
+            markDmsReadFrom(dmTargetEmail);
+        }
+
+        function closeDmModal() {
+            document.getElementById("dm-modal")?.classList.add("hidden");
+            dmTargetEmail = "";
+            dmTargetName = "";
+        }
+
+        async function loadDmThread() {
+            const box = document.getElementById("dm-messages");
+            if (!box || !myEmail || !dmTargetEmail) return;
+            box.innerHTML = currentLang === "de" ? "Lade Nachrichten…" : "Loading messages…";
+            try {
+                const snap = await db.collection("users").doc(myEmail).collection("dms")
+                    .orderBy("createdAt", "asc")
+                    .limit(80)
+                    .get();
+                const items = [];
+                snap.forEach(doc => {
+                    const d = doc.data() || {};
+                    const from = String(d.fromEmail || "").toLowerCase();
+                    const to = String(d.toEmail || "").toLowerCase();
+                    const other = dmTargetEmail.toLowerCase();
+                    if (from === other || to === other) {
+                        items.push({ id: doc.id, ...d });
+                    }
+                });
+                dmThreadCache = items;
+                renderDmThread(items);
+            } catch (e) {
+                console.error(e);
+                box.innerHTML = `<span style="color:#f87171;font-size:12px;">${msg("msgErrorLoad", "Laden fehlgeschlagen.", "Could not load.")}</span>`;
+            }
+        }
+
+        function renderDmThread(items) {
+            const box = document.getElementById("dm-messages");
+            if (!box) return;
+            if (!items.length) {
+                box.innerHTML = `<span style="font-size:12px;color:#888;">${
+                    currentLang === "de"
+                        ? "Noch keine Nachrichten. Schreib z. B., ob ihr spielen wollt."
+                        : "No messages yet. Ask if they want to play, for example."
+                }</span>`;
+                return;
+            }
+            let html = "";
+            items.forEach(d => {
+                const from = String(d.fromEmail || "").toLowerCase();
+                const isOwn = from === String(myEmail).toLowerCase();
+                const name = isOwn ? (currentLang === "de" ? "Du" : "You") : (d.fromName || dmTargetName || "…");
+                const safe = String(d.text || "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                let time = "";
+                try {
+                    if (d.createdAt && d.createdAt.toDate) time = d.createdAt.toDate().toLocaleString();
+                } catch (e) {}
+                html += `<div class="dm-msg${isOwn ? " own" : ""}"><div class="dm-meta">${name}${time ? " · " + time : ""}</div>${safe}</div>`;
+            });
+            box.innerHTML = html;
+            box.scrollTop = box.scrollHeight;
+        }
+
+        async function sendDirectMessage() {
+            if (!myEmail || !dmTargetEmail) return;
+            const input = document.getElementById("dm-input");
+            const text = (input && input.value || "").trim();
+            if (!text) return;
+            if (!passChatFilter(text)) {
+                notifyChatBlocked();
+                return;
+            }
+            const payload = {
+                fromEmail: myEmail,
+                fromName: myName || "Spieler",
+                toEmail: dmTargetEmail,
+                text: text,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                read: false
+            };
+            try {
+                // Bei Empfänger (Inbox) und bei mir (Thread-Kopie)
+                const batch = db.batch();
+                const recRef = db.collection("users").doc(dmTargetEmail).collection("dms").doc();
+                const meRef = db.collection("users").doc(myEmail).collection("dms").doc();
+                batch.set(recRef, payload);
+                batch.set(meRef, { ...payload, read: true });
+                await batch.commit();
+                if (input) input.value = "";
+                await loadDmThread();
+            } catch (e) {
+                console.error(e);
+                alert(msg("msgErrorSend", "Senden fehlgeschlagen.", "Could not send."));
+            }
+        }
+
+        async function markDmsReadFrom(fromEmail) {
+            if (!myEmail || !fromEmail) return;
+            try {
+                const snap = await db.collection("users").doc(myEmail).collection("dms")
+                    .where("fromEmail", "==", fromEmail)
+                    .where("read", "==", false)
+                    .limit(30)
+                    .get();
+                if (snap.empty) return;
+                const batch = db.batch();
+                snap.forEach(doc => batch.update(doc.ref, { read: true }));
+                await batch.commit();
+            } catch (e) {
+                // index may be missing – ignore
+            }
+        }
+
+        function showDmToast(fromName, text, fromEmail) {
+            let el = document.getElementById("dm-toast");
+            if (!el) {
+                el = document.createElement("div");
+                el.id = "dm-toast";
+                el.className = "dm-toast";
+                document.body.appendChild(el);
+            }
+            const preview = String(text || "").slice(0, 80);
+            el.innerText = (currentLang === "de" ? "💬 " : "💬 ") + (fromName || "…") + ": " + preview;
+            el.onclick = () => {
+                el.remove();
+                openDirectMessage(fromEmail, fromName);
+            };
+            clearTimeout(el._t);
+            el._t = setTimeout(() => { try { el.remove(); } catch (e) {} }, 8000);
+        }
+
+        function listenForDirectMessages() {
+            if (!myEmail) return;
+            if (dmUnsubscribe) {
+                try { dmUnsubscribe(); } catch (e) {}
+                dmUnsubscribe = null;
+            }
+            try {
+                dmUnsubscribe = db.collection("users").doc(myEmail).collection("dms")
+                    .orderBy("createdAt", "desc")
+                    .limit(25)
+                    .onSnapshot(snap => {
+                        snap.docChanges().forEach(change => {
+                            if (change.type !== "added") return;
+                            const d = change.doc.data() || {};
+                            const id = change.doc.id;
+                            if (dmSeenIds.has(id)) return;
+                            dmSeenIds.add(id);
+                            const from = String(d.fromEmail || "").toLowerCase();
+                            if (from === String(myEmail).toLowerCase()) return;
+                            // Nur „neue“ ungelesene
+                            if (d.read === true) return;
+                            // Filter
+                            if (!passChatFilter(d.text || "")) return;
+                            showDmToast(d.fromName, d.text, from);
+                            // Wenn Thread offen: neu laden
+                            if (dmTargetEmail && from === dmTargetEmail.toLowerCase()) {
+                                loadDmThread();
+                                markDmsReadFrom(from);
+                            }
+                        });
+                    }, err => console.warn("DM listener:", err));
+            } catch (e) {
+                console.warn("DM listener start failed", e);
+            }
+        }
+
         function openFriendsModal() {
             if (!myEmail) {
                 alert(msg("msgLoginFirst", "Bitte zuerst einloggen.", "Please log in first."));
@@ -3702,7 +3924,8 @@
                             <b>${accessory} ${name.replace(/</g,"&lt;")}</b><br>
                             ${statusHtml}
                         </div>
-                        <div style="display:flex;gap:4px;">
+                        <div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end;">
+                            <button class="btn-blue" style="padding:3px 6px;font-size:10px;width:auto;margin:0;" onclick="openDirectMessage('${safeEmail}', '${safeName}')">${currentLang === "de" ? "💬 Nachricht" : "💬 Message"}</button>
                             ${spectateBtn}
                             ${statusInfo.isOnline && activeLobbyCode && isHost ? `<button class="btn-green" style="padding:3px 6px;font-size:10px;width:auto;margin:0;" onclick="sendGameInvite('${safeEmail}', '${safeName}')">${currentLang === "de" ? "Einladen" : "Invite"}</button>` : ""}
                             <button class="btn-danger" style="padding:3px 6px;font-size:10px;width:auto;margin:0;" onclick="removeFriend('${safeEmail}')">✕</button>
@@ -4318,6 +4541,7 @@
                 playerCount: (Array.isArray(players) ? players : []).filter(p => !p.isSpectator).length,
                 phase: gamePhase || "lobby",
                 gameStarted: !!gameStarted,
+                    chatFilterEnabled: !!chatFilterEnabled,
                 lookingForPlayers: false,
                 currentPlayerIndex: Number(currentPlayerIndex) || 0,
                 pendingChoice: pendingChoice || "",
@@ -4447,6 +4671,10 @@
 
             gamePhase = phase;
             gameStarted = started;
+            if (typeof data.chatFilterEnabled === "boolean") {
+                chatFilterEnabled = data.chatFilterEnabled;
+                try { localStorage.setItem("wop_chat_filter_v1", chatFilterEnabled ? "1" : "0"); } catch (e) {}
+            }
 
             const turnStateChanged = (prevPhase !== phase)
                 || (prevIndex !== currentPlayerIndex)
@@ -5181,6 +5409,23 @@
                 // einem anderen Spieler stammt, damit der Absender keine Duplikate sieht.
                 if (data.sender !== myName) {
                     appendChat(data.sender, data.text);
+                }
+            } else if (data.type === 'ADMIN_END_ROUND') {
+                if (gameStarted || (gamePhase && gamePhase !== "lobby")) {
+                    const reason = data.reason || (currentLang === "de"
+                        ? "⏹ Die Runde wurde von einem Admin beendet."
+                        : "⏹ Round was ended by an admin.");
+                    endRoundToLobby(reason);
+                    if (isHost && !data.relay) {
+                        try { sendData({ type: "ADMIN_END_ROUND", by: data.by || "Admin", reason: reason, relay: true }); } catch (e) {}
+                    }
+                }
+            } else if (data.type === 'CHAT_FILTER_SET') {
+                // Nur von Admin/Master-Steuerung – Clients übernehmen den Schalter
+                if (typeof data.enabled === "boolean") {
+                    chatFilterEnabled = data.enabled;
+                    try { localStorage.setItem("wop_chat_filter_v1", chatFilterEnabled ? "1" : "0"); } catch (e) {}
+                    updateAdminChatFilterUI();
                 }
             } else if (data.type === 'PRIVATE_MSG') {
                 // Privatnachricht: nur Absender und Empfänger sehen sie in der UI.
