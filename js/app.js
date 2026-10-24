@@ -1199,6 +1199,16 @@
                 if (ll) ll.innerText = (t.btnLeaderboard || "Rangliste").replace(/^🏆\s*/, "");
                 else lbBtn.innerText = t.btnLeaderboard;
             }
+            const msgBtnLabel = document.getElementById("ui-btn-messages-label");
+            if (msgBtnLabel) msgBtnLabel.innerText = currentLang === "de" ? "Nachrichten" : "Messages";
+            const dmInboxTitle = document.getElementById("ui-dm-inbox-title");
+            if (dmInboxTitle) dmInboxTitle.innerText = currentLang === "de" ? "💬 Nachrichten" : "💬 Messages";
+            const dmInboxDesc = document.getElementById("ui-dm-inbox-desc");
+            if (dmInboxDesc) dmInboxDesc.innerText = currentLang === "de"
+                ? "Private Chats – auch ohne Lobby. Tippe auf eine Person, um zu antworten."
+                : "Private chats – even without a lobby. Tap a person to reply.";
+            const dmInboxClose = document.getElementById("ui-dm-inbox-close");
+            if (dmInboxClose) dmInboxClose.innerText = currentLang === "de" ? "Schließen" : "Close";
             const frBtn = document.getElementById("ui-btn-friends");
             if (frBtn) {
                 const fl = document.getElementById("ui-btn-friends-label");
@@ -3002,6 +3012,7 @@
                 startOnlineHeartbeat();
                 listenForInvitations();
                 listenForDirectMessages();
+                refreshDmUnreadCount();
                 loadFriendsData();
                 listenForFriendRequests();
 
@@ -3109,6 +3120,7 @@
                 startOnlineHeartbeat();
                 listenForInvitations();
                 listenForDirectMessages();
+                refreshDmUnreadCount();
                 loadFriendsData();
                 listenForFriendRequests();
             } catch (e) {
@@ -3167,6 +3179,7 @@
                         startOnlineHeartbeat();
                         listenForInvitations();
                         listenForDirectMessages();
+                        refreshDmUnreadCount();
                         loadFriendsData();
                         listenForFriendRequests();
                     } else {
@@ -3652,6 +3665,122 @@
         let dmThreadCache = [];
         let dmSeenIds = new Set();
 
+
+        let dmUnreadCount = 0;
+
+        function updateDmBadge(count) {
+            dmUnreadCount = Math.max(0, Number(count) || 0);
+            const badge = document.getElementById("hud-dm-badge");
+            if (!badge) return;
+            if (dmUnreadCount > 0) {
+                badge.style.display = "inline-block";
+                badge.innerText = dmUnreadCount > 99 ? "99+" : String(dmUnreadCount);
+            } else {
+                badge.style.display = "none";
+                badge.innerText = "0";
+            }
+        }
+
+        async function refreshDmUnreadCount() {
+            if (!myEmail) {
+                updateDmBadge(0);
+                return;
+            }
+            try {
+                const snap = await db.collection("users").doc(myEmail).collection("dms")
+                    .where("read", "==", false)
+                    .limit(50)
+                    .get();
+                let n = 0;
+                snap.forEach(doc => {
+                    const d = doc.data() || {};
+                    if (String(d.fromEmail || "").toLowerCase() === String(myEmail).toLowerCase()) return;
+                    n++;
+                });
+                updateDmBadge(n);
+            } catch (e) {
+                // Fallback: no composite index – count from recent listener cache
+            }
+        }
+
+        async function openDmInbox() {
+            if (!myEmail) {
+                alert(msg("msgLoginFirst", "Bitte zuerst einloggen.", "Please log in first."));
+                return;
+            }
+            const modal = document.getElementById("dm-inbox-modal");
+            if (modal) modal.classList.remove("hidden");
+            await renderDmInbox();
+        }
+
+        async function renderDmInbox() {
+            const list = document.getElementById("dm-inbox-list");
+            if (!list || !myEmail) return;
+            list.innerHTML = currentLang === "de" ? "Lade…" : "Loading…";
+            try {
+                const snap = await db.collection("users").doc(myEmail).collection("dms")
+                    .orderBy("createdAt", "desc")
+                    .limit(60)
+                    .get();
+                // Group by other participant
+                const map = new Map();
+                snap.forEach(doc => {
+                    const d = doc.data() || {};
+                    const from = String(d.fromEmail || "").toLowerCase();
+                    const to = String(d.toEmail || "").toLowerCase();
+                    const me = String(myEmail).toLowerCase();
+                    const other = from === me ? to : from;
+                    if (!other || other === me) return;
+                    const existing = map.get(other);
+                    const ts = d.createdAt && d.createdAt.toMillis ? d.createdAt.toMillis() : 0;
+                    const unread = !d.read && from !== me;
+                    if (!existing || ts > existing.ts) {
+                        map.set(other, {
+                            email: other,
+                            name: from === me ? (d.toName || other.split("@")[0]) : (d.fromName || other.split("@")[0]),
+                            text: d.text || "",
+                            ts,
+                            unread: unread || (existing && existing.unread)
+                        });
+                    } else if (unread) {
+                        existing.unread = true;
+                    }
+                });
+                const rows = Array.from(map.values()).sort((a, b) => b.ts - a.ts);
+                if (!rows.length) {
+                    list.innerHTML = `<span style="font-size:12px;color:#888;">${
+                        currentLang === "de"
+                            ? "Noch keine Nachrichten. Schreib jemandem über Freunde oder Online-Spieler."
+                            : "No messages yet. Message someone via Friends or Online players."
+                    }</span>`;
+                    updateDmBadge(0);
+                    return;
+                }
+                let html = "";
+                let unreadTotal = 0;
+                rows.forEach(r => {
+                    if (r.unread) unreadTotal++;
+                    const safeEmail = String(r.email).replace(/'/g, "\\'");
+                    const safeName = String(r.name || "").replace(/'/g, "\\'").replace(/"/g, "&quot;");
+                    const preview = String(r.text || "").replace(/</g, "&lt;").slice(0, 60);
+                    html += `<div class="dm-inbox-row${r.unread ? " unread" : ""}" onclick="openDirectMessage('${safeEmail}', '${safeName}')">
+                        <div style="min-width:0;flex:1;">
+                            <b>${String(r.name || r.email).replace(/</g,"&lt;")}</b>
+                            ${r.unread ? ' <span style="color:#f87171;font-size:10px;">●</span>' : ""}
+                            <div class="dm-inbox-preview">${preview}</div>
+                        </div>
+                        <button type="button" class="btn-blue" style="padding:4px 8px;font-size:11px;width:auto;margin:0;" onclick="event.stopPropagation();openDirectMessage('${safeEmail}', '${safeName}')">${currentLang === "de" ? "Öffnen" : "Open"}</button>
+                    </div>`;
+                });
+                list.innerHTML = html;
+                // Badge: recount unread messages not just threads
+                refreshDmUnreadCount();
+            } catch (e) {
+                console.error(e);
+                list.innerHTML = `<span style="color:#f87171;font-size:12px;">${msg("msgErrorLoad", "Laden fehlgeschlagen.", "Could not load.")}</span>`;
+            }
+        }
+
         function openDirectMessage(targetEmail, targetName) {
             if (!myEmail) {
                 alert(msg("msgLoginFirst", "Bitte zuerst einloggen.", "Please log in first."));
@@ -3686,7 +3815,8 @@
             try { document.getElementById("friends-modal")?.classList.add("hidden"); } catch (e) {}
             try { document.getElementById("online-players-modal")?.classList.add("hidden"); } catch (e) {}
             loadDmThread();
-            markDmsReadFrom(dmTargetEmail);
+            markDmsReadFrom(dmTargetEmail).then(() => refreshDmUnreadCount());
+            try { document.getElementById("dm-inbox-modal")?.classList.add("hidden"); } catch (e) {}
         }
 
         function closeDmModal() {
@@ -3841,10 +3971,15 @@
                             // Filter
                             if (!passChatFilter(d.text || "")) return;
                             showDmToast(d.fromName, d.text, from);
+                            // Badge live +1
+                            updateDmBadge((dmUnreadCount || 0) + 1);
+                            // Inbox offen? Liste aktualisieren
+                            const inboxOpen = document.getElementById("dm-inbox-modal") && !document.getElementById("dm-inbox-modal").classList.contains("hidden");
+                            if (inboxOpen) renderDmInbox();
                             // Wenn Thread offen: neu laden
                             if (dmTargetEmail && from === dmTargetEmail.toLowerCase()) {
                                 loadDmThread();
-                                markDmsReadFrom(from);
+                                markDmsReadFrom(from).then(() => refreshDmUnreadCount());
                             }
                         });
                     }, err => console.warn("DM listener:", err));
