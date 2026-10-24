@@ -3388,33 +3388,8 @@
         }
 
         function adminForceEndRound() {
-            if (!isAdminOrMaster()) {
-                alert(typeof msg === "function" ? msg("msgNoPermission", "Keine Berechtigung.", "No permission.") : "Keine Berechtigung.");
-                return;
-            }
-            if (!activeLobbyCode) {
-                alert(typeof msg === "function" ? msg("msgNoActiveLobby", "Keine aktive Lobby.", "No active lobby.") : "Keine aktive Lobby.");
-                return;
-            }
-            if (!gameStarted) {
-                alert(typeof msg === "function" ? msg("msgNoActiveRound", "Es läuft gerade keine Spielrunde.", "No round is in progress.") : "Keine laufende Runde.");
-                return;
-            }
-            const ok = confirm(typeof msg === "function"
-                ? msg("msgConfirmEndRound", "Laufende Runde wirklich beenden? Alle kehren in die Lobby zurück (niemand wird gekickt).", "Really end the current round? Everyone returns to the lobby (nobody is kicked).")
-                : "Runde beenden?");
-            if (!ok) return;
-            const reason = currentLang === "de"
-                ? `⏹ Die Runde wurde von ${myName} (Admin) beendet. Zurück in der Lobby.`
-                : `⏹ Round ended by ${myName} (Admin). Back in the lobby.`;
-            if (isHost) {
-                endRoundToLobby(reason);
-                try { sendData({ type: "ADMIN_END_ROUND", by: myName, reason: reason }); } catch (e) {}
-            } else {
-                try { sendData({ type: "ADMIN_END_ROUND", by: myName, reason: reason }); } catch (e) {}
-                endRoundToLobby(reason);
-            }
-            try { document.getElementById("admin-modal")?.classList.add("hidden"); } catch (e) {}
+            /* Entfernt: Laufende Runde beenden (Admin) */
+            return;
         }
 
         function openAdminModal() {
@@ -3441,8 +3416,7 @@
             }
         }
         window.openAdminModal = openAdminModal;
-        window.adminForceEndRound = adminForceEndRound;
-        window.adminSetChatFilterEnabled = adminSetChatFilterEnabled;
+                window.adminSetChatFilterEnabled = adminSetChatFilterEnabled;
         if (typeof setAdminFeedbackFilter === "function") window.setAdminFeedbackFilter = setAdminFeedbackFilter;
 
         async function renderAdminUserList() {
