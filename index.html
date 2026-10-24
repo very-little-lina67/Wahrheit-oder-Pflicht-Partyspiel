@@ -339,12 +339,15 @@
                 </div>
             </div>
 
-            <div class="box-section badge-showcase-section" style="padding:10px;">
-                <div class="badge-showcase-header">
-                    <h4 id="ui-profile-badges-head" style="margin: 0; color: #fbbf24; font-size: 14px;">🏆 Badges & Trophäen</h4>
-                    <span id="profile-badge-total" class="badge-showcase-total">0 / 0</span>
-                </div>
-                <div id="profile-badge-container" class="badge-showcase"></div>
+            <div class="box-section badge-showcase-section" style="padding:8px;">
+                <button type="button" id="badge-showcase-toggle" class="badge-showcase-toggle" onclick="toggleBadgeShowcase()" aria-expanded="false">
+                    <span class="badge-showcase-toggle-left">
+                        <span id="ui-profile-badges-head">🏆 Badges & Trophäen</span>
+                        <span id="profile-badge-total" class="badge-showcase-total">0 / 0</span>
+                    </span>
+                    <span id="badge-showcase-chevron" class="badge-showcase-chevron">▾</span>
+                </button>
+                <div id="profile-badge-container" class="badge-showcase badge-showcase-collapsed"></div>
             </div>
 
             <div style="display: flex; gap: 8px; margin-top: 12px; justify-content: space-between;">
