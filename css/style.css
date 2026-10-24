@@ -2312,3 +2312,11 @@ textarea:focus {
     margin-bottom: 8px !important;
     border-radius: 14px !important;
 }
+
+
+#admin-modal.modal-overlay {
+    z-index: 10060 !important;
+}
+#admin-modal.modal-overlay:not(.hidden) {
+    display: flex !important;
+}
