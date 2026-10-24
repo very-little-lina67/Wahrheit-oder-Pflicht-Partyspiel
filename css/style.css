@@ -1697,19 +1697,61 @@ textarea:focus {
 }
 
 
-/* Profil: kompaktes Avatar-Emoji-Grid */
+/* Profil: Avatar-Emoji per Button + klappbares Grid */
+.avatar-emote-picker {
+    max-width: 280px;
+    margin: 0 auto 10px;
+    text-align: center;
+}
+.avatar-emote-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    border-radius: 12px;
+    border: 1px solid rgba(168, 85, 247, 0.45);
+    background: rgba(168, 85, 247, 0.15);
+    color: #e9d5ff;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    width: 100%;
+    max-width: 280px;
+    justify-content: center;
+}
+.avatar-emote-toggle:hover {
+    background: rgba(168, 85, 247, 0.25);
+}
+.avatar-emote-toggle.open {
+    border-color: #a855f7;
+    background: rgba(168, 85, 247, 0.28);
+}
+.avatar-emote-toggle-icon {
+    font-size: 22px;
+    line-height: 1;
+}
+.avatar-emote-toggle-chevron {
+    margin-left: auto;
+    opacity: 0.8;
+    font-size: 12px;
+}
+.avatar-emote-toggle.open .avatar-emote-toggle-chevron {
+    transform: rotate(180deg);
+}
 .avatar-emote-grid {
     display: grid;
     grid-template-columns: repeat(6, 1fr);
     gap: 6px;
-    max-width: 280px;
-    margin: 0 auto 10px;
-    max-height: 140px;
+    margin-top: 8px;
+    max-height: 160px;
     overflow-y: auto;
-    padding: 6px;
+    padding: 8px;
     border-radius: 12px;
-    background: rgba(0, 0, 0, 0.25);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(0, 0, 0, 0.28);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+.avatar-emote-grid.hidden {
+    display: none !important;
 }
 .avatar-emote-btn {
     appearance: none;
