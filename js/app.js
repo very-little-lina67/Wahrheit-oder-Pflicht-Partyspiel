@@ -2396,6 +2396,19 @@
             ];
         }
 
+        function toggleBadgeShowcase() {
+            const box = document.getElementById("profile-badge-container");
+            const btn = document.getElementById("badge-showcase-toggle");
+            if (!box) return;
+            const open = box.classList.contains("badge-showcase-collapsed");
+            box.classList.toggle("badge-showcase-collapsed", !open);
+            if (btn) {
+                btn.classList.toggle("open", open);
+                btn.setAttribute("aria-expanded", open ? "true" : "false");
+            }
+            if (open) renderBadgeShowcase();
+        }
+
         function renderBadgeShowcase() {
             const box = document.getElementById("profile-badge-container");
             if (!box) return;
