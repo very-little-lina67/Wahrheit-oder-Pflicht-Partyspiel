@@ -1156,6 +1156,14 @@
             const frTabReqText = document.getElementById("ui-friends-tab-req-text"); if (frTabReqText) frTabReqText.innerText = t.friendsReqTab;
             const frTabAddText = document.getElementById("ui-friends-tab-add-text"); if (frTabAddText) frTabAddText.innerText = t.friendsAddTab;
             const frListDesc = document.getElementById("ui-friends-list-desc"); if (frListDesc) frListDesc.innerText = t.friendsListDesc;
+            const frDmHint = document.getElementById("ui-friends-dm-hint");
+            if (frDmHint) frDmHint.innerText = currentLang === "de"
+                ? "💬 Tippe bei einem Freund auf „Nachricht“, um privat zu schreiben – auch ohne Lobby."
+                : "💬 Tap “Message” on a friend to chat privately – even without a lobby.";
+            const opDmHint = document.getElementById("ui-op-dm-hint");
+            if (opDmHint) opDmHint.innerText = currentLang === "de"
+                ? "💬 „Nachricht“ = privat schreiben (auch ohne gemeinsame Lobby)."
+                : "💬 “Message” = private chat (even without a shared lobby).";
             const frReqDesc = document.getElementById("ui-friends-req-desc"); if (frReqDesc) frReqDesc.innerText = t.friendsReqDesc;
             const frAddDesc = document.getElementById("ui-friends-add-desc"); if (frAddDesc) frAddDesc.innerText = t.friendsAddDesc;
             const frSearchInp = document.getElementById("friend-search-input"); if (frSearchInp) frSearchInp.placeholder = t.friendSearchPlaceholder;
@@ -2087,7 +2095,7 @@
                             <div><b>${safeAccessory} ${safeDisplayName}</b> <br><span style="color:#28a745; font-size:10px;">${lobbyInfo}</span></div>
                             <div style="display:flex;gap:3px;flex-wrap:wrap;justify-content:flex-end;">
                                 ${spectateBtnHtml}
-                                <button class="btn-blue" style="padding:4px 6px; font-size:10px; margin:0; width:auto;" onclick="openDirectMessage('${safeEmail}', '${safeName}')">💬</button>
+                                <button class="btn-blue" style="padding:4px 8px; font-size:11px; margin:0; width:auto;" onclick="openDirectMessage('${safeEmail}', '${safeName}')">${currentLang === "de" ? "💬 Nachricht" : "💬 Message"}</button>
                                 <button class="btn-blue" style="padding:4px 6px; font-size:10px; margin:0; width:auto;" onclick="sendFriendRequest('${safeEmail}', '${safeName}')">👥</button>
                                 <button class="btn-green" style="padding:4px 8px; font-size:11px; margin:0; width:auto;" onclick="sendGameInvite('${safeEmail}', '${safeName}')">${currentLang === "de" ? "Einladen 📨" : "Invite 📨"}</button>
                             </div>
@@ -3982,11 +3990,14 @@
                         const alreadyFriend = myFriends.includes(email);
                         const safeEmail = email.replace(/'/g, "\\'");
                         const safeName = displayName.replace(/'/g, "\\'");
-                        html += `<div style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,0.05);padding:8px;border-radius:6px;margin-bottom:6px;font-size:12px;">
+                        html += `<div style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,0.05);padding:8px;border-radius:6px;margin-bottom:6px;font-size:12px;gap:6px;">
                             <div><b>${displayName.replace(/</g,"&lt;")}</b><br><span style="font-size:10px;color:#888;">${maskEmail(email)}</span></div>
-                            ${alreadyFriend
-                                ? `<span style="color:#28a745;font-size:11px;">${currentLang === "de" ? "✓ Freund" : "✓ Friend"}</span>`
-                                : `<button class="btn-green" style="padding:4px 8px;font-size:11px;width:auto;margin:0;" onclick="sendFriendRequest('${safeEmail}', '${safeName}')">${currentLang === "de" ? "Anfrage" : "Request"}</button>`}
+                            <div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end;">
+                                <button class="btn-blue" style="padding:4px 8px;font-size:11px;width:auto;margin:0;" onclick="openDirectMessage('${safeEmail}', '${safeName}')">${currentLang === "de" ? "💬 Nachricht" : "💬 Message"}</button>
+                                ${alreadyFriend
+                                    ? `<span style="color:#28a745;font-size:11px;align-self:center;">${currentLang === "de" ? "✓ Freund" : "✓ Friend"}</span>`
+                                    : `<button class="btn-green" style="padding:4px 8px;font-size:11px;width:auto;margin:0;" onclick="sendFriendRequest('${safeEmail}', '${safeName}')">${currentLang === "de" ? "Anfrage" : "Request"}</button>`}
+                            </div>
                         </div>`;
                     }
                 }
@@ -4004,11 +4015,14 @@
                             const alreadyFriend = myFriends.includes(email);
                             const safeEmail = email.replace(/'/g, "\\'");
                             const safeName = displayName.replace(/'/g, "\\'");
-                            html += `<div style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,0.05);padding:8px;border-radius:6px;margin-bottom:6px;font-size:12px;">
+                            html += `<div style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,0.05);padding:8px;border-radius:6px;margin-bottom:6px;font-size:12px;gap:6px;">
                                 <div><b>${displayName.replace(/</g,"&lt;")}</b><br><span style="font-size:10px;color:#888;">${maskEmail(email)}</span></div>
-                                ${alreadyFriend
-                                    ? `<span style="color:#28a745;font-size:11px;">${currentLang === "de" ? "✓ Freund" : "✓ Friend"}</span>`
-                                    : `<button class="btn-green" style="padding:4px 8px;font-size:11px;width:auto;margin:0;" onclick="sendFriendRequest('${safeEmail}', '${safeName}')">${currentLang === "de" ? "Anfrage" : "Request"}</button>`}
+                                <div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end;">
+                                    <button class="btn-blue" style="padding:4px 8px;font-size:11px;width:auto;margin:0;" onclick="openDirectMessage('${safeEmail}', '${safeName}')">${currentLang === "de" ? "💬 Nachricht" : "💬 Message"}</button>
+                                    ${alreadyFriend
+                                        ? `<span style="color:#28a745;font-size:11px;align-self:center;">${currentLang === "de" ? "✓ Freund" : "✓ Friend"}</span>`
+                                        : `<button class="btn-green" style="padding:4px 8px;font-size:11px;width:auto;margin:0;" onclick="sendFriendRequest('${safeEmail}', '${safeName}')">${currentLang === "de" ? "Anfrage" : "Request"}</button>`}
+                                </div>
                             </div>`;
                         }
                     });
