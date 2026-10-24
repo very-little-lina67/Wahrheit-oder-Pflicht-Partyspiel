@@ -529,27 +529,35 @@
     </div>
 
 
-    <!-- Nachrichten-Übersicht (Inbox) -->
-    <div id="dm-inbox-modal" class="modal-overlay hidden">
-        <div class="modal-content" style="max-width: 420px;">
-            <h2 id="ui-dm-inbox-title" style="color: var(--accent-color); margin-top:0; font-size: 1.15rem;">💬 Nachrichten</h2>
-            <p id="ui-dm-inbox-desc" style="font-size:12px;color:#aaa;margin:0 0 10px 0;">Private Chats – auch ohne Lobby. Tippe auf eine Person, um zu antworten.</p>
-            <div id="dm-inbox-list" style="max-height: 280px; overflow-y: auto; margin-bottom: 12px;"></div>
-            <button type="button" id="ui-dm-inbox-close" class="btn-blue" onclick="document.getElementById('dm-inbox-modal').classList.add('hidden')" style="width:100%; padding:8px; font-size:13px;">Schließen</button>
+    <!-- Nachrichten-Übersicht – eigene Seite -->
+    <div id="dm-inbox-modal" class="dm-page hidden">
+        <div class="dm-page-inner">
+            <header class="dm-page-header">
+                <button type="button" class="dm-page-back" id="ui-dm-inbox-close" onclick="document.getElementById('dm-inbox-modal').classList.add('hidden')" aria-label="Zurück">←</button>
+                <div class="dm-page-header-text">
+                    <h2 id="ui-dm-inbox-title">💬 Nachrichten</h2>
+                    <p id="ui-dm-inbox-desc">Private Chats – auch ohne Lobby. Tippe auf eine Person, um zu antworten.</p>
+                </div>
+            </header>
+            <div id="dm-inbox-list" class="dm-inbox-list-full"></div>
         </div>
     </div>
 
-    <!-- PRIVATNACHRICHTEN (auch ohne Lobby) -->
-    <div id="dm-modal" class="modal-overlay hidden">
-        <div class="modal-content" style="max-width: 420px;">
-            <h2 id="ui-dm-title" style="color: var(--accent-color); margin-top:0; font-size: 1.15rem;">💬 Privatnachricht</h2>
-            <p id="ui-dm-with" style="font-size:12px;color:#aaa;margin:0 0 8px 0;"></p>
-            <div id="dm-messages" class="dm-messages"></div>
-            <div style="display:flex; gap:6px; margin-top:8px;">
-                <input type="text" id="dm-input" placeholder="Nachricht…" style="flex:1; font-size:13px; padding:10px; margin:0;" onkeydown="if(event.key==='Enter'){event.preventDefault();window.sendDirectMessage&&sendDirectMessage();}">
-                <button type="button" class="btn-blue" id="ui-dm-send-btn" onclick="event.preventDefault();window.sendDirectMessage&&sendDirectMessage();" style="width:auto; padding:10px 14px; font-size:13px; margin:0;">Senden</button>
+    <!-- Privat-Chat – eigene Seite -->
+    <div id="dm-modal" class="dm-page hidden">
+        <div class="dm-page-inner dm-chat-page">
+            <header class="dm-page-header">
+                <button type="button" class="dm-page-back" id="ui-dm-close-btn" onclick="closeDmModal()" aria-label="Zurück">←</button>
+                <div class="dm-page-header-text">
+                    <h2 id="ui-dm-title">💬 Privatnachricht</h2>
+                    <p id="ui-dm-with"></p>
+                </div>
+            </header>
+            <div id="dm-messages" class="dm-messages dm-messages-full"></div>
+            <div class="dm-compose">
+                <input type="text" id="dm-input" placeholder="Nachricht…" autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault();window.sendDirectMessage&&sendDirectMessage();}">
+                <button type="button" class="btn-blue" id="ui-dm-send-btn" onclick="event.preventDefault();window.sendDirectMessage&&sendDirectMessage();">Senden</button>
             </div>
-            <button type="button" id="ui-dm-close-btn" class="btn-blue" onclick="closeDmModal()" style="width:100%; padding:8px; font-size:13px; margin-top:10px;">Schließen</button>
         </div>
     </div>
 
