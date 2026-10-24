@@ -3305,17 +3305,145 @@
             });
         }
 
-        function openAdminModal() {
-            if (myRole !== "master" && myRole !== "admin" && myRole !== "moderator") {
-                alert(msg("msgNoPermission", "Keine Berechtigung.", "No permission."));
+
+        let chatFilterEnabled = true;
+        try {
+            const saved = localStorage.getItem("wop_chat_filter_v1");
+            if (saved === "0") chatFilterEnabled = false;
+            if (saved === "1") chatFilterEnabled = true;
+        } catch (e) {}
+
+        function isAdminOrMaster() {
+            return myRole === "master" || myRole === "admin";
+        }
+
+        function updateAdminChatFilterUI() {
+            try {
+                const toggle = document.getElementById("admin-chat-filter-toggle");
+                if (toggle) toggle.checked = !!chatFilterEnabled;
+                const st = document.getElementById("ui-admin-filter-status");
+                if (st) {
+                    st.innerText = chatFilterEnabled
+                        ? (currentLang === "de" ? "Status: aktiv – Beleidigungen werden blockiert." : "Status: on – insults are blocked.")
+                        : (currentLang === "de" ? "Status: aus – Filter deaktiviert." : "Status: off – filter disabled.");
+                    st.style.color = chatFilterEnabled ? "#86efac" : "#fca5a5";
+                }
+                const tools = document.getElementById("admin-tools-box");
+                if (tools) tools.style.display = isAdminOrMaster() ? "" : "none";
+                const lbl = document.getElementById("ui-admin-filter-toggle-label");
+                if (lbl) lbl.innerText = currentLang === "de" ? "Beleidigungsfilter aktiv" : "Insult filter enabled";
+            } catch (e) {
+                console.warn("updateAdminChatFilterUI", e);
+            }
+        }
+
+        function adminSetChatFilterEnabled(enabled) {
+            if (!isAdminOrMaster()) {
+                alert(typeof msg === "function" ? msg("msgNoPermission", "Keine Berechtigung.", "No permission.") : "Keine Berechtigung.");
                 return;
             }
-            updateAdminFeedbackFilterLabels();
+            chatFilterEnabled = !!enabled;
+            try { localStorage.setItem("wop_chat_filter_v1", chatFilterEnabled ? "1" : "0"); } catch (e) {}
+            try {
+                if (activeLobbyCode && isHost) scheduleSaveGameState();
+                else if (activeLobbyCode) sendData({ type: "CHAT_FILTER_SET", enabled: chatFilterEnabled, by: myName });
+            } catch (e) {}
             updateAdminChatFilterUI();
-            renderAdminUserList();
-            renderAdminFeedbackList(false);
-            document.getElementById("admin-modal").classList.remove("hidden");
         }
+
+        function endRoundToLobby(reasonText) {
+            try { stopRoundTimer(true); } catch (e) {}
+            gameStarted = false;
+            gamePhase = "lobby";
+            pendingChoice = "";
+            currentTaskText = "";
+            currentTaskCreator = "";
+            try {
+                currentSharedResult = null;
+                currentSharedResultKey = "";
+            } catch (e) {}
+            taskCompleted = false;
+            nextTurnVotedPlayers = [];
+            nextRoundVotedPlayers = [];
+            try {
+                document.getElementById("woP-phase")?.classList.add("hidden");
+                document.getElementById("wheel-phase")?.classList.add("hidden");
+                document.getElementById("wheel-result-box")?.classList.add("hidden");
+                document.getElementById("result-feedback-area")?.classList.add("hidden");
+                document.getElementById("emergency-box")?.classList.add("hidden");
+                document.getElementById("lobby-wait-box")?.classList.remove("hidden");
+                document.getElementById("chat-box-container")?.classList.remove("hidden");
+                document.getElementById("leave-lobby-btn")?.classList.remove("hidden");
+                document.getElementById("player-status-panel")?.classList.remove("hidden");
+                const startBtn = document.getElementById("start-btn");
+                if (startBtn && isHost) startBtn.classList.remove("hidden");
+            } catch (e) {}
+            if (reasonText) {
+                try { appendChat("System", reasonText); } catch (e) {}
+            }
+            if (isHost) {
+                try { scheduleSaveGameState(); } catch (e) {}
+            }
+            try { saveLobbySession(); } catch (e) {}
+        }
+
+        function adminForceEndRound() {
+            if (!isAdminOrMaster()) {
+                alert(typeof msg === "function" ? msg("msgNoPermission", "Keine Berechtigung.", "No permission.") : "Keine Berechtigung.");
+                return;
+            }
+            if (!activeLobbyCode) {
+                alert(typeof msg === "function" ? msg("msgNoActiveLobby", "Keine aktive Lobby.", "No active lobby.") : "Keine aktive Lobby.");
+                return;
+            }
+            if (!gameStarted) {
+                alert(typeof msg === "function" ? msg("msgNoActiveRound", "Es läuft gerade keine Spielrunde.", "No round is in progress.") : "Keine laufende Runde.");
+                return;
+            }
+            const ok = confirm(typeof msg === "function"
+                ? msg("msgConfirmEndRound", "Laufende Runde wirklich beenden? Alle kehren in die Lobby zurück (niemand wird gekickt).", "Really end the current round? Everyone returns to the lobby (nobody is kicked).")
+                : "Runde beenden?");
+            if (!ok) return;
+            const reason = currentLang === "de"
+                ? `⏹ Die Runde wurde von ${myName} (Admin) beendet. Zurück in der Lobby.`
+                : `⏹ Round ended by ${myName} (Admin). Back in the lobby.`;
+            if (isHost) {
+                endRoundToLobby(reason);
+                try { sendData({ type: "ADMIN_END_ROUND", by: myName, reason: reason }); } catch (e) {}
+            } else {
+                try { sendData({ type: "ADMIN_END_ROUND", by: myName, reason: reason }); } catch (e) {}
+                endRoundToLobby(reason);
+            }
+            try { document.getElementById("admin-modal")?.classList.add("hidden"); } catch (e) {}
+        }
+
+        function openAdminModal() {
+            try {
+                if (myRole !== "master" && myRole !== "admin" && myRole !== "moderator") {
+                    alert(typeof msg === "function" ? msg("msgNoPermission", "Keine Berechtigung.", "No permission.") : "Keine Berechtigung.");
+                    return;
+                }
+                try { updateAdminFeedbackFilterLabels(); } catch (e) { console.warn(e); }
+                try { updateAdminChatFilterUI(); } catch (e) { console.warn(e); }
+                try { renderAdminUserList(); } catch (e) { console.warn(e); }
+                try { renderAdminFeedbackList(false); } catch (e) { console.warn(e); }
+                const modal = document.getElementById("admin-modal");
+                if (modal) {
+                    modal.classList.remove("hidden");
+                    modal.style.zIndex = "10060";
+                    modal.style.display = "flex";
+                } else {
+                    alert(currentLang === "de" ? "Admin-Panel nicht gefunden." : "Admin panel not found.");
+                }
+            } catch (e) {
+                console.error("openAdminModal", e);
+                alert((currentLang === "de" ? "Admin-Panel Fehler: " : "Admin panel error: ") + (e && e.message ? e.message : e));
+            }
+        }
+        window.openAdminModal = openAdminModal;
+        window.adminForceEndRound = adminForceEndRound;
+        window.adminSetChatFilterEnabled = adminSetChatFilterEnabled;
+        if (typeof setAdminFeedbackFilter === "function") window.setAdminFeedbackFilter = setAdminFeedbackFilter;
 
         async function renderAdminUserList() {
             let container = document.getElementById("admin-user-list");
@@ -6914,9 +7042,45 @@
             }
         }
 
+
+        const PROFANITY_WORDS = [
+            "arschloch", "arsch", "wichser", "hurensohn", "hure", "schlampe", "fotze", "ficken", "gefickt",
+            "scheisse", "scheiße", "scheiß", "idiot", "vollidiot", "drecksau", "bastard", "spast", "spasti",
+            "nigger", "neger", "schwuchtel", "fuck", "fucker", "fucking", "motherfucker", "shit", "bitch",
+            "asshole", "cunt", "dickhead", "whore", "slut", "faggot", "retard", "nazi"
+        ];
+        function normalizeProfanityText(text) {
+            let s = String(text || "").toLowerCase();
+            s = s.replace(/ä/g, "ae").replace(/ö/g, "oe").replace(/ü/g, "ue").replace(/ß/g, "ss");
+            s = s.replace(/0/g, "o").replace(/1/g, "i").replace(/3/g, "e").replace(/4/g, "a").replace(/\$/g, "s");
+            s = s.replace(/[^a-z\s]/g, " ").replace(/\s+/g, " ").trim();
+            return s;
+        }
+        function textContainsProfanity(text) {
+            const n = " " + normalizeProfanityText(text) + " ";
+            for (let i = 0; i < PROFANITY_WORDS.length; i++) {
+                if (PROFANITY_WORDS[i] && n.indexOf(PROFANITY_WORDS[i]) !== -1) return true;
+            }
+            return false;
+        }
+        function passChatFilter(text, opts) {
+            opts = opts || {};
+            if (!chatFilterEnabled) return true;
+            if (opts.system) return true;
+            return !textContainsProfanity(text);
+        }
+        function notifyChatBlocked() {
+            alert(typeof msg === "function"
+                ? msg("msgChatBlocked", "Nachricht blockiert: Beleidigungen sind nicht erlaubt.", "Message blocked: insults are not allowed.")
+                : "Nachricht blockiert.");
+        }
+
         function appendChat(sender, text) {
             let box = document.getElementById("chat-messages");
             if (!box) return;
+            if (String(sender || "").toLowerCase() !== "system" && typeof passChatFilter === "function" && !passChatFilter(text)) {
+                return;
+            }
             const safeSender = String(sender || "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
             const safeText = String(text || "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
             box.innerHTML += `<div class="chat-msg"><b>${safeSender}:</b> ${safeText}</div>`;
