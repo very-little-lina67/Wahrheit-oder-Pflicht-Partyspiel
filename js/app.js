@@ -3658,14 +3658,13 @@
         }
 
 
-        // --- Privatnachrichten ohne Lobby (Firebase Inbox) ---
+
+        // --- Privatnachrichten (auch ohne Lobby) – Collection: directMessages ---
         let dmUnsubscribe = null;
         let dmTargetEmail = "";
         let dmTargetName = "";
         let dmThreadCache = [];
         let dmSeenIds = new Set();
-
-
         let dmUnreadCount = 0;
 
         function updateDmBadge(count) {
@@ -3682,24 +3681,31 @@
         }
 
         async function refreshDmUnreadCount() {
-            if (!myEmail) {
+            if (!myEmail || !db) {
                 updateDmBadge(0);
                 return;
             }
             try {
-                const snap = await db.collection("users").doc(myEmail).collection("dms")
+                const me = String(myEmail).toLowerCase();
+                const snap = await db.collection("directMessages")
+                    .where("toEmail", "==", me)
                     .where("read", "==", false)
-                    .limit(50)
+                    .limit(40)
                     .get();
-                let n = 0;
-                snap.forEach(doc => {
-                    const d = doc.data() || {};
-                    if (String(d.fromEmail || "").toLowerCase() === String(myEmail).toLowerCase()) return;
-                    n++;
-                });
-                updateDmBadge(n);
+                updateDmBadge(snap.size);
             } catch (e) {
-                // Fallback: no composite index – count from recent listener cache
+                try {
+                    const me = String(myEmail).toLowerCase();
+                    const snap = await db.collection("directMessages").where("toEmail", "==", me).limit(40).get();
+                    let n = 0;
+                    snap.forEach(doc => {
+                        const d = doc.data() || {};
+                        if (d.read === false || d.read === undefined) n++;
+                    });
+                    updateDmBadge(n);
+                } catch (e2) {
+                    console.warn("DM unread count:", e2);
+                }
             }
         }
 
@@ -3718,52 +3724,51 @@
             if (!list || !myEmail) return;
             list.innerHTML = currentLang === "de" ? "Lade…" : "Loading…";
             try {
-                const snap = await db.collection("users").doc(myEmail).collection("dms")
-                    .orderBy("createdAt", "desc")
-                    .limit(60)
-                    .get();
-                // Group by other participant
+                const me = String(myEmail).toLowerCase();
+                const [inSnap, outSnap] = await Promise.all([
+                    db.collection("directMessages").where("toEmail", "==", me).limit(40).get(),
+                    db.collection("directMessages").where("fromEmail", "==", me).limit(40).get()
+                ]);
                 const map = new Map();
-                snap.forEach(doc => {
+                const addDoc = (doc) => {
                     const d = doc.data() || {};
                     const from = String(d.fromEmail || "").toLowerCase();
                     const to = String(d.toEmail || "").toLowerCase();
-                    const me = String(myEmail).toLowerCase();
                     const other = from === me ? to : from;
                     if (!other || other === me) return;
-                    const existing = map.get(other);
-                    const ts = d.createdAt && d.createdAt.toMillis ? d.createdAt.toMillis() : 0;
+                    const ts = d.createdAt && d.createdAt.toMillis ? d.createdAt.toMillis() : (Number(d.createdAtMs) || 0);
                     const unread = !d.read && from !== me;
-                    if (!existing || ts > existing.ts) {
+                    const prev = map.get(other);
+                    if (!prev || ts >= prev.ts) {
                         map.set(other, {
                             email: other,
                             name: from === me ? (d.toName || other.split("@")[0]) : (d.fromName || other.split("@")[0]),
                             text: d.text || "",
                             ts,
-                            unread: unread || (existing && existing.unread)
+                            unread: unread || !!(prev && prev.unread)
                         });
-                    } else if (unread) {
-                        existing.unread = true;
+                    } else if (unread && prev) {
+                        prev.unread = true;
                     }
-                });
+                };
+                inSnap.forEach(addDoc);
+                outSnap.forEach(addDoc);
                 const rows = Array.from(map.values()).sort((a, b) => b.ts - a.ts);
                 if (!rows.length) {
                     list.innerHTML = `<span style="font-size:12px;color:#888;">${
                         currentLang === "de"
-                            ? "Noch keine Nachrichten. Schreib jemandem über Freunde oder Online-Spieler."
-                            : "No messages yet. Message someone via Friends or Online players."
+                            ? "Noch keine Nachrichten. Öffne Freunde oder Online-Spieler und tippe auf „Nachricht“."
+                            : "No messages yet. Open Friends or Online players and tap “Message”."
                     }</span>`;
-                    updateDmBadge(0);
+                    refreshDmUnreadCount();
                     return;
                 }
                 let html = "";
-                let unreadTotal = 0;
                 rows.forEach(r => {
-                    if (r.unread) unreadTotal++;
                     const safeEmail = String(r.email).replace(/'/g, "\\'");
                     const safeName = String(r.name || "").replace(/'/g, "\\'").replace(/"/g, "&quot;");
                     const preview = String(r.text || "").replace(/</g, "&lt;").slice(0, 60);
-                    html += `<div class="dm-inbox-row${r.unread ? " unread" : ""}" onclick="openDirectMessage('${safeEmail}', '${safeName}')">
+                    html += `<div class="dm-inbox-row${r.unread ? " unread" : ""}" onclick="window.openDirectMessage && openDirectMessage('${safeEmail}', '${safeName}')">
                         <div style="min-width:0;flex:1;">
                             <b>${String(r.name || r.email).replace(/</g,"&lt;")}</b>
                             ${r.unread ? ' <span style="color:#f87171;font-size:10px;">●</span>' : ""}
@@ -3773,7 +3778,6 @@
                     </div>`;
                 });
                 list.innerHTML = html;
-                // Badge: recount unread messages not just threads
                 refreshDmUnreadCount();
             } catch (e) {
                 console.error(e);
@@ -3792,11 +3796,9 @@
                 return;
             }
             dmTargetEmail = targetEmail;
-            dmTargetName = targetName || targetEmail.split("@")[0];
+            dmTargetName = targetName || targetEmail.split("@")[0] || "Spieler";
             const withEl = document.getElementById("ui-dm-with");
-            if (withEl) {
-                withEl.innerText = (currentLang === "de" ? "Chat mit " : "Chat with ") + dmTargetName;
-            }
+            if (withEl) withEl.innerText = (currentLang === "de" ? "Chat mit " : "Chat with ") + dmTargetName;
             const title = document.getElementById("ui-dm-title");
             if (title) title.innerText = currentLang === "de" ? "💬 Privatnachricht" : "💬 Private message";
             const inp = document.getElementById("dm-input");
@@ -3805,18 +3807,25 @@
                 inp.placeholder = currentLang === "de"
                     ? "Nachricht… (z. B. Lust auf eine Runde?)"
                     : "Message… (e.g. want to play?)";
+                setTimeout(() => { try { inp.focus(); } catch (e) {} }, 50);
             }
             const sendBtn = document.getElementById("ui-dm-send-btn");
-            if (sendBtn) sendBtn.innerText = currentLang === "de" ? "Senden" : "Send";
+            if (sendBtn) {
+                sendBtn.innerText = currentLang === "de" ? "Senden" : "Send";
+                sendBtn.disabled = false;
+                sendBtn.onclick = function (ev) {
+                    if (ev) ev.preventDefault();
+                    sendDirectMessage();
+                };
+            }
             const closeBtn = document.getElementById("ui-dm-close-btn");
             if (closeBtn) closeBtn.innerText = currentLang === "de" ? "Schließen" : "Close";
             document.getElementById("dm-modal")?.classList.remove("hidden");
-            // Freunde/Online-Modal können offen bleiben oder zu – schließen für Fokus
             try { document.getElementById("friends-modal")?.classList.add("hidden"); } catch (e) {}
             try { document.getElementById("online-players-modal")?.classList.add("hidden"); } catch (e) {}
+            try { document.getElementById("dm-inbox-modal")?.classList.add("hidden"); } catch (e) {}
             loadDmThread();
             markDmsReadFrom(dmTargetEmail).then(() => refreshDmUnreadCount());
-            try { document.getElementById("dm-inbox-modal")?.classList.add("hidden"); } catch (e) {}
         }
 
         function closeDmModal() {
@@ -3830,32 +3839,59 @@
             if (!box || !myEmail || !dmTargetEmail) return;
             box.innerHTML = currentLang === "de" ? "Lade Nachrichten…" : "Loading messages…";
             try {
-                const snap = await db.collection("users").doc(myEmail).collection("dms")
-                    .orderBy("createdAt", "asc")
-                    .limit(80)
-                    .get();
+                const me = String(myEmail).toLowerCase();
+                const other = String(dmTargetEmail).toLowerCase();
+                const [a, b] = await Promise.all([
+                    db.collection("directMessages").where("fromEmail", "==", me).where("toEmail", "==", other).limit(40).get(),
+                    db.collection("directMessages").where("fromEmail", "==", other).where("toEmail", "==", me).limit(40).get()
+                ]);
                 const items = [];
-                snap.forEach(doc => {
-                    const d = doc.data() || {};
-                    const from = String(d.fromEmail || "").toLowerCase();
-                    const to = String(d.toEmail || "").toLowerCase();
-                    const other = dmTargetEmail.toLowerCase();
-                    if (from === other || to === other) {
-                        items.push({ id: doc.id, ...d });
-                    }
+                a.forEach(doc => items.push({ id: doc.id, ...doc.data() }));
+                b.forEach(doc => items.push({ id: doc.id, ...doc.data() }));
+                items.sort((x, y) => {
+                    const tx = x.createdAt && x.createdAt.toMillis ? x.createdAt.toMillis() : (x.createdAtMs || 0);
+                    const ty = y.createdAt && y.createdAt.toMillis ? y.createdAt.toMillis() : (y.createdAtMs || 0);
+                    return tx - ty;
                 });
                 dmThreadCache = items;
                 renderDmThread(items);
             } catch (e) {
-                console.error(e);
-                box.innerHTML = `<span style="color:#f87171;font-size:12px;">${msg("msgErrorLoad", "Laden fehlgeschlagen.", "Could not load.")}</span>`;
+                console.error("loadDmThread", e);
+                // Fallback ohne zusammengesetzten Index: alles von/an mich laden und filtern
+                try {
+                    const me = String(myEmail).toLowerCase();
+                    const other = String(dmTargetEmail).toLowerCase();
+                    const [inSnap, outSnap] = await Promise.all([
+                        db.collection("directMessages").where("toEmail", "==", me).limit(50).get(),
+                        db.collection("directMessages").where("fromEmail", "==", me).limit(50).get()
+                    ]);
+                    const items = [];
+                    const push = (doc) => {
+                        const d = doc.data() || {};
+                        const from = String(d.fromEmail || "").toLowerCase();
+                        const to = String(d.toEmail || "").toLowerCase();
+                        if ((from === me && to === other) || (from === other && to === me)) {
+                            items.push({ id: doc.id, ...d });
+                        }
+                    };
+                    inSnap.forEach(push);
+                    outSnap.forEach(push);
+                    items.sort((x, y) => {
+                        const tx = x.createdAt && x.createdAt.toMillis ? x.createdAt.toMillis() : (x.createdAtMs || 0);
+                        const ty = y.createdAt && y.createdAt.toMillis ? y.createdAt.toMillis() : (y.createdAtMs || 0);
+                        return tx - ty;
+                    });
+                    renderDmThread(items);
+                } catch (e2) {
+                    box.innerHTML = `<span style="color:#f87171;font-size:12px;">${msg("msgErrorLoad", "Laden fehlgeschlagen.", "Could not load.")}</span>`;
+                }
             }
         }
 
         function renderDmThread(items) {
             const box = document.getElementById("dm-messages");
             if (!box) return;
-            if (!items.length) {
+            if (!items || !items.length) {
                 box.innerHTML = `<span style="font-size:12px;color:#888;">${
                     currentLang === "de"
                         ? "Noch keine Nachrichten. Schreib z. B., ob ihr spielen wollt."
@@ -3872,6 +3908,7 @@
                 let time = "";
                 try {
                     if (d.createdAt && d.createdAt.toDate) time = d.createdAt.toDate().toLocaleString();
+                    else if (d.createdAtMs) time = new Date(d.createdAtMs).toLocaleString();
                 } catch (e) {}
                 html += `<div class="dm-msg${isOwn ? " own" : ""}"><div class="dm-meta">${name}${time ? " · " + time : ""}</div>${safe}</div>`;
             });
@@ -3880,52 +3917,90 @@
         }
 
         async function sendDirectMessage() {
-            if (!myEmail || !dmTargetEmail) return;
-            const input = document.getElementById("dm-input");
-            const text = (input && input.value || "").trim();
-            if (!text) return;
-            if (!passChatFilter(text)) {
-                notifyChatBlocked();
-                return;
-            }
-            const payload = {
-                fromEmail: myEmail,
-                fromName: myName || "Spieler",
-                toEmail: dmTargetEmail,
-                text: text,
-                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                read: false
-            };
             try {
-                // Bei Empfänger (Inbox) und bei mir (Thread-Kopie)
-                const batch = db.batch();
-                const recRef = db.collection("users").doc(dmTargetEmail).collection("dms").doc();
-                const meRef = db.collection("users").doc(myEmail).collection("dms").doc();
-                batch.set(recRef, payload);
-                batch.set(meRef, { ...payload, read: true });
-                await batch.commit();
+                if (!myEmail) {
+                    alert(msg("msgLoginFirst", "Bitte zuerst einloggen.", "Please log in first."));
+                    return;
+                }
+                if (!dmTargetEmail) {
+                    alert(currentLang === "de"
+                        ? "Kein Empfänger gewählt. Öffne den Chat über Freunde, Spieler oder Nachrichten."
+                        : "No recipient selected. Open the chat via Friends, Players or Messages.");
+                    return;
+                }
+                const input = document.getElementById("dm-input");
+                const text = ((input && input.value) || "").trim();
+                if (!text) {
+                    alert(msg("msgNeedText", "Bitte Text eingeben.", "Please enter a message."));
+                    return;
+                }
+                if (typeof passChatFilter === "function" && !passChatFilter(text)) {
+                    notifyChatBlocked();
+                    return;
+                }
+                const sendBtn = document.getElementById("ui-dm-send-btn");
+                if (sendBtn) sendBtn.disabled = true;
+
+                const payload = {
+                    fromEmail: String(myEmail).toLowerCase(),
+                    fromName: myName || "Spieler",
+                    toEmail: String(dmTargetEmail).toLowerCase(),
+                    toName: dmTargetName || "",
+                    text: text,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    createdAtMs: Date.now(),
+                    read: false
+                };
+
+                await db.collection("directMessages").add(payload);
+
                 if (input) input.value = "";
+                // Sofort lokal anzeigen
+                dmThreadCache = (dmThreadCache || []).concat([payload]);
+                renderDmThread(dmThreadCache);
                 await loadDmThread();
             } catch (e) {
-                console.error(e);
-                alert(msg("msgErrorSend", "Senden fehlgeschlagen.", "Could not send."));
+                console.error("sendDirectMessage", e);
+                alert((currentLang === "de" ? "Senden fehlgeschlagen: " : "Could not send: ") + (e && e.message ? e.message : e));
+            } finally {
+                const sendBtn = document.getElementById("ui-dm-send-btn");
+                if (sendBtn) sendBtn.disabled = false;
             }
         }
 
         async function markDmsReadFrom(fromEmail) {
-            if (!myEmail || !fromEmail) return;
+            if (!myEmail || !fromEmail || !db) return;
+            const me = String(myEmail).toLowerCase();
+            const other = String(fromEmail).toLowerCase();
             try {
-                const snap = await db.collection("users").doc(myEmail).collection("dms")
-                    .where("fromEmail", "==", fromEmail)
-                    .where("read", "==", false)
+                const snap = await db.collection("directMessages")
+                    .where("toEmail", "==", me)
+                    .where("fromEmail", "==", other)
                     .limit(30)
                     .get();
-                if (snap.empty) return;
                 const batch = db.batch();
-                snap.forEach(doc => batch.update(doc.ref, { read: true }));
-                await batch.commit();
+                let n = 0;
+                snap.forEach(doc => {
+                    const d = doc.data() || {};
+                    if (d.read) return;
+                    batch.update(doc.ref, { read: true });
+                    n++;
+                });
+                if (n) await batch.commit();
             } catch (e) {
-                // index may be missing – ignore
+                try {
+                    const snap = await db.collection("directMessages").where("toEmail", "==", me).limit(40).get();
+                    const batch = db.batch();
+                    let n = 0;
+                    snap.forEach(doc => {
+                        const d = doc.data() || {};
+                        if (String(d.fromEmail || "").toLowerCase() !== other) return;
+                        if (d.read) return;
+                        batch.update(doc.ref, { read: true });
+                        n++;
+                    });
+                    if (n) await batch.commit();
+                } catch (e2) {}
             }
         }
 
@@ -3938,9 +4013,9 @@
                 document.body.appendChild(el);
             }
             const preview = String(text || "").slice(0, 80);
-            el.innerText = (currentLang === "de" ? "💬 " : "💬 ") + (fromName || "…") + ": " + preview;
+            el.innerText = "💬 " + (fromName || "…") + ": " + preview;
             el.onclick = () => {
-                el.remove();
+                try { el.remove(); } catch (e) {}
                 openDirectMessage(fromEmail, fromName);
             };
             clearTimeout(el._t);
@@ -3948,15 +4023,17 @@
         }
 
         function listenForDirectMessages() {
-            if (!myEmail) return;
+            if (!myEmail || !db) return;
             if (dmUnsubscribe) {
                 try { dmUnsubscribe(); } catch (e) {}
                 dmUnsubscribe = null;
             }
+            const me = String(myEmail).toLowerCase();
             try {
-                dmUnsubscribe = db.collection("users").doc(myEmail).collection("dms")
+                dmUnsubscribe = db.collection("directMessages")
+                    .where("toEmail", "==", me)
                     .orderBy("createdAt", "desc")
-                    .limit(25)
+                    .limit(20)
                     .onSnapshot(snap => {
                         snap.docChanges().forEach(change => {
                             if (change.type !== "added") return;
@@ -3965,28 +4042,56 @@
                             if (dmSeenIds.has(id)) return;
                             dmSeenIds.add(id);
                             const from = String(d.fromEmail || "").toLowerCase();
-                            if (from === String(myEmail).toLowerCase()) return;
-                            // Nur „neue“ ungelesene
+                            if (from === me) return;
                             if (d.read === true) return;
-                            // Filter
-                            if (!passChatFilter(d.text || "")) return;
+                            if (typeof passChatFilter === "function" && !passChatFilter(d.text || "")) return;
                             showDmToast(d.fromName, d.text, from);
-                            // Badge live +1
                             updateDmBadge((dmUnreadCount || 0) + 1);
-                            // Inbox offen? Liste aktualisieren
                             const inboxOpen = document.getElementById("dm-inbox-modal") && !document.getElementById("dm-inbox-modal").classList.contains("hidden");
                             if (inboxOpen) renderDmInbox();
-                            // Wenn Thread offen: neu laden
-                            if (dmTargetEmail && from === dmTargetEmail.toLowerCase()) {
+                            if (dmTargetEmail && from === String(dmTargetEmail).toLowerCase()) {
                                 loadDmThread();
                                 markDmsReadFrom(from).then(() => refreshDmUnreadCount());
                             }
                         });
-                    }, err => console.warn("DM listener:", err));
+                    }, err => {
+                        console.warn("DM listener orderBy failed, fallback:", err);
+                        // Fallback ohne orderBy
+                        try {
+                            dmUnsubscribe = db.collection("directMessages")
+                                .where("toEmail", "==", me)
+                                .limit(25)
+                                .onSnapshot(snap => {
+                                    snap.docChanges().forEach(change => {
+                                        if (change.type !== "added") return;
+                                        const d = change.doc.data() || {};
+                                        const id = change.doc.id;
+                                        if (dmSeenIds.has(id)) return;
+                                        dmSeenIds.add(id);
+                                        const from = String(d.fromEmail || "").toLowerCase();
+                                        if (from === me) return;
+                                        if (d.read === true) return;
+                                        showDmToast(d.fromName, d.text, from);
+                                        updateDmBadge((dmUnreadCount || 0) + 1);
+                                        if (dmTargetEmail && from === String(dmTargetEmail).toLowerCase()) loadDmThread();
+                                    });
+                                }, e2 => console.warn("DM listener:", e2));
+                        } catch (e3) {
+                            console.warn("DM listener start failed", e3);
+                        }
+                    });
             } catch (e) {
                 console.warn("DM listener start failed", e);
             }
+            refreshDmUnreadCount();
         }
+
+        // Global für onclick im HTML
+        window.openDirectMessage = openDirectMessage;
+        window.sendDirectMessage = sendDirectMessage;
+        window.closeDmModal = closeDmModal;
+        window.openDmInbox = openDmInbox;
+        window.renderDmInbox = renderDmInbox;
 
         function openFriendsModal() {
             if (!myEmail) {
