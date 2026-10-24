@@ -307,6 +307,28 @@
                 btnLogout: "Logout",
                 btnDeleteAccount: "Konto löschen",
                 deleteAccountWarning: "⚠️ Achtung: Konto löschen ist endgültig. XP, Coins, Badges, Streaks und Shop-Items gehen verloren und können nicht wiederhergestellt werden.",
+                
+                msgNoPermission: "Keine Berechtigung.",
+                msgNotLoggedIn: "Bitte zuerst einloggen.",
+                msgLoginFirst: "Bitte zuerst einloggen.",
+                msgErrorGeneric: "Etwas ist schiefgelaufen. Bitte erneut versuchen.",
+                msgErrorDelete: "Löschen fehlgeschlagen.",
+                msgErrorSend: "Senden fehlgeschlagen.",
+                msgErrorLoad: "Laden fehlgeschlagen.",
+                msgNeedEmailName: "Bitte E-Mail oder Namen eingeben.",
+                msgAlreadyFriends: "Ihr seid bereits Freunde.",
+                msgRequestSent: "Anfrage bereits gesendet.",
+                msgFriendRequestOk: "Freundschaftsanfrage gesendet.",
+                msgNowFriends: "Freundschaft hergestellt.",
+                msgNotEnoughCoins: "Nicht genug Coins.",
+                msgNeedText: "Bitte Text eingeben.",
+                msgFeedbackOk: "Feedback gesendet. Danke!",
+                msgFbFilterAll: "Alle",
+                msgFbFilterBug: "Bugs",
+                msgFbFilterIdea: "Vorschläge",
+                msgNoFeedback: "Kein Feedback vorhanden.",
+                msgNoFeedbackFilter: "Kein Feedback in diesem Filter.",
+                msgLoadingFeedback: "Lade Feedback…",
                 alertDeleteOwnConfirm: "Möchtest du dein Konto wirklich unwiderruflich löschen?\n\nAlle deine Daten (XP, Coins, Badges, Freunde, …) werden gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.",
                 alertDeleteOwnSuccess: "Dein Konto wurde erfolgreich gelöscht.",
                 alertDeleteOwnError: "Fehler beim Löschen des Kontos. Bitte versuche es später erneut.",
@@ -443,9 +465,9 @@
                 alertNameCode: "Bitte Lobby-Code eingeben!",
                 alertTask: "Bitte eine Aufgabe eingeben!",
                 alertAnswer: "Bitte antworte auf die Frage!",
-                alertFeedbackEmpty: "Bitte gib eine Nachricht ein!",
-                alertFeedbackSuccess: "Feedback wurde erfolgreich gesendet!",
-                alertNoPermission: "Keine Berechtigung!",
+                alertFeedbackEmpty: "Bitte Text eingeben.",
+                alertFeedbackSuccess: "Feedback gesendet. Danke!",
+                alertNoPermission: "Keine Berechtigung.",
                 alertNeedLobbyHost: "Du musst zuerst eine Lobby erstellen (Host), um jemanden einzuladen!",
                 alertInviteSent: "Einladung gesendet! 🚀",
                 alertInviteError: "Fehler beim Senden der Einladung.",
@@ -597,6 +619,28 @@
                 btnLogout: "Logout",
                 btnDeleteAccount: "Delete Account",
                 deleteAccountWarning: "⚠️ Warning: Deleting your account is permanent. XP, coins, badges, streaks and shop items will be lost and cannot be restored.",
+                
+                msgNoPermission: "No permission.",
+                msgNotLoggedIn: "Please log in first.",
+                msgLoginFirst: "Please log in first.",
+                msgErrorGeneric: "Something went wrong. Please try again.",
+                msgErrorDelete: "Could not delete.",
+                msgErrorSend: "Could not send.",
+                msgErrorLoad: "Could not load.",
+                msgNeedEmailName: "Please enter email or name.",
+                msgAlreadyFriends: "You are already friends.",
+                msgRequestSent: "Request already sent.",
+                msgFriendRequestOk: "Friend request sent.",
+                msgNowFriends: "You are now friends.",
+                msgNotEnoughCoins: "Not enough coins.",
+                msgNeedText: "Please enter a message.",
+                msgFeedbackOk: "Feedback sent. Thank you!",
+                msgFbFilterAll: "All",
+                msgFbFilterBug: "Bugs",
+                msgFbFilterIdea: "Suggestions",
+                msgNoFeedback: "No feedback yet.",
+                msgNoFeedbackFilter: "No feedback in this filter.",
+                msgLoadingFeedback: "Loading feedback…",
                 alertDeleteOwnConfirm: "Do you really want to permanently delete your account?\n\nAll your data (XP, coins, badges, friends, …) will be deleted. This action cannot be undone.",
                 alertDeleteOwnSuccess: "Your account has been successfully deleted.",
                 alertDeleteOwnError: "Error deleting the account. Please try again later.",
@@ -731,8 +775,8 @@
                 alertNameCode: "Please enter lobby code!",
                 alertTask: "Please enter a task!",
                 alertAnswer: "Please answer the question!",
-                alertFeedbackEmpty: "Please enter a message!",
-                alertFeedbackSuccess: "Feedback successfully sent!",
+                alertFeedbackEmpty: "Please enter a message.",
+                alertFeedbackSuccess: "Feedback sent. Thank you!",
                 alertNoPermission: "Access denied / Not authorized!",
                 alertNeedLobbyHost: "You must first create a lobby (Host) to invite someone!",
                 alertInviteSent: "Invite sent! 🚀",
@@ -840,6 +884,14 @@
             if (discordStatusTimer) clearInterval(discordStatusTimer);
             // Alle 45s aktualisieren
             discordStatusTimer = setInterval(refreshDiscordStatus, 45000);
+        }
+
+
+        /** Einheitliche Kurz-Meldungen (DE/EN) */
+        function msg(key, fallbackDe, fallbackEn) {
+            const t = translations[currentLang] || {};
+            if (key && t[key]) return t[key];
+            return currentLang === "de" ? (fallbackDe || key || "") : (fallbackEn || fallbackDe || key || "");
         }
 
         function changeLanguage(forcedLang) {
@@ -1087,6 +1139,7 @@
             const admDesc = document.getElementById("ui-admin-desc"); if (admDesc) admDesc.innerText = t.adminDesc;
             const admUsers = document.getElementById("ui-admin-users-head"); if (admUsers) admUsers.innerText = t.adminUsersHead;
             const admFb = document.getElementById("ui-admin-fb-head"); if (admFb) admFb.innerText = t.adminFbHead;
+            try { updateAdminFeedbackFilterLabels(); } catch (e) {}
             const admClose = document.getElementById("ui-admin-close-btn"); if (admClose) admClose.innerText = t.adminCloseBtn;
 
             // Friends Modal
@@ -2572,7 +2625,7 @@
             }
             cost = Number(cost) || 0;
             if (userCoins < cost) {
-                alert(currentLang === "de" ? "Nicht genug Coins!" : "Not enough coins!");
+                alert(msg("msgNotEnoughCoins", "Nicht genug Coins.", "Not enough coins."));
                 return;
             }
             userCoins -= cost;
@@ -2750,7 +2803,7 @@
                     equippedAccessory = symbol;
                     alert(currentLang === 'de' ? "Erfolgreich gekauft und ausgerüstet!" : "Successfully purchased and equipped!");
                 } else {
-                    alert(currentLang === 'de' ? "Nicht genug Coins!" : "Not enough coins!");
+                    alert(msg("msgNotEnoughCoins", "Nicht genug Coins.", "Not enough coins."));
                 }
             }
             await saveUserDataToCloud();
@@ -2767,7 +2820,7 @@
             amount = Math.max(1, Number(amount) || 1);
             cost = Number(cost) || 0;
             if (userCoins < cost) {
-                alert(currentLang === "de" ? "Nicht genug Coins!" : "Not enough coins!");
+                alert(msg("msgNotEnoughCoins", "Nicht genug Coins.", "Not enough coins."));
                 return;
             }
             userCoins -= cost;
@@ -2899,7 +2952,7 @@
 
             if (!alreadyUnlocked) {
                 if (userCoins < cost) {
-                    alert(currentLang === 'de' ? "Nicht genug Coins!" : "Not enough coins!");
+                    alert(msg("msgNotEnoughCoins", "Nicht genug Coins.", "Not enough coins."));
                     return;
                 }
 
@@ -3194,13 +3247,39 @@
 // ==============================================================================
 // 10. ADMIN-BEREICH (USER-VERWALTUNG & FEEDBACK)
 // ==============================================================================
+        let adminFeedbackFilter = "all"; // all | bug | improvement
+        let adminFeedbackCache = null;
+
+        function setAdminFeedbackFilter(filter) {
+            const allowed = ["all", "bug", "improvement"];
+            adminFeedbackFilter = allowed.includes(filter) ? filter : "all";
+            ["all", "bug", "improvement"].forEach(f => {
+                const el = document.getElementById("admin-fb-filter-" + f);
+                if (el) el.classList.toggle("active", adminFeedbackFilter === f);
+            });
+            renderAdminFeedbackList(true);
+        }
+
+        function updateAdminFeedbackFilterLabels() {
+            const map = {
+                all: msg("msgFbFilterAll", "Alle", "All"),
+                bug: msg("msgFbFilterBug", "Bugs", "Bugs"),
+                improvement: msg("msgFbFilterIdea", "Vorschläge", "Suggestions")
+            };
+            Object.keys(map).forEach(f => {
+                const el = document.getElementById("admin-fb-filter-" + f);
+                if (el) el.innerText = map[f];
+            });
+        }
+
         function openAdminModal() {
             if (myRole !== "master" && myRole !== "admin" && myRole !== "moderator") {
-                alert(currentLang === "de" ? "Keine Berechtigung!" : "Access denied / Not authorized!");
+                alert(msg("msgNoPermission", "Keine Berechtigung.", "No permission."));
                 return;
             }
+            updateAdminFeedbackFilterLabels();
             renderAdminUserList();
-            renderAdminFeedbackList();
+            renderAdminFeedbackList(false);
             document.getElementById("admin-modal").classList.remove("hidden");
         }
 
@@ -3270,36 +3349,67 @@
             }
         }
 
-        async function renderAdminFeedbackList() {
+        async function renderAdminFeedbackList(useCache) {
             let container = document.getElementById("admin-feedback-list");
-            container.innerHTML = currentLang === "de" ? "Lade Feedback..." : "Loading feedback...";
+            if (!container) return;
+            container.innerHTML = msg("msgLoadingFeedback", "Lade Feedback…", "Loading feedback…");
             try {
-                let snapshot = await db.collection("feedback").get();
+                let items = [];
+                if (useCache && Array.isArray(adminFeedbackCache)) {
+                    items = adminFeedbackCache;
+                } else {
+                    const snapshot = await db.collection("feedback").get();
+                    items = [];
+                    snapshot.forEach(doc => {
+                        items.push({ id: doc.id, ...(doc.data() || {}) });
+                    });
+                    // Neueste zuerst, falls timestamp vorhanden
+                    items.sort((a, b) => {
+                        const ta = a.createdAt && a.createdAt.toMillis ? a.createdAt.toMillis() : (a.createdAt || 0);
+                        const tb = b.createdAt && b.createdAt.toMillis ? b.createdAt.toMillis() : (b.createdAt || 0);
+                        return (tb || 0) - (ta || 0);
+                    });
+                    adminFeedbackCache = items;
+                }
+
+                const filtered = items.filter(fb => {
+                    if (adminFeedbackFilter === "all") return true;
+                    const t = String(fb.type || "improvement").toLowerCase();
+                    if (adminFeedbackFilter === "bug") return t === "bug";
+                    return t !== "bug";
+                });
+
                 container.innerHTML = "";
-                if (snapshot.empty) {
-                    container.innerHTML = `<span style="font-size:11px; color:#888;">${currentLang === "de" ? "Kein Feedback vorhanden." : "No feedback available."}</span>`;
+                if (!items.length) {
+                    container.innerHTML = `<span style="font-size:11px; color:#888;">${msg("msgNoFeedback", "Kein Feedback vorhanden.", "No feedback yet.")}</span>`;
                     return;
                 }
-                snapshot.forEach(doc => {
-                    let fb = doc.data();
-                    let docId = doc.id;
-                    let typeColor = fb.type === 'bug' ? '#ff3300' : '#00bfff';
-                    let typeLabel;
-                    if (fb.type === 'bug') {
-                        typeLabel = currentLang === "de" ? "Bug" : "Bug";
-                    } else {
-                        typeLabel = currentLang === "de" ? "Vorschlag / Verbesserung" : "Suggestion / Improvement";
-                    }
-                    let displayMail = fb.emailMasked || maskEmail(fb.email || "");
-                    const deleteBtnText = currentLang === "de" ? "Löschen" : "Delete";
+                if (!filtered.length) {
+                    container.innerHTML = `<span style="font-size:11px; color:#888;">${msg("msgNoFeedbackFilter", "Kein Feedback in diesem Filter.", "No feedback in this filter.")}</span>`;
+                    return;
+                }
+
+                const deleteBtnText = currentLang === "de" ? "Löschen" : "Delete";
+                filtered.forEach(fb => {
+                    const docId = fb.id;
+                    const isBug = String(fb.type || "").toLowerCase() === "bug";
+                    const typeColor = isBug ? "#ff3300" : "#00bfff";
+                    const typeLabel = isBug
+                        ? "Bug"
+                        : (currentLang === "de" ? "Vorschlag / Verbesserung" : "Suggestion / Improvement");
+                    const displayMail = fb.emailMasked || maskEmail(fb.email || "");
+                    const safeAuthor = String(fb.author || "—").replace(/</g, "&lt;");
+                    const safeText = String(fb.text || "").replace(/</g, "&lt;");
+                    const canDelete = myRole === "master" || myRole === "admin";
                     container.innerHTML += `<div style="background:rgba(255,255,255,0.05); padding:6px; border-radius:6px; margin-bottom:5px; font-size:12px; border-left:4px solid ${typeColor};">
-                        <div><b>${fb.author}</b> (${displayMail}) - <span style="color:${typeColor}; font-weight:bold;">${typeLabel}</span></div>
-                        <div style="margin-top:2px; color:#fff;">${fb.text}</div>
-                        ${myRole === 'master' || myRole === 'admin' ? `<button class="btn-danger" style="padding:2px 5px; font-size:9px; margin-top:3px;" onclick="deleteFeedback('${docId}')">${deleteBtnText}</button>` : ''}
+                        <div><b>${safeAuthor}</b> (${displayMail}) – <span style="color:${typeColor}; font-weight:bold;">${typeLabel}</span></div>
+                        <div style="margin-top:2px; color:#fff;">${safeText}</div>
+                        ${canDelete ? `<button class="btn-danger" style="padding:2px 5px; font-size:9px; margin-top:3px;" onclick="deleteFeedback('${docId}')">${deleteBtnText}</button>` : ""}
                     </div>`;
                 });
             } catch (e) {
-                console.error("Fehler beim Laden von Feedback:", e);
+                console.error("Feedback load error:", e);
+                container.innerHTML = `<span style="font-size:11px; color:#f87171;">${msg("msgErrorLoad", "Laden fehlgeschlagen.", "Could not load.")}</span>`;
             }
         }
 
@@ -3324,14 +3434,14 @@
                 renderAdminUserList();
             } catch (e) {
                 console.error("deleteUser:", e);
-                alert(currentLang === "de" ? "Fehler beim Löschen." : "Error while deleting.");
+                alert(msg("msgErrorDelete", "Löschen fehlgeschlagen.", "Could not delete."));
             }
         }
 
         /** Eigenes Konto löschen – nur der eingeloggte User selbst, mit Bestätigung */
         async function deleteOwnAccount() {
             if (!myEmail) {
-                alert(currentLang === "de" ? "Nicht eingeloggt." : "Not logged in.");
+                alert(msg("msgNotLoggedIn", "Bitte zuerst einloggen.", "Please log in first."));
                 return;
             }
             // Master-Account darf sich nicht selbst löschen (Sicherheit)
@@ -3410,6 +3520,7 @@
 
         async function deleteFeedback(docId) {
             await db.collection("feedback").doc(docId).delete();
+            adminFeedbackCache = null;
             renderAdminFeedbackList();
         }
 
@@ -3514,7 +3625,7 @@
 
         function openFriendsModal() {
             if (!myEmail) {
-                alert(currentLang === "de" ? "Bitte zuerst einloggen." : "Please log in first.");
+                alert(msg("msgLoginFirst", "Bitte zuerst einloggen.", "Please log in first."));
                 return;
             }
             showFriendsTab("list");
@@ -3630,7 +3741,7 @@
             const q = (document.getElementById("friend-search-input").value || "").trim().toLowerCase();
             const results = document.getElementById("friend-search-results");
             if (!q) {
-                alert(currentLang === "de" ? "Bitte E-Mail oder Namen eingeben." : "Please enter email or name.");
+                alert(msg("msgNeedEmailName", "Bitte E-Mail oder Namen eingeben.", "Please enter email or name."));
                 return;
             }
             results.innerHTML = currentLang === "de" ? "Suche..." : "Searching...";
@@ -3689,7 +3800,7 @@
             const toEmail = String(targetEmail || "").trim().toLowerCase();
             if (!myEmail || !toEmail || toEmail === myEmail) return;
             if (myFriends.includes(toEmail)) {
-                alert(currentLang === "de" ? "Ihr seid bereits Freunde!" : "You are already friends!");
+                alert(msg("msgAlreadyFriends", "Ihr seid bereits Freunde.", "You are already friends."));
                 return;
             }
             try {
@@ -3699,7 +3810,7 @@
                     .where("toEmail", "==", toEmail)
                     .get();
                 if (!existing.empty) {
-                    alert(currentLang === "de" ? "Anfrage bereits gesendet!" : "Request already sent!");
+                    alert(msg("msgRequestSent", "Anfrage bereits gesendet.", "Request already sent."));
                     return;
                 }
                 // Check reverse request → auto-accept
@@ -3721,7 +3832,7 @@
                 alert(currentLang === "de" ? `Freundschaftsanfrage an ${targetName} gesendet! 👥` : `Friend request sent to ${targetName}! 👥`);
             } catch (e) {
                 console.error(e);
-                alert(currentLang === "de" ? "Fehler beim Senden der Anfrage." : "Error sending request.");
+                alert(msg("msgErrorSend", "Senden fehlgeschlagen.", "Could not send."));
             }
         }
 
@@ -4444,7 +4555,7 @@
             stopReconnectTimer();
 
             if (!myName || !myEmail) {
-                if (!restoring) alert(currentLang === "de" ? "Bitte zuerst einloggen." : "Please log in first.");
+                if (!restoring) alert(msg("msgLoginFirst", "Bitte zuerst einloggen.", "Please log in first."));
                 return;
             }
 
@@ -4569,7 +4680,7 @@
             }
 
             if (!myName || !myEmail) {
-                if (!restoring) alert(currentLang === "de" ? "Bitte zuerst einloggen." : "Please log in first.");
+                if (!restoring) alert(msg("msgLoginFirst", "Bitte zuerst einloggen.", "Please log in first."));
                 return;
             }
 
@@ -6197,7 +6308,7 @@
         /** Admin/Master-Kick (auch im Zuschauermodus nutzbar) */
         async function adminKickPlayer() {
             if (myRole !== "admin" && myRole !== "master") {
-                alert(currentLang === "de" ? "Keine Berechtigung!" : "Access denied / Not authorized!");
+                alert(msg("msgNoPermission", "Keine Berechtigung.", "No permission."));
                 return;
             }
             await performPlayerElimination({ reason: "kick" });
