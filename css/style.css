@@ -2133,3 +2133,54 @@ textarea:focus {
     box-shadow: 0 8px 24px rgba(0,0,0,0.35);
     cursor: pointer;
 }
+
+
+.hud-btn-purple {
+    background: linear-gradient(145deg, #a78bfa, #7c3aed);
+    border-color: rgba(167, 139, 250, 0.5);
+    color: #fff;
+}
+.hud-badge-count {
+    display: inline-block;
+    min-width: 16px;
+    padding: 0 5px;
+    margin-left: 2px;
+    border-radius: 999px;
+    background: #ef4444;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 16px;
+    text-align: center;
+    vertical-align: middle;
+}
+.dm-inbox-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255,255,255,0.05);
+    padding: 10px;
+    border-radius: 10px;
+    margin-bottom: 6px;
+    cursor: pointer;
+    text-align: left;
+    border: 1px solid transparent;
+}
+.dm-inbox-row:hover {
+    border-color: rgba(167, 139, 250, 0.4);
+    background: rgba(167, 139, 250, 0.12);
+}
+.dm-inbox-row.unread {
+    border-color: rgba(239, 68, 68, 0.35);
+    background: rgba(239, 68, 68, 0.1);
+}
+.dm-inbox-preview {
+    font-size: 11px;
+    color: #94a3b8;
+    margin-top: 2px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 240px;
+}
