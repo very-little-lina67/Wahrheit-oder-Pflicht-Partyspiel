@@ -472,6 +472,21 @@
                 <div id="admin-feedback-list"></div>
             </div>
 
+            <div class="box-section admin-tools-box" id="admin-tools-box">
+                <h4 id="ui-admin-tools-head" style="margin:0 0 8px 0; color:#f87171; font-size: 13px;">🛠️ Admin-Werkzeuge</h4>
+                <p id="ui-admin-end-round-desc" style="font-size:11px;color:#aaa;margin:0 0 8px 0;">Beendet eine hängengebliebene Spielrunde und bringt alle zurück in die Lobby (ohne Kick).</p>
+                <button type="button" id="ui-admin-end-round-btn" class="btn-danger" onclick="adminForceEndRound()" style="width:100%; padding:10px; font-size:13px; margin-bottom:10px;">⏹ Laufende Runde beenden</button>
+                <div id="admin-filter-panel">
+                    <h4 id="ui-admin-filter-head" style="margin:8px 0 6px 0; color:#c084fc; font-size: 13px;">🛡️ Chat-Filter (Beleidigungen)</h4>
+                    <p id="ui-admin-filter-desc" style="font-size:11px;color:#aaa;margin:0 0 8px 0;">Filtert deutsche &amp; englische Beleidigungen, bevor sie im Chat erscheinen. Steuerung nur für Admin/Master.</p>
+                    <label class="admin-filter-toggle-row" style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;">
+                        <input type="checkbox" id="admin-chat-filter-toggle" onchange="adminSetChatFilterEnabled(this.checked)" checked>
+                        <span id="ui-admin-filter-toggle-label">Beleidigungsfilter aktiv</span>
+                    </label>
+                    <p id="ui-admin-filter-status" style="font-size:11px;color:#86efac;margin:6px 0 0 0;">Status: aktiv</p>
+                </div>
+            </div>
+
             <div style="margin-top: 10px;">
                 <button id="ui-admin-close-btn" class="btn-blue" onclick="document.getElementById('admin-modal').classList.add('hidden')" style="width:100%; padding: 8px; font-size: 13px;">Schließen</button>
             </div>
@@ -508,6 +523,21 @@
             </div>
 
             <button id="ui-friends-close-btn" class="btn-blue" onclick="document.getElementById('friends-modal').classList.add('hidden')" style="width:100%; padding:8px; font-size:13px;">Schließen</button>
+        </div>
+    </div>
+
+
+    <!-- PRIVATNACHRICHTEN (auch ohne Lobby) -->
+    <div id="dm-modal" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 420px;">
+            <h2 id="ui-dm-title" style="color: var(--accent-color); margin-top:0; font-size: 1.15rem;">💬 Privatnachricht</h2>
+            <p id="ui-dm-with" style="font-size:12px;color:#aaa;margin:0 0 8px 0;"></p>
+            <div id="dm-messages" class="dm-messages"></div>
+            <div style="display:flex; gap:6px; margin-top:8px;">
+                <input type="text" id="dm-input" placeholder="Nachricht…" style="flex:1; font-size:13px; padding:10px; margin:0;" onkeydown="if(event.key==='Enter') sendDirectMessage()">
+                <button type="button" class="btn-blue" id="ui-dm-send-btn" onclick="sendDirectMessage()" style="width:auto; padding:10px 14px; font-size:13px; margin:0;">Senden</button>
+            </div>
+            <button type="button" id="ui-dm-close-btn" class="btn-blue" onclick="closeDmModal()" style="width:100%; padding:8px; font-size:13px; margin-top:10px;">Schließen</button>
         </div>
     </div>
 
