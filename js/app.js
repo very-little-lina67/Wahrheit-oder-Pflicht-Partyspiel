@@ -292,6 +292,7 @@
                 themePikachuWarm: "Pikachu & Ash (Warm)",
                 themePikachuRain: "Pikachu & Ash (Regen)",
                 avatarEmoteLabel: "🙂 Eigenes Emote / Avatar auswählen",
+                avatarEmotePick: "Emoji wählen",
                 emoteHappy: "Fröhlich", emoteCool: "Cool", emoteExcited: "Begeistert", emoteParty: "Party", emoteCheeky: "Frech", emoteRobot: "Roboter", emoteGhost: "Geist", emoteCat: "Katze", emoteFox: "Fuchs", emoteFrog: "Frosch", emoteSkull: "Totenkopf", emoteFire: "Feuer",
                 buyEquipBtn: "Kaufen / Ausrüsten",
                 themesHead: "🎨 Farb-Themes",
@@ -581,6 +582,7 @@
                 themePikachuWarm: "Pikachu & Ash (Warm)",
                 themePikachuRain: "Pikachu & Ash (Rain)",
                 avatarEmoteLabel: "🙂 Choose your own emote / avatar",
+                avatarEmotePick: "Choose emoji",
                 emoteHappy: "Happy", emoteCool: "Cool", emoteExcited: "Excited", emoteParty: "Party", emoteCheeky: "Cheeky", emoteRobot: "Robot", emoteGhost: "Ghost", emoteCat: "Cat", emoteFox: "Fox", emoteFrog: "Frog", emoteSkull: "Skull", emoteFire: "Fire",
                 buyEquipBtn: "Buy / Equip",
                 themesHead: "🎨 Color Themes",
@@ -993,7 +995,7 @@
                 if (el && label) el.innerText = label;
             });
             const emoteLabel = document.getElementById("ui-avatar-emote-label");
-            if (emoteLabel) emoteLabel.innerText = t.avatarEmoteLabel;
+            if (emoteLabel) emoteLabel.innerText = t.avatarEmotePick || (currentLang === "de" ? "Emoji wählen" : "Choose emoji");
             const emoteLabels = {
                 "ui-emote-happy": ["😊 ", t.emoteHappy],
                 "ui-emote-excited": ["🤩 ", t.emoteExcited], "ui-emote-party": ["🥳 ", t.emoteParty],
@@ -2473,7 +2475,20 @@
             await saveUserDataToCloud();
         }
 
-        /** Profil: kompaktes Emoji-Grid statt langer Dropdown-Liste */
+        function toggleAvatarEmotePicker() {
+            const grid = document.getElementById("avatar-emote-grid");
+            const btn = document.getElementById("avatar-emote-toggle");
+            if (!grid) return;
+            const open = grid.classList.contains("hidden");
+            grid.classList.toggle("hidden", !open);
+            if (btn) {
+                btn.classList.toggle("open", open);
+                btn.setAttribute("aria-expanded", open ? "true" : "false");
+            }
+            if (open) refreshEmoteSelect();
+        }
+
+        /** Profil: Emoji-Grid (öffnet sich über den Button) */
         function refreshEmoteSelect() {
             const grid = document.getElementById("avatar-emote-grid");
             const sel = document.getElementById("avatar-emote-select");
@@ -2528,6 +2543,8 @@
                 });
                 sel.value = current;
             }
+            const toggleIcon = document.getElementById("avatar-emote-toggle-icon");
+            if (toggleIcon) toggleIcon.textContent = current;
         }
 
         /** Shop: Profil-Emoji-Gitter dynamisch aufbauen */
