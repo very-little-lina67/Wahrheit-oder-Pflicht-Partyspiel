@@ -2395,8 +2395,165 @@
             renderBadgeShowcase();
         }
 
+
+        // --- System-Benachrichtigungen (außerhalb / Hintergrund) ---
+        let appNotificationsEnabled = false;
+        try {
+            appNotificationsEnabled = localStorage.getItem("wop_notifications_v1") === "1";
+        } catch (e) {}
+
+        function isAppNotificationsSupported() {
+            return typeof window !== "undefined" && "Notification" in window;
+        }
+
+        function updateNotifSettingsUI() {
+            const toggle = document.getElementById("notif-enable-toggle");
+            const status = document.getElementById("ui-notif-status");
+            const label = document.getElementById("ui-notif-toggle-label");
+            const head = document.getElementById("ui-notif-head");
+            const desc = document.getElementById("ui-notif-desc");
+            const de = currentLang === "de";
+            if (head) head.innerText = de ? "🔔 Benachrichtigungen" : "🔔 Notifications";
+            if (desc) desc.innerText = de
+                ? "Auch außerhalb der App (wenn erlaubt): z. B. neue Privatnachrichten. Ideal als installierte App oder bei geöffnetem Browser-Tab."
+                : "Also outside the app (when allowed): e.g. new private messages. Best as installed app or with the browser tab open.";
+            if (label) label.innerText = de ? "Benachrichtigungen aktivieren" : "Enable notifications";
+            if (!isAppNotificationsSupported()) {
+                if (toggle) { toggle.checked = false; toggle.disabled = true; }
+                if (status) status.innerText = de ? "Auf diesem Gerät nicht verfügbar." : "Not available on this device.";
+                return;
+            }
+            if (toggle) {
+                toggle.disabled = false;
+                toggle.checked = !!appNotificationsEnabled && Notification.permission === "granted";
+            }
+            if (status) {
+                if (Notification.permission === "denied") {
+                    status.innerText = de
+                        ? "Blockiert in den Browser-/Systemeinstellungen. Bitte dort erlauben."
+                        : "Blocked in browser/system settings. Please allow there.";
+                    status.style.color = "#fca5a5";
+                } else if (appNotificationsEnabled && Notification.permission === "granted") {
+                    status.innerText = de ? "Status: aktiv" : "Status: on";
+                    status.style.color = "#86efac";
+                } else {
+                    status.innerText = de ? "Status: aus" : "Status: off";
+                    status.style.color = "#94a3b8";
+                }
+            }
+        }
+
+        async function setAppNotificationsEnabled(enabled) {
+            if (!isAppNotificationsSupported()) {
+                updateNotifSettingsUI();
+                return;
+            }
+            if (enabled) {
+                let perm = Notification.permission;
+                if (perm !== "granted") {
+                    try {
+                        perm = await Notification.requestPermission();
+                    } catch (e) {
+                        perm = Notification.permission;
+                    }
+                }
+                if (perm !== "granted") {
+                    appNotificationsEnabled = false;
+                    try { localStorage.setItem("wop_notifications_v1", "0"); } catch (e) {}
+                    updateNotifSettingsUI();
+                    alert(currentLang === "de"
+                        ? "Benachrichtigungen wurden nicht erlaubt. Du kannst das in den Browser- oder Systemeinstellungen ändern."
+                        : "Notifications were not allowed. You can change this in browser or system settings.");
+                    return;
+                }
+                appNotificationsEnabled = true;
+                try { localStorage.setItem("wop_notifications_v1", "1"); } catch (e) {}
+                // Test-Benachrichtigung
+                showAppNotification(
+                    currentLang === "de" ? "Benachrichtigungen aktiv" : "Notifications enabled",
+                    currentLang === "de"
+                        ? "Du wirst über neue Privatnachrichten informiert."
+                        : "You will be notified about new private messages.",
+                    { tag: "wop-notif-test" }
+                );
+            } else {
+                appNotificationsEnabled = false;
+                try { localStorage.setItem("wop_notifications_v1", "0"); } catch (e) {}
+            }
+            updateNotifSettingsUI();
+        }
+
+        async function showAppNotification(title, body, data) {
+            if (!appNotificationsEnabled) return;
+            if (!isAppNotificationsSupported()) return;
+            if (Notification.permission !== "granted") return;
+            data = data || {};
+            const payload = {
+                title: title || "Wahrheit oder Pflicht",
+                body: body || "",
+                icon: "./icon-192.png",
+                badge: "./favicon-48.png",
+                tag: data.tag || "wop-notify",
+                data: Object.assign({ url: "./" }, data)
+            };
+            try {
+                if (navigator.serviceWorker && navigator.serviceWorker.ready) {
+                    const reg = await navigator.serviceWorker.ready;
+                    if (reg && reg.showNotification) {
+                        await reg.showNotification(payload.title, {
+                            body: payload.body,
+                            icon: payload.icon,
+                            badge: payload.badge,
+                            tag: payload.tag,
+                            renotify: true,
+                            data: payload.data
+                        });
+                        return;
+                    }
+                }
+            } catch (e) {
+                console.warn("SW notification failed, fallback:", e);
+            }
+            try {
+                const n = new Notification(payload.title, {
+                    body: payload.body,
+                    icon: payload.icon,
+                    tag: payload.tag,
+                    data: payload.data
+                });
+                n.onclick = function () {
+                    try { window.focus(); } catch (e) {}
+                    n.close();
+                    if (data.fromEmail) {
+                        try { openDirectMessage(data.fromEmail, data.fromName || ""); } catch (e) {}
+                    }
+                };
+            } catch (e) {
+                console.warn("Notification failed:", e);
+            }
+        }
+
+        window.setAppNotificationsEnabled = setAppNotificationsEnabled;
+        window.showAppNotification = showAppNotification;
+
+        if (navigator.serviceWorker) {
+            navigator.serviceWorker.addEventListener("message", (event) => {
+                const msg = event.data || {};
+                if (msg.type === "NOTIFICATION_CLICK") {
+                    const d = msg.data || {};
+                    if (d.fromEmail) {
+                        try { openDirectMessage(d.fromEmail, d.fromName || ""); } catch (e) {}
+                    } else {
+                        try { openDmInbox(); } catch (e) {}
+                    }
+                }
+            });
+        }
+
+
         function openProfileModal() {
             fillProfileStats();
+            try { updateNotifSettingsUI(); } catch (e) {}
             const modal = document.getElementById("profile-modal");
             if (modal) modal.classList.remove("hidden");
         }
@@ -3013,6 +3170,7 @@
                 listenForInvitations();
                 listenForDirectMessages();
                 refreshDmUnreadCount();
+                try { updateNotifSettingsUI(); } catch (e) {}
                 loadFriendsData();
                 listenForFriendRequests();
 
@@ -3121,6 +3279,7 @@
                 listenForInvitations();
                 listenForDirectMessages();
                 refreshDmUnreadCount();
+                try { updateNotifSettingsUI(); } catch (e) {}
                 loadFriendsData();
                 listenForFriendRequests();
             } catch (e) {
@@ -4122,6 +4281,17 @@
             };
             clearTimeout(el._t);
             el._t = setTimeout(() => { try { el.remove(); } catch (e) {} }, 8000);
+
+            // System-Benachrichtigung (Hintergrund / außerhalb der App-Ansicht)
+            try {
+                const title = currentLang === "de" ? "Neue Nachricht" : "New message";
+                const body = (fromName || "…") + ": " + preview;
+                showAppNotification(title, body, {
+                    tag: "wop-dm-" + String(fromEmail || "x"),
+                    fromEmail: fromEmail,
+                    fromName: fromName
+                });
+            } catch (e) {}
         }
 
         function listenForDirectMessages() {
