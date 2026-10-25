@@ -55,3 +55,40 @@ self.addEventListener("fetch", (event) => {
       .catch(() => caches.match(req).then((cached) => cached || caches.match("./index.html")))
   );
 });
+
+
+/* System-Benachrichtigungen (wenn App im Hintergrund / installiert) */
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const data = event.notification.data || {};
+  const url = data.url || "./";
+  event.waitUntil(
+    clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if (client.url && "focus" in client) {
+          client.postMessage({ type: "NOTIFICATION_CLICK", data: data });
+          return client.focus();
+        }
+      }
+      if (clients.openWindow) {
+        return clients.openWindow(url);
+      }
+    })
+  );
+});
+
+self.addEventListener("message", (event) => {
+  const msg = event.data || {};
+  if (msg.type === "SHOW_NOTIFICATION") {
+    event.waitUntil(
+      self.registration.showNotification(msg.title || "Wahrheit oder Pflicht", {
+        body: msg.body || "",
+        icon: msg.icon || "./icon-192.png",
+        badge: msg.badge || "./favicon-48.png",
+        tag: msg.tag || "wop-notify",
+        renotify: true,
+        data: msg.data || {}
+      })
+    );
+  }
+});

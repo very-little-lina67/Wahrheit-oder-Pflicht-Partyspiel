@@ -350,6 +350,16 @@
                 <div id="profile-badge-container" class="badge-showcase badge-showcase-collapsed"></div>
             </div>
 
+            <div class="box-section" id="notif-settings-box" style="padding:10px; margin-top:10px;">
+                <h4 id="ui-notif-head" style="margin:0 0 6px 0; color:#a78bfa; font-size:13px;">🔔 Benachrichtigungen</h4>
+                <p id="ui-notif-desc" style="font-size:11px;color:#aaa;margin:0 0 8px 0;">Auch außerhalb der App (wenn erlaubt): z. B. neue Privatnachrichten. Die App sollte installiert oder im Browser geöffnet sein.</p>
+                <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;">
+                    <input type="checkbox" id="notif-enable-toggle" onchange="setAppNotificationsEnabled(this.checked)">
+                    <span id="ui-notif-toggle-label">Benachrichtigungen aktivieren</span>
+                </label>
+                <p id="ui-notif-status" style="font-size:11px;color:#94a3b8;margin:6px 0 0 0;"></p>
+            </div>
+
             <div style="display: flex; gap: 8px; margin-top: 12px; justify-content: space-between;">
                 <button id="ui-btn-logout" class="btn-danger" onclick="logoutUser()" style="flex: 1; padding: 8px; font-size: 13px;">Logout</button>
                 <button id="ui-profile-close-btn" class="btn-blue" onclick="closeProfileModal()" style="flex: 1; padding: 8px; font-size: 13px;">Schließen</button>
