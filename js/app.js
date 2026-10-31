@@ -1218,7 +1218,12 @@
                 ? "Private Chats – auch ohne Lobby. Tippe auf eine Person, um zu antworten."
                 : "Private chats – even without a lobby. Tap a person to reply.";
             const dmInboxClose = document.getElementById("ui-dm-inbox-close");
-            if (dmInboxClose) dmInboxClose.innerText = currentLang === "de" ? "Schließen" : "Close";
+            if (dmInboxClose) {
+                // Kleiner Zurück-Button: nur Pfeil, kein langer Text (sonst läuft Schrift raus)
+                dmInboxClose.innerHTML = "←";
+                dmInboxClose.setAttribute("aria-label", currentLang === "de" ? "Zurück" : "Back");
+                dmInboxClose.title = currentLang === "de" ? "Zurück" : "Back";
+            }
             const frBtn = document.getElementById("ui-btn-friends");
             if (frBtn) {
                 const fl = document.getElementById("ui-btn-friends-label");
