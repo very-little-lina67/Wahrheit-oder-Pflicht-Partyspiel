@@ -890,8 +890,8 @@
         function startDiscordStatusPolling() {
             refreshDiscordStatus();
             if (discordStatusTimer) clearInterval(discordStatusTimer);
-            // Alle 45s aktualisieren
-            discordStatusTimer = setInterval(refreshDiscordStatus, 45000);
+            // Alle 30s aktualisieren
+            discordStatusTimer = setInterval(refreshDiscordStatus, 30000);
         }
 
 
