@@ -6865,7 +6865,15 @@
             document.getElementById("result-feedback-area").classList.remove("hidden");
 
             if (isNewResult) {
-                nextTurnVotedPlayers = [];
+                const activeCount = players.filter(p => !p.eliminated && !p.isSpectator).length;
+                const normalizedTarget = getUserDisplayName({ name: targetPlayer }, targetPlayer);
+                if (activeCount > 1 && normalizedTarget) {
+                    // Der aktive Spieler, der die Antwort gegeben oder Pflicht erfüllt hat,
+                    // ist automatisch bestätigt und muss nicht erneut bestätigen.
+                    nextTurnVotedPlayers = [normalizedTarget];
+                } else {
+                    nextTurnVotedPlayers = [];
+                }
             }
 
             document.getElementById("feedback-player-name").innerText =
@@ -6881,14 +6889,24 @@
             document.getElementById("feedback-result-box").innerText = resultText;
 
             const nextBtn = document.getElementById("next-turn-btn");
+            const hasControllableUnvoted = getNextControllableUnvotedName(nextTurnVotedPlayers);
+
             if (isSpectator) {
                 if (nextBtn) {
                     nextBtn.disabled = true;
                     nextBtn.innerText = currentLang === 'de' ? "👁️ [Zuschauer]" : "👁️ [Spectator]";
                 }
+            } else if (!hasControllableUnvoted) {
+                if (nextBtn) {
+                    nextBtn.disabled = true;
+                    const isSelfTarget = canControlPlayer(targetPlayer);
+                    nextBtn.innerText = isSelfTarget
+                        ? (currentLang === 'de' ? "✅ Erledigt (Warte auf Mitspieler…)" : "✅ Done (Waiting for players…)")
+                        : (currentLang === 'de' ? "✅ Bestätigt" : "✅ Confirmed");
+                }
             } else {
                 if (nextBtn) {
-                    nextBtn.disabled = !getNextControllableUnvotedName(nextTurnVotedPlayers);
+                    nextBtn.disabled = false;
                     nextBtn.innerText = currentLang === 'de' ? "Weiter" : "Next";
                 }
             }
@@ -6896,6 +6914,12 @@
             const activeCount = players.filter(p => !p.eliminated && !p.isSpectator).length;
             document.getElementById("next-votes-count").innerText = String(nextTurnVotedPlayers.length);
             document.getElementById("next-votes-total").innerText = String(activeCount);
+
+            if (isHost && activeCount > 0 && nextTurnVotedPlayers.length >= activeCount) {
+                const nextData = { type: 'EXECUTE_NEXT_TURN' };
+                handleIncomingData(nextData);
+                broadcastLobbyData(nextData);
+            }
         }
 
         function voteNextTurn() {
@@ -6936,7 +6960,16 @@
             {
                 const nb = document.getElementById("next-turn-btn");
                 if (nb && !isSpectator) {
-                    nb.disabled = !getNextControllableUnvotedName(nextTurnVotedPlayers);
+                    const hasUnvoted = getNextControllableUnvotedName(nextTurnVotedPlayers);
+                    nb.disabled = !hasUnvoted;
+                    if (!hasUnvoted) {
+                        const isSelfTarget = currentSharedResult && canControlPlayer(currentSharedResult.targetPlayer);
+                        nb.innerText = isSelfTarget
+                            ? (currentLang === 'de' ? "✅ Erledigt (Warte auf Mitspieler…)" : "✅ Done (Waiting for players…)")
+                            : (currentLang === 'de' ? "✅ Bestätigt" : "✅ Confirmed");
+                    } else {
+                        nb.innerText = currentLang === 'de' ? "Weiter" : "Next";
+                    }
                 }
             }
 

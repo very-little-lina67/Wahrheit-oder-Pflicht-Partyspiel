@@ -4,6 +4,16 @@ Alle wesentlichen Änderungen am Projekt werden in dieser Datei präzise und tec
 
 ---
 
+## [2.0.3] - 2026-11-04 (Branch: `feat/ws-server`)
+
+### New Features
+- **Optimierter Spiel- und Bestätigungsablauf (`js/app.js`):**
+  - Wer eine Wahrheits-Antwort abgeschickt hat oder eine Pflicht als erfüllt markiert hat, muss sein eigenes Ergebnis auf dem Feedback-Bildschirm nicht mehr redundant bestätigen („Ich bestätige“ / „Weiter“).
+  - Der aktive Spieler wird für die Rundenbestätigung automatisch als bereits bestätigt gewertet (`nextTurnVotedPlayers = [targetPlayer]`).
+  - Der Bestätigungs-Button zeigt dem aktiven Spieler direkt `✅ Erledigt (Warte auf Mitspieler…)` an und wartet ausschließlich auf die Bestätigungen der übrigen Mitspieler, die das Ergebnis einsehen.
+
+---
+
 ## [2.0.2] - 2026-11-04 (Branch: `feat/ws-server`)
 
 ### New Features
