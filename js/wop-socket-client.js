@@ -317,31 +317,42 @@
             }
 
             if (this.name === "directMessages") {
-                const me = localStorage.getItem("wop_user_email_v6") || "";
+                const me = (localStorage.getItem("wop_user_email_v6") || "").trim().toLowerCase();
                 const toFilter = this.queryFilters.find(f => f.field === "toEmail");
                 const fromFilter = this.queryFilters.find(f => f.field === "fromEmail");
-                const other = (toFilter && toFilter.value !== me) ? toFilter.value : (fromFilter ? fromFilter.value : "");
+
+                const toVal = toFilter ? String(toFilter.value).trim().toLowerCase() : "";
+                const fromVal = fromFilter ? String(fromFilter.value).trim().toLowerCase() : "";
+                const other = (toVal && toVal !== me) ? toVal : (fromVal && fromVal !== me ? fromVal : "");
 
                 if (other) {
-                    const res = await fetch(`/api/dm/history?me=${encodeURIComponent(me)}&other=${encodeURIComponent(other)}&limit=${this.limitVal}`);
+                    const res = await fetch(`/api/dm/history?me=${encodeURIComponent(me)}&other=${encodeURIComponent(other)}&limit=${this.limitVal || 50}`);
                     if (res.ok) {
                         const list = await res.json();
                         const docs = (list || []).map(m => ({
                             id: m.id,
-                            data: () => m
+                            data: () => ({
+                                ...m,
+                                createdAt: { toMillis: () => Date.parse(m.createdAt) || 0, toDate: () => new Date(m.createdAt) }
+                            })
                         }));
                         return createSnapshot(docs);
                     }
                 } else {
-                    // Unread Count Check
-                    const res = await fetch(`/api/dm/unread-count?email=${encodeURIComponent(me)}`);
+                    // Konversationen / Posteingang abrufen
+                    const res = await fetch(`/api/dm/conversations?email=${encodeURIComponent(me)}`);
                     if (res.ok) {
-                        const data = await res.json();
-                        const dummyDocs = new Array(data.unread || 0).fill(null).map((_, i) => ({
-                            id: "unread_" + i,
-                            data: () => ({ read: false })
+                        const list = await res.json();
+                        const docs = (list || []).map(m => ({
+                            id: m.id,
+                            data: () => ({
+                                ...m,
+                                toName: m.partnerName,
+                                fromName: m.partnerName,
+                                createdAt: { toMillis: () => Date.parse(m.createdAt) || 0, toDate: () => new Date(m.createdAt) }
+                            })
                         }));
-                        return createSnapshot(dummyDocs);
+                        return createSnapshot(docs);
                     }
                 }
                 return createSnapshot([]);
@@ -664,12 +675,14 @@
             okBtn.className = "wop-dialog-btn wop-dialog-btn-primary";
         }
 
+        overlay.style.display = "flex";
         overlay.classList.add("active");
         overlay.setAttribute("aria-hidden", "false");
 
         const cleanup = (result) => {
             overlay.classList.remove("active");
             overlay.setAttribute("aria-hidden", "true");
+            overlay.style.display = "none";
             okBtn.onclick = null;
             if (cancelBtn) cancelBtn.onclick = null;
             document.removeEventListener("keydown", keyHandler);

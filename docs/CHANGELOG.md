@@ -4,6 +4,26 @@ Alle wesentlichen Änderungen am Projekt werden in dieser Datei präzise und tec
 
 ---
 
+## [2.0.2] - 2026-11-04 (Branch: `feat/ws-server`)
+
+### New Features
+- **Direktnachrichten-Posteingang & Chat-Übersicht (`server.js`, `database.js` & `app.js`):**
+  - Implementierung von `getDmConversations(email)` und des neuen Endpunkts `/api/dm/conversations`.
+  - Der Chat-Tab zeigt ab sofort alle bisherigen und neuen Konversationen sortiert nach Datum mit Profil-Avatar, Live-Online-Status, Text-Vorschau und Ungelesen-Zähler an.
+  - Chats können direkt per Klick auf die Konversation oder den „Öffnen“-Button gestartet und fortgesetzt werden.
+
+### Bug Fixes
+- **Dialog-Popup im Seitenfluss behoben (`index.html`, `css/style.css` & `js/wop-socket-client.js`):**
+  - Das benutzerdefinierte Dialog-Modal (`#wop-custom-dialog-overlay`) ist standardmäßig strikt auf `display: none;` gesetzt, wodurch es nicht mehr fehlerhaft am unteren Seitenende hinter der Navigationsleiste gerendert wird.
+- **Datenschutz & Impressum bereinigt (`impressum.html`):**
+  - Persönlicher Discord-Profil-Link von Lina aus den Kontaktangaben im deutschen und englischen Impressum entfernt.
+- **Admin-Leitfaden erweitert (`docs/ADMIN_LINA_GUIDE.md`):**
+  - Anleitung für die Erstellung des Linux-Benutzers `lina` mit erzwungener Passwortänderung beim Erst-Login (`sudo passwd -e lina`).
+  - Sudoers-Konfiguration mit `NOPASSWD:` für `pm2 restart wop-server`, damit Lina den Dienst passwortfrei ohne Christians Kennwort steuern kann.
+  - Schritt-für-Schritt-Anleitung für SSH-Zugriff auf Android-Smartphones via Termius / JuiceSSH inkl. 1-Klick-Snippet-Automatisierung.
+
+---
+
 ## [2.0.1] - 2026-11-04 (Branch: `feat/ws-server`)
 
 ### Bug Fixes

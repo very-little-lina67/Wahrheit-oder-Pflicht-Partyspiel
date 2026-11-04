@@ -26,6 +26,7 @@ import {
     getDirectMessages,
     markDirectMessagesRead,
     getUnreadDmCount,
+    getDmConversations,
     createInvite,
     getInvites,
     deleteInvite,
@@ -451,6 +452,21 @@ app.post('/api/dm/mark-read', async (req, res) => {
         const { me, other } = req.body;
         if (me && other) await markDirectMessagesRead(me, other);
         res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.get('/api/dm/conversations', async (req, res) => {
+    try {
+        const email = req.query.email;
+        if (!email) return res.status(400).json({ error: 'E-Mail erforderlich.' });
+        const list = await getDmConversations(email);
+        const enriched = list.map(c => ({
+            ...c,
+            partnerOnline: userSockets.has(c.otherEmail) || Boolean(c.partnerOnline)
+        }));
+        res.json(enriched);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

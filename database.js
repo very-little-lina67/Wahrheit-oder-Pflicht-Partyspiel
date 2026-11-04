@@ -424,6 +424,37 @@ export async function getUnreadDmCount(email) {
     return row?.count || 0;
 }
 
+export async function getDmConversations(email) {
+    const cleanEmail = String(email || '').trim().toLowerCase();
+    if (!cleanEmail) return [];
+    const sql = `
+        SELECT 
+            m.id, m.fromEmail, m.fromName, m.toEmail, m.text, m.read, m.createdAt,
+            u.name as partnerName,
+            u.avatarEmote as partnerAvatar,
+            u.isOnline as partnerOnline,
+            CASE WHEN m.fromEmail = ? THEN m.toEmail ELSE m.fromEmail END as otherEmail,
+            (SELECT COUNT(*) FROM direct_messages unread_dm 
+             WHERE unread_dm.toEmail = ? 
+               AND unread_dm.fromEmail = (CASE WHEN m.fromEmail = ? THEN m.toEmail ELSE m.fromEmail END) 
+               AND unread_dm.read = 0) as unreadCount
+        FROM direct_messages m
+        LEFT JOIN users u ON u.email = (CASE WHEN m.fromEmail = ? THEN m.toEmail ELSE m.fromEmail END)
+        WHERE m.id IN (
+            SELECT MAX(id)
+            FROM direct_messages
+            WHERE fromEmail = ? OR toEmail = ?
+            GROUP BY (CASE WHEN fromEmail = ? THEN toEmail ELSE fromEmail END)
+        )
+        ORDER BY m.createdAt DESC
+    `;
+    const rows = await dbAll(sql, [cleanEmail, cleanEmail, cleanEmail, cleanEmail, cleanEmail, cleanEmail, cleanEmail]);
+    return rows.map(r => ({
+        ...r,
+        partnerOnline: Boolean(r.partnerOnline)
+    }));
+}
+
 // ==============================================================================
 // Game Invites
 // ==============================================================================

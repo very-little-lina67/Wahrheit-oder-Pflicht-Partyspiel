@@ -4037,62 +4037,56 @@
             list.innerHTML = currentLang === "de" ? "Lade…" : "Loading…";
             try {
                 const me = String(myEmail).toLowerCase();
-                const [inSnap, outSnap] = await Promise.all([
-                    db.collection("directMessages").where("toEmail", "==", me).limit(40).get(),
-                    db.collection("directMessages").where("fromEmail", "==", me).limit(40).get()
-                ]);
-                const map = new Map();
-                const addDoc = (doc) => {
-                    const d = doc.data() || {};
-                    const from = String(d.fromEmail || "").toLowerCase();
-                    const to = String(d.toEmail || "").toLowerCase();
-                    const other = from === me ? to : from;
-                    if (!other || other === me) return;
-                    const ts = d.createdAt && d.createdAt.toMillis ? d.createdAt.toMillis() : (Number(d.createdAtMs) || 0);
-                    const unread = !d.read && from !== me;
-                    const prev = map.get(other);
-                    if (!prev || ts >= prev.ts) {
-                        map.set(other, {
-                            email: other,
-                            name: from === me ? (d.toName || other.split("@")[0]) : (d.fromName || other.split("@")[0]),
-                            text: d.text || "",
-                            ts,
-                            unread: unread || !!(prev && prev.unread)
-                        });
-                    } else if (unread && prev) {
-                        prev.unread = true;
+                const res = await fetch(`/api/dm/conversations?email=${encodeURIComponent(me)}`);
+                if (res.ok) {
+                    const rows = await res.json();
+                    if (!rows || !rows.length) {
+                        list.innerHTML = `<span style="font-size:12px;color:#888;">${
+                            currentLang === "de"
+                                ? "Noch keine Nachrichten. Öffne Freunde oder Online-Spieler und tippe auf „Nachricht“."
+                                : "No messages yet. Open Friends or Online players and tap “Message”."
+                        }</span>`;
+                        refreshDmUnreadCount();
+                        return;
                     }
-                };
-                inSnap.forEach(addDoc);
-                outSnap.forEach(addDoc);
-                const rows = Array.from(map.values()).sort((a, b) => b.ts - a.ts);
-                if (!rows.length) {
-                    list.innerHTML = `<span style="font-size:12px;color:#888;">${
-                        currentLang === "de"
-                            ? "Noch keine Nachrichten. Öffne Freunde oder Online-Spieler und tippe auf „Nachricht“."
-                            : "No messages yet. Open Friends or Online players and tap “Message”."
-                    }</span>`;
+                    let html = "";
+                    rows.forEach(r => {
+                        const safeEmail = String(r.otherEmail || "").replace(/'/g, "\\'");
+                        const displayName = r.partnerName || r.otherEmail.split("@")[0] || "Spieler";
+                        const safeName = String(displayName).replace(/'/g, "\\'").replace(/"/g, "&quot;");
+                        const preview = String(r.text || "").replace(/</g, "&lt;").slice(0, 60);
+                        const isOnline = !!r.partnerOnline;
+                        const avatar = r.partnerAvatar || "💬";
+                        const unread = Number(r.unreadCount) > 0;
+                        let timeStr = "";
+                        try {
+                            if (r.createdAt) {
+                                const d = new Date(r.createdAt);
+                                timeStr = d.toLocaleDateString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+                            }
+                        } catch (e) {}
+                        html += `<div class="dm-inbox-row${unread ? " unread" : ""}" onclick="window.openDirectMessage && openDirectMessage('${safeEmail}', '${safeName}')" style="display:flex;align-items:center;justify-content:space-between;padding:10px;margin-bottom:6px;border-radius:8px;background:rgba(255,255,255,0.05);cursor:pointer;gap:8px;">
+                            <div style="min-width:0;flex:1;">
+                                <div style="display:flex;align-items:center;gap:6px;">
+                                    <span style="font-size:16px;">${avatar}</span>
+                                    <b>${String(displayName).replace(/</g,"&lt;")}</b>
+                                    <span style="font-size:10px;color:${isOnline ? '#28a745' : '#888'};">● ${isOnline ? 'Online' : ''}</span>
+                                    ${unread ? `<span style="background:#ef4444;color:#fff;border-radius:10px;padding:1px 6px;font-size:10px;font-weight:bold;">${r.unreadCount}</span>` : ""}
+                                </div>
+                                <div class="dm-inbox-preview" style="font-size:11px;color:#bbb;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${preview}</div>
+                            </div>
+                            <div style="text-align:right;">
+                                <div style="font-size:10px;color:#888;margin-bottom:4px;">${timeStr}</div>
+                                <button type="button" class="btn-blue" style="padding:4px 8px;font-size:11px;width:auto;margin:0;" onclick="event.stopPropagation();openDirectMessage('${safeEmail}', '${safeName}')">${currentLang === "de" ? "Öffnen" : "Open"}</button>
+                            </div>
+                        </div>`;
+                    });
+                    list.innerHTML = html;
                     refreshDmUnreadCount();
                     return;
                 }
-                let html = "";
-                rows.forEach(r => {
-                    const safeEmail = String(r.email).replace(/'/g, "\\'");
-                    const safeName = String(r.name || "").replace(/'/g, "\\'").replace(/"/g, "&quot;");
-                    const preview = String(r.text || "").replace(/</g, "&lt;").slice(0, 60);
-                    html += `<div class="dm-inbox-row${r.unread ? " unread" : ""}" onclick="window.openDirectMessage && openDirectMessage('${safeEmail}', '${safeName}')">
-                        <div style="min-width:0;flex:1;">
-                            <b>${String(r.name || r.email).replace(/</g,"&lt;")}</b>
-                            ${r.unread ? ' <span style="color:#f87171;font-size:10px;">●</span>' : ""}
-                            <div class="dm-inbox-preview">${preview}</div>
-                        </div>
-                        <button type="button" class="btn-blue" style="padding:4px 8px;font-size:11px;width:auto;margin:0;" onclick="event.stopPropagation();openDirectMessage('${safeEmail}', '${safeName}')">${currentLang === "de" ? "Öffnen" : "Open"}</button>
-                    </div>`;
-                });
-                list.innerHTML = html;
-                refreshDmUnreadCount();
             } catch (e) {
-                console.error(e);
+                console.error("renderDmInbox error:", e);
                 list.innerHTML = `<span style="color:#f87171;font-size:12px;">${msg("msgErrorLoad", "Laden fehlgeschlagen.", "Could not load.")}</span>`;
             }
         }
@@ -4165,51 +4159,17 @@
             try {
                 const me = String(myEmail).toLowerCase();
                 const other = String(dmTargetEmail).toLowerCase();
-                const [a, b] = await Promise.all([
-                    db.collection("directMessages").where("fromEmail", "==", me).where("toEmail", "==", other).limit(40).get(),
-                    db.collection("directMessages").where("fromEmail", "==", other).where("toEmail", "==", me).limit(40).get()
-                ]);
-                const items = [];
-                a.forEach(doc => items.push({ id: doc.id, ...doc.data() }));
-                b.forEach(doc => items.push({ id: doc.id, ...doc.data() }));
-                items.sort((x, y) => {
-                    const tx = x.createdAt && x.createdAt.toMillis ? x.createdAt.toMillis() : (x.createdAtMs || 0);
-                    const ty = y.createdAt && y.createdAt.toMillis ? y.createdAt.toMillis() : (y.createdAtMs || 0);
-                    return tx - ty;
-                });
-                dmThreadCache = items;
-                renderDmThread(items);
+                const res = await fetch(`/api/dm/history?me=${encodeURIComponent(me)}&other=${encodeURIComponent(other)}&limit=60`);
+                if (res.ok) {
+                    const items = await res.json();
+                    dmThreadCache = items;
+                    renderDmThread(items);
+                    return;
+                }
             } catch (e) {
                 console.error("loadDmThread", e);
-                // Fallback ohne zusammengesetzten Index: alles von/an mich laden und filtern
-                try {
-                    const me = String(myEmail).toLowerCase();
-                    const other = String(dmTargetEmail).toLowerCase();
-                    const [inSnap, outSnap] = await Promise.all([
-                        db.collection("directMessages").where("toEmail", "==", me).limit(50).get(),
-                        db.collection("directMessages").where("fromEmail", "==", me).limit(50).get()
-                    ]);
-                    const items = [];
-                    const push = (doc) => {
-                        const d = doc.data() || {};
-                        const from = String(d.fromEmail || "").toLowerCase();
-                        const to = String(d.toEmail || "").toLowerCase();
-                        if ((from === me && to === other) || (from === other && to === me)) {
-                            items.push({ id: doc.id, ...d });
-                        }
-                    };
-                    inSnap.forEach(push);
-                    outSnap.forEach(push);
-                    items.sort((x, y) => {
-                        const tx = x.createdAt && x.createdAt.toMillis ? x.createdAt.toMillis() : (x.createdAtMs || 0);
-                        const ty = y.createdAt && y.createdAt.toMillis ? y.createdAt.toMillis() : (y.createdAtMs || 0);
-                        return tx - ty;
-                    });
-                    renderDmThread(items);
-                } catch (e2) {
-                    box.innerHTML = `<span style="color:#f87171;font-size:12px;">${msg("msgErrorLoad", "Laden fehlgeschlagen.", "Could not load.")}</span>`;
-                }
             }
+            box.innerHTML = `<span style="color:#f87171;font-size:12px;">${msg("msgErrorLoad", "Laden fehlgeschlagen.", "Could not load.")}</span>`;
         }
 
         function renderDmThread(items) {
@@ -4231,8 +4191,9 @@
                 const safe = String(d.text || "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
                 let time = "";
                 try {
-                    if (d.createdAt && d.createdAt.toDate) time = d.createdAt.toDate().toLocaleString();
-                    else if (d.createdAtMs) time = new Date(d.createdAtMs).toLocaleString();
+                    if (d.createdAt && d.createdAt.toDate) time = d.createdAt.toDate().toLocaleString([], { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit" });
+                    else if (d.createdAtMs) time = new Date(d.createdAtMs).toLocaleString([], { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit" });
+                    else if (d.createdAt) time = new Date(d.createdAt).toLocaleString([], { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit" });
                 } catch (e) {}
                 html += `<div class="dm-msg${isOwn ? " own" : ""}"><div class="dm-meta">${name}${time ? " · " + time : ""}</div>${safe}</div>`;
             });
