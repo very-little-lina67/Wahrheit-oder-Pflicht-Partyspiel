@@ -151,3 +151,4 @@ curl -I http://127.0.0.1:3002/api/health
 # Externer Test über Domain:
 curl -I https://www.wop.omoflow.de/api/health
 ```
+

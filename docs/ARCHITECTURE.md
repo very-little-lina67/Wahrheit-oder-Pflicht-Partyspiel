@@ -128,3 +128,4 @@ Alle Tabellen werden beim Start per `CREATE TABLE IF NOT EXISTS` automatisch ini
 | `settings` | TEXT | JSON mit Spieleinstellungen |
 | `state` | TEXT | JSON mit aktuellem Spielzustand (Turn, Task, Players) |
 | `updatedAt` | DATETIME DEFAULT CURRENT_TIMESTAMP | Letztes Update |
+

@@ -119,3 +119,4 @@ Alle REST-Endpunkte laufen unter dem Präfix `/api`.
 ### 3.4 System
 - **`GET /api/health`**
   - Statusprüfung für Monitoring, Nginx und System-Healthchecks.
+
