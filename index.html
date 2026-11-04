@@ -25,10 +25,10 @@
     
     <!-- Socket.io Client für latenzfreie WebSocket-Kommunikation -->
     <script src="/socket.io/socket.io.js"></script>
-    <script src="js/wop-socket-client.js?v=2.0.3"></script>
+    <script src="js/wop-socket-client.js?v=2.0.4"></script>
 
     <!-- Ausgelagertes Stylesheet für Themes, Layout & Komponenten -->
-    <link rel="stylesheet" href="css/style.css?v=2.0.3">
+    <link rel="stylesheet" href="css/style.css?v=2.0.4">
     <style id="wop-early-auth-hide">
       /* Verhindert Login-Flash beim Reload wenn Session vorhanden */
       body.wop-authed #auth-modal { display: none !important; visibility: hidden !important; }
@@ -556,7 +556,7 @@
     <div id="dm-inbox-modal" class="dm-page hidden">
         <div class="dm-page-inner">
             <header class="dm-page-header">
-                <button type="button" class="dm-page-back" id="ui-dm-inbox-close" onclick="document.getElementById('dm-inbox-modal').classList.add('hidden');try{setBottomNavActive(null)}catch(e){}" aria-label="Zurück">←</button>
+                <button type="button" class="dm-page-back" id="ui-dm-inbox-close" onclick="document.getElementById('dm-inbox-modal').classList.add('hidden');try{setBottomNavActive(null)}catch(e){}try{refreshDmUnreadCount()}catch(e){}" aria-label="Zurück">←</button>
                 <div class="dm-page-header-text">
                     <h2 id="ui-dm-inbox-title">💬 Nachrichten</h2>
                     <p id="ui-dm-inbox-desc">Private Chats – auch ohne Lobby. Tippe auf eine Person, um zu antworten.</p>
@@ -844,7 +844,7 @@
     </div>
 
     <!-- Ausgelagerte Spiellogik, Firebase-Sync & Client-Interaktionen -->
-    <script src="js/app.js?v=2.0.3"></script>
+    <script src="js/app.js?v=2.0.4"></script>
     <script>
       // Service Worker registrieren → Chrome zeigt „App installieren“ statt nur Verknüpfung
       if ("serviceWorker" in navigator) {

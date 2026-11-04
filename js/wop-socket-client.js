@@ -320,6 +320,7 @@
                 const me = (localStorage.getItem("wop_user_email_v6") || "").trim().toLowerCase();
                 const toFilter = this.queryFilters.find(f => f.field === "toEmail");
                 const fromFilter = this.queryFilters.find(f => f.field === "fromEmail");
+                const readFilter = this.queryFilters.find(f => f.field === "read");
 
                 const toVal = toFilter ? String(toFilter.value).trim().toLowerCase() : "";
                 const fromVal = fromFilter ? String(fromFilter.value).trim().toLowerCase() : "";
@@ -335,6 +336,18 @@
                                 ...m,
                                 createdAt: { toMillis: () => Date.parse(m.createdAt) || 0, toDate: () => new Date(m.createdAt) }
                             })
+                        }));
+                        return createSnapshot(docs);
+                    }
+                } else if (readFilter && (readFilter.value === false || readFilter.value === 0)) {
+                    // Ungelesene Nachrichten abfragen
+                    const res = await fetch(`/api/dm/unread-count?email=${encodeURIComponent(me)}`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        const count = data.unread || 0;
+                        const docs = Array.from({ length: count }, (_, idx) => ({
+                            id: `unread_${idx}`,
+                            data: () => ({ read: false, toEmail: me })
                         }));
                         return createSnapshot(docs);
                     }

@@ -3991,31 +3991,22 @@
         }
 
         async function refreshDmUnreadCount() {
-            if (!myEmail || !db) {
+            if (!myEmail) {
                 updateDmBadge(0);
                 return;
             }
             try {
                 const me = String(myEmail).toLowerCase();
-                const snap = await db.collection("directMessages")
-                    .where("toEmail", "==", me)
-                    .where("read", "==", false)
-                    .limit(40)
-                    .get();
-                updateDmBadge(snap.size);
-            } catch (e) {
-                try {
-                    const me = String(myEmail).toLowerCase();
-                    const snap = await db.collection("directMessages").where("toEmail", "==", me).limit(40).get();
-                    let n = 0;
-                    snap.forEach(doc => {
-                        const d = doc.data() || {};
-                        if (d.read === false || d.read === undefined) n++;
-                    });
-                    updateDmBadge(n);
-                } catch (e2) {
-                    console.warn("DM unread count:", e2);
+                const res = await fetch(`/api/dm/unread-count?email=${encodeURIComponent(me)}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    updateDmBadge(data.unread || 0);
+                    return;
                 }
+                updateDmBadge(0);
+            } catch (e) {
+                console.warn("DM unread count error:", e);
+                updateDmBadge(0);
             }
         }
 
@@ -4029,6 +4020,7 @@
             const modal = document.getElementById("dm-inbox-modal");
             if (modal) modal.classList.remove("hidden");
             await renderDmInbox();
+            await refreshDmUnreadCount();
         }
 
         async function renderDmInbox() {
@@ -4057,7 +4049,8 @@
                         const preview = String(r.text || "").replace(/</g, "&lt;").slice(0, 60);
                         const isOnline = !!r.partnerOnline;
                         const avatar = r.partnerAvatar || "💬";
-                        const unread = Number(r.unreadCount) > 0;
+                        const unreadCount = Math.max(0, Number(r.unreadCount) || 0);
+                        const unread = unreadCount > 0;
                         let timeStr = "";
                         try {
                             if (r.createdAt) {
@@ -4071,9 +4064,9 @@
                                     <span style="font-size:16px;">${avatar}</span>
                                     <b>${String(displayName).replace(/</g,"&lt;")}</b>
                                     <span style="font-size:10px;color:${isOnline ? '#28a745' : '#888'};">● ${isOnline ? 'Online' : ''}</span>
-                                    ${unread ? `<span style="background:#ef4444;color:#fff;border-radius:10px;padding:1px 6px;font-size:10px;font-weight:bold;">${r.unreadCount}</span>` : ""}
+                                    ${unread ? `<span class="dm-unread-pill" style="background:#ef4444;color:#fff;border-radius:10px;padding:1px 6px;font-size:10px;font-weight:bold;margin-left:4px;box-shadow:0 0 6px rgba(239,68,68,0.5);">${unreadCount > 99 ? '99+' : unreadCount}</span>` : ""}
                                 </div>
-                                <div class="dm-inbox-preview" style="font-size:11px;color:#bbb;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${preview}</div>
+                                <div class="dm-inbox-preview" style="font-size:11px;color:${unread ? '#fff' : '#bbb'};font-weight:${unread ? '600' : 'normal'};margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${preview}</div>
                             </div>
                             <div style="text-align:right;">
                                 <div style="font-size:10px;color:#888;margin-bottom:4px;">${timeStr}</div>
@@ -4136,7 +4129,10 @@
             try { document.getElementById("online-players-modal")?.classList.add("hidden"); } catch (e) {}
             try { document.getElementById("dm-inbox-modal")?.classList.add("hidden"); } catch (e) {}
             loadDmThread();
-            markDmsReadFrom(dmTargetEmail).then(() => refreshDmUnreadCount());
+            markDmsReadFrom(dmTargetEmail).then(() => {
+                refreshDmUnreadCount();
+                renderDmInbox();
+            });
         }
 
         function closeDmModal() {
@@ -4147,9 +4143,11 @@
             const inbox = document.getElementById("dm-inbox-modal");
             if (inbox && !inbox.classList.contains("hidden")) {
                 setBottomNavActive("ui-btn-messages");
+                renderDmInbox();
             } else {
                 setBottomNavActive(null);
             }
+            refreshDmUnreadCount();
         }
 
         async function loadDmThread() {
@@ -4258,38 +4256,17 @@
         }
 
         async function markDmsReadFrom(fromEmail) {
-            if (!myEmail || !fromEmail || !db) return;
+            if (!myEmail || !fromEmail) return;
             const me = String(myEmail).toLowerCase();
             const other = String(fromEmail).toLowerCase();
             try {
-                const snap = await db.collection("directMessages")
-                    .where("toEmail", "==", me)
-                    .where("fromEmail", "==", other)
-                    .limit(30)
-                    .get();
-                const batch = db.batch();
-                let n = 0;
-                snap.forEach(doc => {
-                    const d = doc.data() || {};
-                    if (d.read) return;
-                    batch.update(doc.ref, { read: true });
-                    n++;
+                await fetch("/api/dm/mark-read", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ me, other })
                 });
-                if (n) await batch.commit();
             } catch (e) {
-                try {
-                    const snap = await db.collection("directMessages").where("toEmail", "==", me).limit(40).get();
-                    const batch = db.batch();
-                    let n = 0;
-                    snap.forEach(doc => {
-                        const d = doc.data() || {};
-                        if (String(d.fromEmail || "").toLowerCase() !== other) return;
-                        if (d.read) return;
-                        batch.update(doc.ref, { read: true });
-                        n++;
-                    });
-                    if (n) await batch.commit();
-                } catch (e2) {}
+                console.error("markDmsReadFrom error:", e);
             }
         }
 
@@ -4343,14 +4320,11 @@
                             dmSeenIds.add(id);
                             const from = String(d.fromEmail || "").toLowerCase();
                             if (from === me) return;
-                            if (d.read === true) return;
+                            if (d.read === true || d.read === 1) return;
                             if (typeof passChatFilter === "function" && !passChatFilter(d.text || "")) return;
-                            showDmToast(d.fromName, d.text, from);
-                            updateDmBadge((dmUnreadCount || 0) + 1);
-                            const inboxOpen = document.getElementById("dm-inbox-modal") && !document.getElementById("dm-inbox-modal").classList.contains("hidden");
-                            if (inboxOpen) renderDmInbox();
-                            // Offenen Chat nur lokal ergänzen – kein vollständiges Neuladen
-                            if (dmTargetEmail && from === String(dmTargetEmail).toLowerCase()) {
+
+                            const isCurrentChatOpen = dmTargetEmail && from === String(dmTargetEmail).toLowerCase();
+                            if (isCurrentChatOpen) {
                                 const msgObj = { id: id, ...d };
                                 dmThreadCache = (dmThreadCache || []).concat([msgObj]);
                                 renderDmThread(dmThreadCache);
@@ -4358,7 +4332,15 @@
                                     const box = document.getElementById("dm-messages");
                                     if (box) box.scrollTop = box.scrollHeight;
                                 } catch (e) {}
-                                markDmsReadFrom(from).then(() => refreshDmUnreadCount());
+                                markDmsReadFrom(from).then(() => {
+                                    refreshDmUnreadCount();
+                                    renderDmInbox();
+                                });
+                            } else {
+                                showDmToast(d.fromName, d.text, from);
+                                refreshDmUnreadCount();
+                                const inboxOpen = document.getElementById("dm-inbox-modal") && !document.getElementById("dm-inbox-modal").classList.contains("hidden");
+                                if (inboxOpen) renderDmInbox();
                             }
                         });
                     }, err => {
@@ -4377,10 +4359,11 @@
                                         dmSeenIds.add(id);
                                         const from = String(d.fromEmail || "").toLowerCase();
                                         if (from === me) return;
-                                        if (d.read === true) return;
-                                        showDmToast(d.fromName, d.text, from);
-                                        updateDmBadge((dmUnreadCount || 0) + 1);
-                                        if (dmTargetEmail && from === String(dmTargetEmail).toLowerCase()) {
+                                        if (d.read === true || d.read === 1) return;
+                                        if (typeof passChatFilter === "function" && !passChatFilter(d.text || "")) return;
+
+                                        const isCurrentChatOpen = dmTargetEmail && from === String(dmTargetEmail).toLowerCase();
+                                        if (isCurrentChatOpen) {
                                             const msgObj = { id: id, ...d };
                                             dmThreadCache = (dmThreadCache || []).concat([msgObj]);
                                             renderDmThread(dmThreadCache);
@@ -4388,6 +4371,15 @@
                                                 const box = document.getElementById("dm-messages");
                                                 if (box) box.scrollTop = box.scrollHeight;
                                             } catch (e) {}
+                                            markDmsReadFrom(from).then(() => {
+                                                refreshDmUnreadCount();
+                                                renderDmInbox();
+                                            });
+                                        } else {
+                                            showDmToast(d.fromName, d.text, from);
+                                            refreshDmUnreadCount();
+                                            const inboxOpen = document.getElementById("dm-inbox-modal") && !document.getElementById("dm-inbox-modal").classList.contains("hidden");
+                                            if (inboxOpen) renderDmInbox();
                                         }
                                     });
                                 }, e2 => console.warn("DM listener:", e2));

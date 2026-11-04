@@ -4,6 +4,17 @@ Alle wesentlichen Änderungen am Projekt werden in dieser Datei präzise und tec
 
 ---
 
+## [2.0.4] - 2026-11-04 (Branch: `feat/ws-server`)
+
+### Bug Fixes
+- **Chat-Badge & Ungelesen-Zähler korrigiert (`js/app.js`, `js/wop-socket-client.js`):**
+  - Das Badge am Chat-Icon in der unteren Menüleiste (`#hud-dm-badge`) spiegelt nicht mehr fälschlicherweise die Gesamtzahl der offenen Chat-Konversationen wider, sondern zählt exakt die Anzahl der tatsächlich ungelesenen Nachrichten über den dedizierten `/api/dm/unread-count` Endpunkt.
+  - Sobald alle Nachrichten gelesen sind (0 ungelesen), wird das Badge am Menü-Icon vollständig ausgeblendet (`display: none`).
+  - In der Chat-Übersicht (`dm-inbox-list`) zeigt jede Konversation ein separates rotes Badge mit der Anzahl der ungelesenen Nachrichten dieses spezifischen Kontakts.
+  - Beim Öffnen eines Chats werden Nachrichten über `POST /api/dm/mark-read` in der SQLite-Datenbank als gelesen markiert (`read = 1`), woraufhin der Zähler der Konversation und das Menü-Badge unmittelbar verschwinden.
+
+---
+
 ## [2.0.3] - 2026-11-04 (Branch: `feat/ws-server`)
 
 ### New Features
