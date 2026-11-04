@@ -1,18 +1,31 @@
 {
   "name": "wahrheit-oder-pflicht-partyspiel",
-  "version": "1.0.0",
-  "description": "Wahrheit oder Pflicht Partyspiel mit Themes und Multiplayer",
-  "main": "index.html",
+  "version": "2.0.0",
+  "description": "Wahrheit oder Pflicht Partyspiel mit Themes und Echtzeit-Multiplayer",
+  "main": "server.js",
+  "type": "module",
   "scripts": {
-    "start": "node dev-server.js",
-    "dev": "node dev-server.js"
+    "start": "node server.js",
+    "dev": "node server.js"
   },
   "keywords": [
     "truth-or-dare",
     "party-game",
-    "firebase",
+    "websocket",
+    "socket.io",
+    "sqlite",
     "multiplayer"
   ],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "socket.io": "^4.8.1",
+    "sqlite3": "^5.1.7"
+  },
+  "devDependencies": {
+    "socket.io-client": "^4.8.4"
+  }
 }

@@ -13,36 +13,13 @@
  */
 
 // ==========================================
-        // FIREBASE INITIALISIERUNG
+        // WEBSOCKET & BACKEND INITIALISIERUNG
         // ==========================================
-        const firebaseConfig = {
-            apiKey: "AIzaSyC8yK-9ALbnnVa9m3uO1RqWTwrW81nixng",
-            authDomain: "wahrheit-oder-pflicht-22116.firebaseapp.com",
-            projectId: "wahrheit-oder-pflicht-22116",
-            storageBucket: "wahrheit-oder-pflicht-22116.firebasestorage.app",
-            messagingSenderId: "426152165647",
-            appId: "1:426152165647:web:00beeaaf0f0e960dba3e7a",
-            measurementId: "G-9TNW0K7QTJ"
-        };
+        const socket = window.wopSocket;
+        const db = window.db;
 
-        if (!firebase.apps.length) {
-            firebase.initializeApp(firebaseConfig);
-        }
-
-        // Unnötige WebChannel-Warnungen unterdrücken (status: 1 = temporary transport error)
-        try {
-            firebase.firestore.setLogLevel("error");
-        } catch (e) {}
-
-        const db = firebase.firestore();
-
-        // Stabilere Verbindung (besonders auf Mobile / instabilem Netz)
-        try {
-            db.settings({
-                experimentalAutoDetectLongPolling: true,
-                merge: true
-            });
-        } catch (e) {}
+        // Sicherstellen, dass globale Referenzen für den Socket-Client bereitstehen
+        window.activeLobbyCode = "";
 
         let currentLang = "de";
         try {
@@ -3420,6 +3397,11 @@
         }
 
         function showLoggedInState() {
+            if (window.wopSocket && myEmail) {
+                try {
+                    window.wopSocket.emit("auth:identify", { email: myEmail, name: myName });
+                } catch (e) {}
+            }
             document.getElementById("auth-modal").classList.add("hidden");
             document.getElementById("account-modal")?.classList.add("hidden");
             document.getElementById("profile-modal")?.classList.add("hidden");
@@ -5102,7 +5084,14 @@
 
         let hostMessageBuffer = [];
         async function broadcastLobbyData(data) {
-            if (!myEmail || !activeLobbyCode || !isHost) return;
+            if (!activeLobbyCode || !isHost) return;
+            window.activeLobbyCode = activeLobbyCode;
+
+            // Ultraschneller WebSocket-Broadcast (< 15ms)
+            if (window.wopSocket && window.wopSocket.connected) {
+                window.wopSocket.emit("lobby:data", { code: activeLobbyCode, data });
+                return;
+            }
 
             lobbyMessageSeq++;
             const item = { seq: lobbyMessageSeq, data, sentAt: Date.now() };
@@ -5127,7 +5116,14 @@
 
         let clientMessageBuffer = [];
         async function sendClientLobbyData(data) {
-            if (!myEmail || !activeLobbyCode || isHost) return;
+            if (!activeLobbyCode || isHost) return;
+            window.activeLobbyCode = activeLobbyCode;
+
+            // Ultraschneller WebSocket-Broadcast (< 15ms)
+            if (window.wopSocket && window.wopSocket.connected) {
+                window.wopSocket.emit("lobby:data", { code: activeLobbyCode, data });
+                return;
+            }
 
             lobbyMessageSeq++;
             const item = { seq: lobbyMessageSeq, data, sentAt: Date.now() };
@@ -5459,6 +5455,13 @@
             }
             saveLobbySession();
             updateOnlineStatus(true);
+            window.activeLobbyCode = activeLobbyCode;
+            if (window.wopSocket && window.wopSocket.connected) {
+                window.wopSocket.emit("lobby:create", {
+                    code: activeLobbyCode,
+                    hostPlayer: { name: myName, email: myEmail, accessory: equippedAccessory }
+                });
+            }
         }
 
         function stopReconnectTimer() {
@@ -5526,6 +5529,13 @@
             }
             saveLobbySession();
             updateOnlineStatus(true);
+            window.activeLobbyCode = activeLobbyCode;
+            if (window.wopSocket && window.wopSocket.connected) {
+                window.wopSocket.emit("lobby:create", {
+                    code: activeLobbyCode,
+                    hostPlayer: { name: myName, email: myEmail, accessory: equippedAccessory }
+                });
+            }
 
             try {
                 await setLobbyPresence({
@@ -5646,6 +5656,14 @@
             leavingLobbyManually = false;
             stopReconnectTimer();
             activeLobbyCode = code;
+            window.activeLobbyCode = code;
+            if (window.wopSocket && window.wopSocket.connected) {
+                window.wopSocket.emit("lobby:join", {
+                    code: code,
+                    player: { name: myName, email: myEmail, accessory: equippedAccessory },
+                    isSpectator: !!isSpectator
+                });
+            }
             isHost = false;
             clearLobbyJoinTimeout();
             destroyPeerOnly();
@@ -5906,6 +5924,13 @@
             }
             clearLobbyPresence();
 
+            if (window.wopSocket && window.wopSocket.connected && activeLobbyCode) {
+                try {
+                    window.wopSocket.emit("lobby:leave", { code: activeLobbyCode, playerName: myName });
+                } catch (e) {}
+            }
+            window.activeLobbyCode = "";
+
             if (peer) {
                 try { peer.destroy(); } catch(e) {}
                 peer = null;
@@ -5975,6 +6000,7 @@
         }
 
         function handleIncomingData(data) {
+            window.handleIncomingData = handleIncomingData;
             if (data.type === 'ADD_LOCAL_PLAYER') {
                 if (isHost && !gameStarted && data.player && data.player.name) {
                     const nm = getUserDisplayName(data.player);

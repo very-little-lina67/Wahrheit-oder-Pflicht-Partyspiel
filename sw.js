@@ -35,11 +35,11 @@ self.addEventListener("fetch", (event) => {
   if (req.method !== "GET") return;
 
   const url = new URL(req.url);
-  // Firebase / externe APIs nicht cachen
-  if (url.hostname.includes("googleapis.com") ||
-      url.hostname.includes("firebaseio.com") ||
-      url.hostname.includes("gstatic.com") ||
-      url.hostname.includes("firestore.googleapis.com")) {
+  // WebSockets & REST APIs niemals cachen
+  if (url.pathname.startsWith("/socket.io/") ||
+      url.pathname.startsWith("/api/") ||
+      url.hostname.includes("googleapis.com") ||
+      url.hostname.includes("gstatic.com")) {
     return;
   }
 
