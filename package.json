@@ -6,7 +6,8 @@
   "type": "module",
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js"
+    "dev": "node server.js",
+    "migrate:firebase": "node scripts/migrate-from-firebase.js"
   },
   "keywords": [
     "truth-or-dare",
