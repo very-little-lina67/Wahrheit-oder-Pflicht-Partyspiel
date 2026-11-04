@@ -238,3 +238,4 @@ migrate().catch(err => {
     console.error('❌ Fehler bei der Migration:', err);
     process.exit(1);
 });
+
