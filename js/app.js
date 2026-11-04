@@ -3045,7 +3045,7 @@
         }
 
         /** Eigene Aufgabe mit Skip-Joker überspringen (keine Belohnung). */
-        function useSkipJoker() {
+        async function useSkipJoker() {
             if (isSpectator || taskCompleted) return;
             if (jokerSkipCount <= 0) {
                 alert(currentLang === "de"
@@ -3057,7 +3057,7 @@
             if (!currentP || !canControlPlayer(getUserDisplayName(currentP))) return;
             if (!pendingChoice) return;
 
-            if (!confirm(currentLang === "de"
+            if (!await customConfirm(currentLang === "de"
                 ? "Skip-Joker verwenden und diese Aufgabe überspringen? (keine XP/Coins)"
                 : "Use Skip Joker and skip this task? (no XP/Coins)")) {
                 return;
@@ -3097,7 +3097,7 @@
          * Force-Skip: den aktuell dran seienden Spieler aussetzen.
          * Nur nutzbar, wenn man selbst nicht der aktuelle Spieler ist und eine Aufgabe läuft.
          */
-        function useForceSkipJoker() {
+        async function useForceSkipJoker() {
             if (isSpectator) return;
             if (jokerForceCount <= 0) {
                 alert(currentLang === "de"
@@ -3122,7 +3122,7 @@
                 return;
             }
 
-            if (!confirm(currentLang === "de"
+            if (!await customConfirm(currentLang === "de"
                 ? `Force-Skip-Joker auf ${targetName} anwenden? Die Aufgabe wird übersprungen.`
                 : `Apply Force-Skip Joker on ${targetName}? The task will be skipped.`)) {
                 return;
@@ -3753,7 +3753,7 @@
             if (myRole !== "master" && myRole !== "admin") return;
             if (isMasterAccount(email)) return;
             const confirmMsg = translations[currentLang]?.alertDeleteAdminConfirm || (currentLang === "de" ? "Diesen Benutzer wirklich löschen?" : "Really delete this user?");
-            if (!confirm(confirmMsg)) return;
+            if (!await customConfirm(confirmMsg)) return;
             adminUserListCache = null;
             try {
                 await db.collection("users").doc(email).delete();
@@ -3781,13 +3781,13 @@
                 || (currentLang === "de"
                     ? "Möchtest du dein Konto wirklich unwiderruflich löschen?\n\nAlle deine Daten werden gelöscht. Diese Aktion kann nicht rückgängig gemacht werden."
                     : "Do you really want to permanently delete your account?\n\nAll your data will be deleted. This action cannot be undone.");
-            if (!confirm(confirmMsg)) return;
+            if (!await customConfirm(confirmMsg)) return;
 
             // Zweite Bestätigung für zusätzliche Sicherheit
             const confirm2 = currentLang === "de"
                 ? "Letzte Bestätigung: Konto endgültig löschen?"
                 : "Final confirmation: permanently delete account?";
-            if (!confirm(confirm2)) return;
+            if (!await customConfirm(confirm2)) return;
 
             try {
                 // Online-Status beenden & Listener stoppen
@@ -4802,7 +4802,7 @@
         }
 
         async function removeFriend(friendEmail) {
-            if (!confirm(currentLang === "de" ? "Freund wirklich entfernen?" : "Really remove this friend?")) return;
+            if (!await customConfirm(currentLang === "de" ? "Freund wirklich entfernen?" : "Really remove this friend?")) return;
             const email = String(friendEmail || "").trim().toLowerCase();
             if (!email) return;
             try {
@@ -5887,8 +5887,8 @@
             }
         }
 
-        function leaveLobby() {
-            if (!confirm(currentLang === 'de' ? "Möchtest du die Lobby wirklich verlassen?" : "Do you really want to leave the lobby?")) {
+        async function leaveLobby() {
+            if (!await customConfirm(currentLang === 'de' ? "Möchtest du die Lobby wirklich verlassen?" : "Do you really want to leave the lobby?")) {
                 return;
             }
             // Runden-Stats zeigen, wenn in dieser Session etwas passiert ist

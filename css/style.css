@@ -2604,3 +2604,108 @@ html {
     padding-bottom: 0 !important;
 }
 
+/* ============================================================
+   BOTTOM NAVIGATION: Nur sichtbar wenn eingeloggt (wop-authed)
+   ============================================================ */
+body:not(.wop-authed) .app-bottom-nav,
+body:not(.wop-authed) #app-bottom-nav {
+    display: none !important;
+}
+
+/* ============================================================
+   CUSTOM DESIGN DIALOG POPUP (Ersetzt Browser alert & confirm)
+   ============================================================ */
+.wop-custom-dialog-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(8, 10, 24, 0.78);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.22s ease, visibility 0.22s ease;
+    padding: 16px;
+    box-sizing: border-box;
+}
+.wop-custom-dialog-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+.wop-dialog-card {
+    position: relative;
+    width: 100%;
+    max-width: 420px;
+    background: linear-gradient(145deg, rgba(28, 34, 64, 0.96), rgba(15, 18, 38, 0.98));
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 22px;
+    padding: 24px 22px 20px;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.65), 0 0 35px rgba(167, 139, 250, 0.18);
+    color: #f1f5f9;
+    text-align: center;
+    transform: scale(0.92) translateY(10px);
+    transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+    box-sizing: border-box;
+}
+.wop-custom-dialog-overlay.active .wop-dialog-card {
+    transform: scale(1) translateY(0);
+}
+.wop-dialog-icon {
+    font-size: 2.4rem;
+    margin-bottom: 8px;
+    display: inline-block;
+}
+.wop-dialog-title {
+    margin: 0 0 10px;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #e2e8f0;
+}
+.wop-dialog-msg {
+    margin: 0 0 20px;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    color: #cbd5e1;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+.wop-dialog-buttons {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+.wop-dialog-btn {
+    appearance: none;
+    flex: 1;
+    padding: 12px 18px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: all 0.15s ease;
+}
+.wop-dialog-btn:active {
+    transform: scale(0.97);
+}
+.wop-dialog-btn-primary {
+    background: linear-gradient(135deg, #a855f7, #6366f1);
+    color: #fff;
+    box-shadow: 0 4px 14px rgba(168, 85, 247, 0.4);
+}
+.wop-dialog-btn-primary:hover {
+    background: linear-gradient(135deg, #b96bfa, #7579f3);
+}
+.wop-dialog-btn-cancel {
+    background: rgba(255, 255, 255, 0.08);
+    color: #cbd5e1;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+}
+.wop-dialog-btn-cancel:hover {
+    background: rgba(255, 255, 255, 0.14);
+}
+
+

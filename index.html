@@ -79,6 +79,15 @@
                 <button id="ui-btn-register" onclick="registerUser()" style="padding: 10px; font-size: 14px;">Register</button>
                 <button id="ui-btn-login" onclick="loginUser()" style="padding: 10px; font-size: 14px;">Log In</button>
             </div>
+
+            <!-- Rechtliche Links direkt auf der Login-Seite -->
+            <div style="margin-top: 16px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.1); text-align: center; font-size: 11px; display: flex; justify-content: center; gap: 12px;">
+                <a href="regelwerk.html" style="color: #94a3b8; text-decoration: none;">Regelwerk</a>
+                <span style="color: rgba(255,255,255,0.2);">·</span>
+                <a href="impressum.html" style="color: #94a3b8; text-decoration: none;">Impressum</a>
+                <span style="color: rgba(255,255,255,0.2);">·</span>
+                <a href="datenschutz.html" style="color: #94a3b8; text-decoration: none;">Datenschutz</a>
+            </div>
         </div>
     </div>
 
@@ -871,6 +880,19 @@
             <span class="app-nav-label" id="ui-btn-shop-label">Shop</span>
         </button>
     </nav>
+
+    <!-- CUSTOM DESIGN DIALOG POPUP (Ersetzt Browser alert & confirm) -->
+    <div id="wop-custom-dialog-overlay" class="wop-custom-dialog-overlay" aria-hidden="true" role="dialog" aria-modal="true">
+        <div class="wop-dialog-card">
+            <div id="wop-dialog-icon" class="wop-dialog-icon">ℹ️</div>
+            <h3 id="wop-dialog-title" class="wop-dialog-title">Hinweis</h3>
+            <p id="wop-dialog-msg" class="wop-dialog-msg"></p>
+            <div id="wop-dialog-buttons" class="wop-dialog-buttons">
+                <button type="button" id="wop-dialog-cancel" class="wop-dialog-btn wop-dialog-btn-cancel" style="display:none;">Abbrechen</button>
+                <button type="button" id="wop-dialog-ok" class="wop-dialog-btn wop-dialog-btn-primary">OK</button>
+            </div>
+        </div>
+    </div>
 
 </body>
 </html>

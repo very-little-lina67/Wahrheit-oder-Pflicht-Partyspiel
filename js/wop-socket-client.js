@@ -533,5 +533,127 @@
         }
         return result;
     }
+
+    // ==============================================================================
+    // 4. CUSTOM DESIGN DIALOG POPUPS (Ersetzt Browser alert & confirm)
+    // ==============================================================================
+    const dialogQueue = [];
+    let isDialogOpen = false;
+
+    function detectIcon(msg, isConfirm) {
+        if (!msg) return isConfirm ? "❓" : "ℹ️";
+        if (msg.includes("🚨") || msg.includes("⚠️") || msg.includes("Achtung") || msg.includes("unwiderruflich")) return "⚠️";
+        if (msg.includes("🎉") || msg.includes("Erfolgreich") || msg.includes("erfolgreich") || msg.includes("bestätigt")) return "🎉";
+        if (msg.includes("❌") || msg.includes("Fehler") || msg.includes("Error") || msg.includes("fehlgeschlagen")) return "❌";
+        if (msg.includes("👥") || msg.includes("Freund")) return "👥";
+        if (msg.includes("💬") || msg.includes("Chat")) return "💬";
+        if (msg.includes("🚀") || msg.includes("Lobby")) return "🚀";
+        if (msg.includes("🗑️") || msg.includes("löschen")) return "🗑️";
+        return isConfirm ? "❓" : "ℹ️";
+    }
+
+    function detectTitle(msg, isConfirm) {
+        const isEn = (window.currentLang === "en");
+        if (isConfirm) return isEn ? "Confirmation" : "Bestätigung";
+        if (msg && (msg.includes("Fehler") || msg.includes("Error"))) return isEn ? "Error" : "Hinweis";
+        if (msg && (msg.includes("Erfolgreich") || msg.includes("Success"))) return isEn ? "Success" : "Erfolg";
+        return isEn ? "Notification" : "Hinweis";
+    }
+
+    window.customAlert = function (message, customTitle) {
+        return new Promise((resolve) => {
+            dialogQueue.push({
+                type: "alert",
+                message: String(message || ""),
+                title: customTitle,
+                resolve
+            });
+            processNextDialog();
+        });
+    };
+
+    window.customConfirm = function (message, customTitle) {
+        return new Promise((resolve) => {
+            dialogQueue.push({
+                type: "confirm",
+                message: String(message || ""),
+                title: customTitle,
+                resolve
+            });
+            processNextDialog();
+        });
+    };
+
+    // Globalen alert überschreiben
+    window.alert = function (msg) {
+        window.customAlert(msg);
+    };
+
+    function processNextDialog() {
+        if (isDialogOpen || dialogQueue.length === 0) return;
+        const current = dialogQueue.shift();
+        isDialogOpen = true;
+
+        const overlay = document.getElementById("wop-custom-dialog-overlay");
+        const iconEl = document.getElementById("wop-dialog-icon");
+        const titleEl = document.getElementById("wop-dialog-title");
+        const msgEl = document.getElementById("wop-dialog-msg");
+        const okBtn = document.getElementById("wop-dialog-ok");
+        const cancelBtn = document.getElementById("wop-dialog-cancel");
+
+        if (!overlay || !msgEl || !okBtn) {
+            console.log("Dialog fallback:", current.message);
+            isDialogOpen = false;
+            current.resolve(true);
+            return;
+        }
+
+        const isConfirm = current.type === "confirm";
+        const isEn = (window.currentLang === "en");
+
+        if (iconEl) iconEl.textContent = detectIcon(current.message, isConfirm);
+        if (titleEl) titleEl.textContent = current.title || detectTitle(current.message, isConfirm);
+        msgEl.textContent = current.message;
+
+        if (isConfirm) {
+            if (cancelBtn) {
+                cancelBtn.style.display = "block";
+                cancelBtn.textContent = isEn ? "Cancel" : "Abbrechen";
+            }
+            okBtn.textContent = isEn ? "Confirm" : "Bestätigen";
+            okBtn.className = "wop-dialog-btn wop-dialog-btn-primary";
+        } else {
+            if (cancelBtn) cancelBtn.style.display = "none";
+            okBtn.textContent = isEn ? "OK" : "Verstanden";
+            okBtn.className = "wop-dialog-btn wop-dialog-btn-primary";
+        }
+
+        overlay.classList.add("active");
+        overlay.setAttribute("aria-hidden", "false");
+
+        const cleanup = (result) => {
+            overlay.classList.remove("active");
+            overlay.setAttribute("aria-hidden", "true");
+            okBtn.onclick = null;
+            if (cancelBtn) cancelBtn.onclick = null;
+            document.removeEventListener("keydown", keyHandler);
+            isDialogOpen = false;
+            current.resolve(result);
+            setTimeout(processNextDialog, 80);
+        };
+
+        const keyHandler = (e) => {
+            if (e.key === "Escape") {
+                cleanup(false);
+            } else if (e.key === "Enter") {
+                cleanup(true);
+            }
+        };
+
+        okBtn.onclick = () => cleanup(true);
+        if (cancelBtn) cancelBtn.onclick = () => cleanup(false);
+        document.addEventListener("keydown", keyHandler);
+        okBtn.focus();
+    }
 })();
 
