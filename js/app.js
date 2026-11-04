@@ -1480,13 +1480,21 @@
             if (timestamp instanceof Date) return timestamp.getTime();
             if (typeof timestamp === "number") return timestamp;
             if (typeof timestamp.seconds === "number") return timestamp.seconds * 1000;
+            if (typeof timestamp === "string") {
+                let clean = timestamp.trim();
+                if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/.test(clean)) {
+                    clean = clean.replace(' ', 'T') + 'Z';
+                }
+                const parsed = Date.parse(clean);
+                return isNaN(parsed) ? 0 : parsed;
+            }
             return 0;
         }
 
         function formatLastOnline(lastActive, isOnlineFlag) {
             const ms = getLastActiveMillis(lastActive);
             const now = Date.now();
-            const isOnline = !!isOnlineFlag && ms > 0 && (now - ms < ONLINE_TIMEOUT_MS);
+            const isOnline = !!isOnlineFlag || (ms > 0 && (now - ms < ONLINE_TIMEOUT_MS));
             
             if (isOnline) {
                 return {
@@ -1895,6 +1903,9 @@
         async function updateOnlineStatus(status) {
             if (!myEmail) return;
             try {
+                if (window.wopIdentify) {
+                    window.wopIdentify(myEmail, myName, activeLobbyCode || "");
+                }
                 await db.collection("users").doc(myEmail).set({
                     isOnline: status,
                     lastActive: firebase.firestore.FieldValue.serverTimestamp(),
@@ -1913,6 +1924,9 @@
 
         function startOnlineHeartbeat() {
             if (onlineHeartbeatTimer) clearInterval(onlineHeartbeatTimer);
+            if (myEmail && !document.hidden) {
+                updateOnlineStatus(true);
+            }
             onlineHeartbeatTimer = setInterval(() => {
                 if (myEmail && !document.hidden) {
                     updateOnlineStatus(true);
@@ -2090,10 +2104,8 @@
                 snapshot.forEach(doc => {
                     let data = doc.data() || {};
                     const playerName = getUserDisplayName(data);
-                    const lastActiveMs = data.lastActive && typeof data.lastActive.toMillis === "function"
-                        ? data.lastActive.toMillis()
-                        : 0;
-                    const isRecentlyOnline = lastActiveMs > 0 && (now - lastActiveMs) <= ONLINE_TIMEOUT_MS;
+                    const lastActiveMs = getLastActiveMillis(data.lastActive);
+                    const isRecentlyOnline = (!!data.isOnline && (lastActiveMs === 0 || (now - lastActiveMs) <= ONLINE_TIMEOUT_MS * 2)) || (lastActiveMs > 0 && (now - lastActiveMs) <= ONLINE_TIMEOUT_MS);
 
                     if (playerName !== myName && isRecentlyOnline) {
                         found = true;
@@ -3290,6 +3302,9 @@
 
                 localStorage.setItem("wop_user_email_v6", myEmail);
                 localStorage.setItem("wop_user_name_v6", myName);
+                if (window.wopIdentify) {
+                    window.wopIdentify(myEmail, myName);
+                }
                 userDataHydrated = true;
                 saveProgressBackup();
 
@@ -3354,6 +3369,9 @@
 
                         localStorage.setItem("wop_user_email_v6", myEmail);
                         localStorage.setItem("wop_user_name_v6", myName);
+                        if (window.wopIdentify) {
+                            window.wopIdentify(myEmail, myName);
+                        }
                         await loadUserDataFromCloud();
                         showLoggedInState();
                         startOnlineHeartbeat();

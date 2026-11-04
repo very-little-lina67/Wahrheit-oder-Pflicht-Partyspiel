@@ -104,3 +104,4 @@ pm2 start ecosystem.config.cjs
 | **Backend-Port** | `3002` (intern via Nginx) |
 | **Datenbank** | `/var/www/wop/wop.sqlite` (SQLite WAL) |
 | **Git Branch** | `feat/ws-server` |
+

@@ -4,6 +4,23 @@ Alle wesentlichen Änderungen am Projekt werden in dieser Datei präzise und tec
 
 ---
 
+## [2.0.1] - 2026-11-04 (Branch: `feat/ws-server`)
+
+### Bug Fixes
+- **Freundschaftslisten-Synchronisation behoben (`database.js` & `wop-socket-client.js`):**
+  - `getUserByEmail(email)` lädt ab sofort alle bestehenden Freundschaftsbeziehungen aus der SQLite-Tabelle `friends` und hängt sie als `friends: [...]`-Array an das User-Objekt an. Dadurch initialisiert das Frontend (`app.js`) `myFriends` korrekt.
+  - `DocumentReference.set` in `wop-socket-client.js` leitet `arrayUnion` und `arrayRemove`-Operationen auf Freundschaften nun unmittelbar an die REST- und WebSocket-Endpunkte weiter.
+- **Bidirektionale Freundschaftsspeicherung (`scripts/migrate-from-firebase.js` & `database.js`):**
+  - Migration und Freundschaftsoperationen (`addFriendPair`) speichern Freundschaften jetzt strikt bidirektional ab (`(email, friendEmail)` sowie `(friendEmail, email)`), sodass beide Beteiligten sich gegenseitig in ihren Listen sehen.
+- **Präsenz- und Zeitstempel-Erkennung korrigiert ("Noch nie online" behoben, `js/app.js`):**
+  - `getLastActiveMillis` unterstützte vormals nur Firestore-Timestamp-Objekte und ignorierte SQLite-ISO/DateTime-Strings (Rückgabe von `0`). Nun werden sowohl ISO-8601-Strings als auch SQLite-Datetime-Formate sauber geparst.
+  - `formatLastOnline` stuft Nutzer mit aktivem Live-Flag `isOnline` oder frischer Aktivität nun zuverlässig als "Jetzt online" ein, anstatt "Noch nie online" anzuzeigen.
+- **Live-Socket-Online-Status im Admin-Panel & Spielerübersicht (`server.js`):**
+  - Die Endpunkte `/api/admin/users`, `/api/user/profile` und `/api/users/online` reichern Nutzerdaten jetzt in Echtzeit mit der aktiven Socket-Map (`userSockets`) an.
+  - `window.wopIdentify` triggert die Socket-Identifikation sofort beim Login, bei Registrierung sowie bei Reconnects, ohne auf einen Page-Reload angewiesen zu sein.
+
+---
+
 ## [2.0.0] - 2026-11-04 (Branch: `feat/ws-server`)
 
 ### New Features

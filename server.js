@@ -217,6 +217,12 @@ app.post('/api/auth/login', async (req, res) => {
             user.role = 'master';
         }
 
+        // Online-Status und lastActive sofort aktualisieren
+        await setOnlineStatus(cleanEmail, true);
+        user.isOnline = true;
+        user.lastActive = new Date().toISOString();
+        io.emit('social:presence', { email: cleanEmail, isOnline: true });
+
         res.json({ success: true, user });
     } catch (err) {
         console.error('Login-Fehler:', err);
@@ -230,6 +236,7 @@ app.get('/api/user/profile', async (req, res) => {
         if (!email) return res.status(400).json({ error: 'E-Mail erforderlich.' });
         const user = await getUserByEmail(email);
         if (!user) return res.status(404).json({ error: 'Benutzer nicht gefunden.' });
+        user.isOnline = userSockets.has(user.email) || Boolean(user.isOnline);
         res.json(user);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -262,7 +269,17 @@ app.put('/api/user/profile', async (req, res) => {
 app.get('/api/users/online', async (req, res) => {
     try {
         const onlineEmails = Array.from(userSockets.keys());
-        res.json({ online: onlineEmails });
+        const users = [];
+        for (const email of onlineEmails) {
+            const u = await getUserByEmail(email);
+            if (u) {
+                users.push({
+                    ...u,
+                    isOnline: true
+                });
+            }
+        }
+        res.json({ online: onlineEmails, users });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -471,7 +488,11 @@ app.get('/api/admin/users', async (req, res) => {
             return res.status(403).json({ error: 'Zugriff verweigert.' });
         }
         const users = await getAllUsers();
-        res.json(users);
+        const enriched = users.map(user => ({
+            ...user,
+            isOnline: userSockets.has(user.email) || Boolean(user.isOnline)
+        }));
+        res.json(enriched);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -543,6 +564,7 @@ io.on('connection', (socket) => {
         if (!data || !data.email) return;
         const email = String(data.email).trim().toLowerCase();
         const name = data.name || 'Spieler';
+        const currentLobby = data.currentLobby || '';
 
         socketUsers.set(socket.id, { email, name });
         if (!userSockets.has(email)) {
@@ -550,8 +572,21 @@ io.on('connection', (socket) => {
         }
         userSockets.get(email).add(socket.id);
 
-        await setOnlineStatus(email, true);
-        io.emit('social:presence', { email, isOnline: true });
+        await setOnlineStatus(email, true, currentLobby);
+        io.emit('social:presence', { email, isOnline: true, currentLobby });
+    });
+
+    socket.on('user:heartbeat', async (data) => {
+        if (!data || !data.email) return;
+        const email = String(data.email).trim().toLowerCase();
+        const currentLobby = data.currentLobby || '';
+
+        if (!userSockets.has(email)) {
+            userSockets.set(email, new Set());
+        }
+        userSockets.get(email).add(socket.id);
+
+        await setOnlineStatus(email, true, currentLobby);
     });
 
     // 2. Lobbies

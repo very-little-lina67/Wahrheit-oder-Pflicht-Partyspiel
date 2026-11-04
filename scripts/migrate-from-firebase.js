@@ -148,7 +148,7 @@ async function migrate() {
         );
         userCount++;
 
-        // Freundschaften migrieren
+        // Freundschaften migrieren (beidseitig absichern)
         if (Array.isArray(u.friends)) {
             for (const f of u.friends) {
                 const friendEmail = String(f || '').trim().toLowerCase();
@@ -156,6 +156,10 @@ async function migrate() {
                     await dbRun(
                         'INSERT OR IGNORE INTO friends (userEmail, friendEmail) VALUES (?, ?)',
                         [email, friendEmail]
+                    );
+                    await dbRun(
+                        'INSERT OR IGNORE INTO friends (userEmail, friendEmail) VALUES (?, ?)',
+                        [friendEmail, email]
                     );
                     friendCount++;
                 }

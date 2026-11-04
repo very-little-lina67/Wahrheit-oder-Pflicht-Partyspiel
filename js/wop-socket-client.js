@@ -47,6 +47,14 @@
 
     window.wopSocket = socket;
 
+    // Globale Identifikation für Socket.io (bei Login oder Reconnect aufrufbar)
+    window.wopIdentify = function(email, name, currentLobby = "") {
+        if (!email) return;
+        if (socket && socket.connected) {
+            socket.emit("auth:identify", { email, name: name || "Spieler", currentLobby });
+        }
+    };
+
     // 2. Firebase FieldValue Kompatibilität
     window.firebase = {
         apps: [{ name: "[DEFAULT]" }],
@@ -255,9 +263,12 @@
                 if (isOnlineFilter) {
                     const res = await fetch("/api/users/online");
                     const data = await res.json();
-                    const docs = (data.online || []).map(email => ({
-                        id: email,
-                        data: () => ({ email, isOnline: true })
+                    const userList = (Array.isArray(data.users) && data.users.length)
+                        ? data.users
+                        : (data.online || []).map(email => ({ email, isOnline: true }));
+                    const docs = userList.map(u => ({
+                        id: u.email,
+                        data: () => u
                     }));
                     return createSnapshot(docs);
                 }
@@ -435,6 +446,29 @@
                     });
                 }
 
+                // Freundschaftsänderungen direkt synchronisieren
+                if (data.friends && typeof data.friends === "object") {
+                    if (data.friends.__op === "arrayUnion") {
+                        const items = Array.isArray(data.friends.items) ? data.friends.items : [];
+                        for (const f of items) {
+                            fetch("/api/social/accept-request", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ userEmail: this.id, friendEmail: f })
+                            }).catch(() => {});
+                        }
+                    } else if (data.friends.__op === "arrayRemove") {
+                        const items = Array.isArray(data.friends.items) ? data.friends.items : [];
+                        for (const f of items) {
+                            fetch("/api/social/remove-friend", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ userEmail: this.id, friendEmail: f })
+                            }).catch(() => {});
+                        }
+                    }
+                }
+
                 // Profil in SQLite sichern
                 await fetch("/api/user/profile", {
                     method: "PUT",
@@ -523,8 +557,10 @@
             if (v && typeof v === "object" && v.__op) {
                 // FieldValue Operation
                 if (v.__op === "arrayUnion") {
+                    result[k + "ToAdd"] = v.items;
                     result[k] = v.items;
                 } else if (v.__op === "arrayRemove") {
+                    result[k + "ToRemove"] = v.items;
                     result[k] = [];
                 }
             } else if (v !== undefined) {

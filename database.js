@@ -182,9 +182,14 @@ export async function getUserByEmail(email) {
     const row = await dbGet('SELECT * FROM users WHERE email = ?', [cleanEmail]);
     if (!row) return null;
 
+    // Freunde ermitteln
+    const friendRows = await dbAll('SELECT friendEmail FROM friends WHERE userEmail = ?', [cleanEmail]);
+    const friends = friendRows.map(r => r.friendEmail);
+
     // JSON Felder parsen
     return {
         ...row,
+        friends,
         items: parseJsonArray(row.items),
         themes: parseJsonArray(row.themes),
         badges: parseJsonArray(row.badges),
@@ -208,6 +213,17 @@ export async function updateUserProfile(email, data) {
     const cleanEmail = String(email).trim().toLowerCase();
     const existing = await getUserByEmail(cleanEmail);
     if (!existing) return null;
+
+    if (Array.isArray(data.friendsToAdd)) {
+        for (const f of data.friendsToAdd) {
+            await addFriendPair(cleanEmail, f);
+        }
+    }
+    if (Array.isArray(data.friendsToRemove)) {
+        for (const f of data.friendsToRemove) {
+            await removeFriendPair(cleanEmail, f);
+        }
+    }
 
     const name = data.name !== undefined ? data.name : existing.name;
     const passHash = data.passHash !== undefined ? data.passHash : existing.passHash;
@@ -321,16 +337,17 @@ export async function getFriends(email) {
 }
 
 export async function addFriendPair(email1, email2) {
-    const e1 = String(email1).trim().toLowerCase();
-    const e2 = String(email2).trim().toLowerCase();
-    if (e1 === e2) return;
+    const e1 = String(email1 || '').trim().toLowerCase();
+    const e2 = String(email2 || '').trim().toLowerCase();
+    if (!e1 || !e2 || e1 === e2) return;
     await dbRun('INSERT OR IGNORE INTO friends (userEmail, friendEmail) VALUES (?, ?)', [e1, e2]);
     await dbRun('INSERT OR IGNORE INTO friends (userEmail, friendEmail) VALUES (?, ?)', [e2, e1]);
 }
 
 export async function removeFriendPair(email1, email2) {
-    const e1 = String(email1).trim().toLowerCase();
-    const e2 = String(email2).trim().toLowerCase();
+    const e1 = String(email1 || '').trim().toLowerCase();
+    const e2 = String(email2 || '').trim().toLowerCase();
+    if (!e1 || !e2) return;
     await dbRun('DELETE FROM friends WHERE (userEmail = ? AND friendEmail = ?) OR (userEmail = ? AND friendEmail = ?)', [e1, e2, e2, e1]);
 }
 
