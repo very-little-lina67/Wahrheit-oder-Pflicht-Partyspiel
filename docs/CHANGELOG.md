@@ -4,6 +4,22 @@ Alle wesentlichen Änderungen am Projekt werden in dieser Datei präzise und tec
 
 ---
 
+## [2.0.7] - 2026-11-05 (Branch: `feat/ws-server`)
+
+### New Features
+- **Sileo Toast Tiefschwarz & Antworten-Button (`src/sileo-entry.js`, `js/sileo-bundle.js`, `js/app.js`):**
+  - Toast-Hintergrund auf reines Tiefschwarz (`#000000`, SVG fill `#000000`) mit abgedunkeltem Schlagschatten umgestellt.
+  - Interaktiver „Antworten“-Button (`[data-sileo-button]`) mit Gradient-Styling und Hover-Effekt integriert, der direkt den jeweiligen Privatchat mit dem Absender öffnet.
+  - Klick-Handler auf der gesamten Toast-Komponente (`[data-sileo-toast]`) registriert, der den Chat auch bei Antippen des Inhalts öffnet.
+
+### Bug Fixes
+- **Unterdrückung doppelter System-Benachrichtigungen bei geöffneter App (`js/app.js`, `sw.js`):**
+  - In `showDmToast` (`js/app.js`) wird `showAppNotification` nur noch ausgeführt, wenn `document.visibilityState !== "visible"` ist.
+  - Im Service Worker (`sw.js`) prüft der `push`-Event-Handler via `clients.matchAll({ type: "window" })`, ob mindestens ein Client `visibilityState === "visible"` aufweist. Ist die PWA im Vordergrund aktiv, wird `self.registration.showNotification` unterdrückt, sodass ausschließlich der flüssige Sileo-In-App-Toast erscheint.
+  - Service Worker Cache auf `wop-party-v5` angehoben.
+
+---
+
 ## [2.0.6] - 2026-11-05 (Branch: `feat/ws-server`)
 
 ### New Features

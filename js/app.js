@@ -4341,22 +4341,28 @@
         function showDmToast(fromName, text, fromEmail) {
             const preview = String(text || "").slice(0, 100);
             const title = `💬 ${fromName || (currentLang === "de" ? "Neue Nachricht" : "New message")}`;
+            const actionLabel = currentLang === "de" ? "Antworten" : "Reply";
 
-            // 1. In-App Benachrichtigung via Sileo Toast (React-Komponente mit Fluid Physics)
+            // Letzte Callback-Aktion für Toast-Klick speichern
+            window._lastSileoAction = () => openDirectMessage(fromEmail, fromName);
+
+            // 1. In-App Benachrichtigung via Sileo Toast (React-Komponente in tiefem Schwarz mit Antworten-Button)
             if (typeof window.showSileoToast === "function") {
                 window.showSileoToast(
                     title,
                     preview,
                     () => openDirectMessage(fromEmail, fromName),
-                    currentLang === "de" ? "Öffnen" : "Open"
+                    actionLabel
                 );
             } else if (window.sileo && typeof window.sileo.action === "function") {
                 try {
                     window.sileo.action({
                         title: title,
                         description: preview,
+                        fill: "#000000",
+                        duration: 7000,
                         button: {
-                            title: currentLang === "de" ? "Öffnen" : "Open",
+                            title: actionLabel,
                             onClick: () => openDirectMessage(fromEmail, fromName)
                         }
                     });
@@ -4381,16 +4387,18 @@
                 el._t = setTimeout(() => { try { el.remove(); } catch (e) {} }, 8000);
             }
 
-            // 2. System-Benachrichtigung (Hintergrund / außerhalb der App-Ansicht)
-            try {
-                const notifTitle = currentLang === "de" ? "Neue Nachricht" : "New message";
-                const body = (fromName || "…") + ": " + preview;
-                showAppNotification(notifTitle, body, {
-                    tag: "wop-dm-" + String(fromEmail || "x"),
-                    fromEmail: fromEmail,
-                    fromName: fromName
-                });
-            } catch (e) {}
+            // 2. System-Benachrichtigung: NUR wenn die App im Hintergrund oder nicht sichtbar ist!
+            if (document.visibilityState !== "visible") {
+                try {
+                    const notifTitle = currentLang === "de" ? "Neue Nachricht" : "New message";
+                    const body = (fromName || "…") + ": " + preview;
+                    showAppNotification(notifTitle, body, {
+                        tag: "wop-dm-" + String(fromEmail || "x"),
+                        fromEmail: fromEmail,
+                        fromName: fromName
+                    });
+                } catch (e) {}
+            }
         }
 
         function listenForDirectMessages() {

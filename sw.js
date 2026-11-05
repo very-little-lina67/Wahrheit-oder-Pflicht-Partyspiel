@@ -1,5 +1,5 @@
 /* Service Worker – macht die App in Chrome installierbar (PWA) */
-const CACHE_NAME = "wop-party-v4";
+const CACHE_NAME = "wop-party-v5";
 const PRECACHE = [
   "./",
   "./index.html",
@@ -117,13 +117,22 @@ self.addEventListener("push", (event) => {
     try { payload.body = event.data ? event.data.text() : ""; } catch (e2) {}
   }
   event.waitUntil(
-    self.registration.showNotification(payload.title, {
-      body: payload.body,
-      icon: payload.icon || "./icon-192.png",
-      badge: "./favicon-48.png",
-      tag: payload.tag || "wop-push",
-      renotify: true,
-      data: Object.assign({ url: "./" }, payload.data || {})
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
+      // Prüfen, ob die App aktuell geöffnet und im Vordergrund (visible) ist:
+      const isAppVisible = clientList.some((client) => client.visibilityState === "visible");
+      if (isAppVisible) {
+        // App ist im Vordergrund geöffnet: Nur In-App-Benachrichtigung (Sileo Toast), KEINE System-Benachrichtigung!
+        return;
+      }
+
+      return self.registration.showNotification(payload.title, {
+        body: payload.body,
+        icon: payload.icon || "./icon-192.png",
+        badge: "./favicon-48.png",
+        tag: payload.tag || "wop-push",
+        renotify: true,
+        data: Object.assign({ url: "./" }, payload.data || {})
+      });
     })
   );
 });
