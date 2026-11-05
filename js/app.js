@@ -4191,10 +4191,14 @@
             }
             const closeBtn = document.getElementById("ui-dm-close-btn");
             if (closeBtn) {
-                // Zurück-Pfeil behalten, Schrift/Label an App anpassen (kein langer Text „Schließen“)
+                // Zurück-Pfeil: zurück zur Nachrichten-Liste (Bild 1), nicht zur Lobby
                 closeBtn.innerHTML = "←";
-                closeBtn.setAttribute("aria-label", currentLang === "de" ? "Zurück" : "Back");
-                closeBtn.title = currentLang === "de" ? "Zurück" : "Back";
+                closeBtn.setAttribute("aria-label", currentLang === "de" ? "Zurück zur Übersicht" : "Back to inbox");
+                closeBtn.title = currentLang === "de" ? "Zurück zur Übersicht" : "Back to inbox";
+                closeBtn.onclick = function (ev) {
+                    if (ev) ev.preventDefault();
+                    closeDmModal();
+                };
             }
             document.getElementById("dm-modal")?.classList.remove("hidden");
             try { document.getElementById("friends-modal")?.classList.add("hidden"); } catch (e) {}
@@ -4208,19 +4212,25 @@
         }
 
         function closeDmModal() {
+            // Chat schließen → immer zur Nachrichten-Übersicht (Liste der Chats),
+            // NIE direkt zur Lobby / zum Spiel. Zur Lobby geht man erst mit ← in der Übersicht.
             document.getElementById("dm-modal")?.classList.add("hidden");
             dmTargetEmail = "";
             dmTargetName = "";
-            // Zurück-Pfeil: immer zur Nachrichten-Übersicht (Konversationsliste),
-            // nicht komplett aus dem Chat raus – man muss nicht erneut auf den Chat-Button tippen.
+            try {
+                // openDmInbox öffnet die Konversationsliste und aktualisiert sie
+                if (typeof openDmInbox === "function") {
+                    openDmInbox();
+                    return;
+                }
+            } catch (e) {}
+            // Fallback falls openDmInbox nicht greift
             const inbox = document.getElementById("dm-inbox-modal");
             if (inbox) {
                 try { closeAppPagesExcept("dm-inbox-modal"); } catch (e) {}
                 inbox.classList.remove("hidden");
                 setBottomNavActive("ui-btn-messages");
                 renderDmInbox();
-            } else {
-                setBottomNavActive(null);
             }
             refreshDmUnreadCount();
         }
