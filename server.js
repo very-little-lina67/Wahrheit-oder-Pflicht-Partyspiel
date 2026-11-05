@@ -7,6 +7,7 @@ import dotenv from 'dotenv';
 import { Server } from 'socket.io';
 import webpush from 'web-push';
 
+import dns from 'dns/promises';
 import {
     initializeDatabase,
     getUserByEmail,
@@ -15,6 +16,9 @@ import {
     setOnlineStatus,
     setPresenceStatus,
     normalizePresenceStatus,
+    generateVerificationCode,
+    setVerificationCode,
+    markEmailVerified,
     searchUsers,
     getAllUsers,
     getLeaderboardUsers,
@@ -60,6 +64,116 @@ const MASTER_EMAIL_LIST = (
 const MASTER_EMAIL = MASTER_EMAIL_LIST[0] || 'master@vibe.party';
 function isMasterEmail(email) {
     return MASTER_EMAIL_LIST.includes(String(email || '').trim().toLowerCase());
+}
+
+/** Wegwerf- / Spaß-Domains blockieren */
+const DISPOSABLE_EMAIL_DOMAINS = new Set([
+    'mailinator.com', 'guerrillamail.com', 'guerrillamail.de', '10minutemail.com', 'tempmail.com',
+    'temp-mail.org', 'throwaway.email', 'yopmail.com', 'sharklasers.com', 'trashmail.com',
+    'getnada.com', 'maildrop.cc', 'discard.email', 'mailnesia.com', 'fakeinbox.com',
+    'tempail.com', 'emailondeck.com', 'moakt.com', 'tmpmail.org', 'tmpmail.net',
+    'spamgourmet.com', 'mailcatch.com', 'mytrashmail.com', 'mintemail.com',
+    'example.com', 'example.org', 'example.net', 'test.com', 'localhost',
+    'mail.com.com', 'asdasd.com', 'asdf.com', 'qwe.com', 'abc.com',
+    'spaß.de', 'spass.de', 'fake.de', 'test.de', 'dummy.de', 'invalid.de'
+]);
+
+function isValidEmailFormat(email) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(email || '').trim());
+}
+
+function getEmailDomain(email) {
+    const parts = String(email || '').trim().toLowerCase().split('@');
+    return parts.length === 2 ? parts[1] : '';
+}
+
+function isDisposableEmail(email) {
+    const domain = getEmailDomain(email);
+    if (!domain) return true;
+    if (DISPOSABLE_EMAIL_DOMAINS.has(domain)) return true;
+    // Häufige Spaß-Muster
+    if (/^(test|fake|spam|temp|trash|noreply|no-reply)\./.test(domain)) return true;
+    return false;
+}
+
+/** Prüft, ob die Domain MX-Records hat (kann E-Mails empfangen) */
+async function domainCanReceiveEmail(email) {
+    const domain = getEmailDomain(email);
+    if (!domain || domain.length < 3) return false;
+    try {
+        const mx = await dns.resolveMx(domain);
+        return Array.isArray(mx) && mx.length > 0;
+    } catch {
+        // Fallback: A/AAAA – manche Domains haben nur A, aber MX ist Standard
+        try {
+            const a = await dns.resolve4(domain);
+            return Array.isArray(a) && a.length > 0;
+        } catch {
+            try {
+                const aaaa = await dns.resolve6(domain);
+                return Array.isArray(aaaa) && aaaa.length > 0;
+            } catch {
+                return false;
+            }
+        }
+    }
+}
+
+async function validateRealEmail(email) {
+    const clean = String(email || '').trim().toLowerCase();
+    if (!isValidEmailFormat(clean)) {
+        return { ok: false, error: 'Bitte eine gültige E-Mail-Adresse eingeben (z. B. name@domain.de).' };
+    }
+    if (isDisposableEmail(clean)) {
+        return { ok: false, error: 'Wegwerf- oder Spaß-E-Mail-Adressen sind nicht erlaubt. Bitte eine echte E-Mail nutzen.' };
+    }
+    const canReceive = await domainCanReceiveEmail(clean);
+    if (!canReceive) {
+        return { ok: false, error: 'Diese E-Mail-Domain existiert nicht oder kann keine E-Mails empfangen. Bitte eine echte Adresse verwenden.' };
+    }
+    return { ok: true, email: clean };
+}
+
+function verificationExpiryIso() {
+    return new Date(Date.now() + 30 * 60 * 1000).toISOString(); // 30 Minuten
+}
+
+/** Optionaler SMTP-Versand (wenn SMTP_* Env gesetzt) – sonst nur Server-Log */
+async function sendVerificationEmail(toEmail, code) {
+    const host = process.env.SMTP_HOST || '';
+    const user = process.env.SMTP_USER || '';
+    const pass = process.env.SMTP_PASS || '';
+    const from = process.env.SMTP_FROM || user || 'noreply@omoflow.de';
+    if (!host || !user || !pass) {
+        console.log(`[VERIFY] Kein SMTP konfiguriert. Code für ${toEmail}: ${code}`);
+        return { sent: false, reason: 'no_smtp' };
+    }
+    try {
+        // Dynamischer Import nur wenn SMTP da ist – nodemailer ist optional
+        const nodemailer = await import('nodemailer').catch(() => null);
+        if (!nodemailer) {
+            console.log(`[VERIFY] nodemailer nicht installiert. Code für ${toEmail}: ${code}`);
+            return { sent: false, reason: 'no_nodemailer' };
+        }
+        const transporter = nodemailer.createTransport({
+            host,
+            port: parseInt(process.env.SMTP_PORT || '587', 10),
+            secure: process.env.SMTP_SECURE === '1' || process.env.SMTP_SECURE === 'true',
+            auth: { user, pass }
+        });
+        await transporter.sendMail({
+            from,
+            to: toEmail,
+            subject: 'Dein Bestätigungscode – Wahrheit oder Pflicht',
+            text: `Dein Bestätigungscode lautet: ${code}\n\nGültig für 30 Minuten.\nFalls du dich nicht registriert hast, ignoriere diese Mail.`,
+            html: `<p>Dein Bestätigungscode lautet:</p><p style="font-size:24px;font-weight:bold;letter-spacing:4px">${code}</p><p>Gültig für 30 Minuten.</p>`
+        });
+        return { sent: true };
+    } catch (e) {
+        console.error('[VERIFY] SMTP-Fehler:', e.message);
+        console.log(`[VERIFY] Fallback-Code für ${toEmail}: ${code}`);
+        return { sent: false, reason: e.message };
+    }
 }
 
 const app = express();
@@ -201,26 +315,116 @@ app.post('/api/auth/register', async (req, res) => {
         if (!email || !username || (!password && !passHash)) {
             return res.status(400).json({ error: 'Bitte E-Mail, Name und Passwort angeben.' });
         }
-        const cleanEmail = String(email).trim().toLowerCase();
+
+        const validation = await validateRealEmail(email);
+        if (!validation.ok) {
+            return res.status(400).json({ error: validation.error });
+        }
+        const cleanEmail = validation.email;
+
         const existing = await getUserByEmail(cleanEmail);
         if (existing) {
             return res.status(409).json({ error: 'Ein Account mit dieser E-Mail existiert bereits.' });
         }
 
         const role = isMasterEmail(cleanEmail) ? 'master' : 'user';
-        const finalHash = passHash || password; // Unterstützt Client-Hash
+        const finalHash = passHash || password;
+        const code = generateVerificationCode();
+        const expires = verificationExpiryIso();
+        // Master-Accounts sofort verifiziert
+        const emailVerified = isMasterEmail(cleanEmail) ? 1 : 0;
 
         const user = await createUser({
             email: cleanEmail,
             name: username.trim(),
             passHash: finalHash,
-            role
+            role,
+            emailVerified,
+            verificationCode: emailVerified ? '' : code,
+            verificationExpires: emailVerified ? '' : expires
         });
 
-        res.status(201).json({ success: true, user });
+        let mailResult = { sent: true };
+        if (!emailVerified) {
+            mailResult = await sendVerificationEmail(cleanEmail, code);
+        }
+
+        const payload = {
+            success: true,
+            needsVerification: !emailVerified,
+            user: { ...user, verificationCode: undefined, passHash: undefined }
+        };
+        // Nur ohne SMTP den Code zurückgeben, damit Tests möglich bleiben (Produktion: SMTP setzen)
+        if (!emailVerified && !mailResult.sent) {
+            payload.devCode = code;
+            payload.mailHint = 'Kein SMTP konfiguriert – Code nur für Entwicklung sichtbar.';
+        }
+
+        res.status(201).json(payload);
     } catch (err) {
         console.error('Register-Fehler:', err);
         res.status(500).json({ error: 'Interner Serverfehler bei der Registrierung.' });
+    }
+});
+
+app.post('/api/auth/verify-email', async (req, res) => {
+    try {
+        const { email, code } = req.body;
+        if (!email || !code) {
+            return res.status(400).json({ error: 'E-Mail und Bestätigungscode erforderlich.' });
+        }
+        const cleanEmail = String(email).trim().toLowerCase();
+        const user = await getUserByEmail(cleanEmail);
+        if (!user) {
+            return res.status(404).json({ error: 'Benutzerkonto nicht gefunden.' });
+        }
+        if (user.emailVerified) {
+            return res.json({ success: true, alreadyVerified: true, user: { ...user, verificationCode: undefined, passHash: undefined } });
+        }
+        const expected = String(user.verificationCode || '').trim();
+        const expires = user.verificationExpires ? new Date(user.verificationExpires).getTime() : 0;
+        if (!expected || String(code).trim() !== expected) {
+            return res.status(400).json({ error: 'Ungültiger Bestätigungscode.' });
+        }
+        if (expires && Date.now() > expires) {
+            return res.status(400).json({ error: 'Bestätigungscode abgelaufen. Bitte neu anfordern.' });
+        }
+        const verifiedUser = await markEmailVerified(cleanEmail);
+        res.json({
+            success: true,
+            user: verifiedUser ? { ...verifiedUser, verificationCode: undefined, passHash: undefined } : null
+        });
+    } catch (err) {
+        console.error('Verify-Fehler:', err);
+        res.status(500).json({ error: 'Interner Serverfehler bei der Verifizierung.' });
+    }
+});
+
+app.post('/api/auth/resend-code', async (req, res) => {
+    try {
+        const { email } = req.body;
+        if (!email) return res.status(400).json({ error: 'E-Mail erforderlich.' });
+        const validation = await validateRealEmail(email);
+        if (!validation.ok) return res.status(400).json({ error: validation.error });
+        const cleanEmail = validation.email;
+        const user = await getUserByEmail(cleanEmail);
+        if (!user) return res.status(404).json({ error: 'Benutzerkonto nicht gefunden.' });
+        if (user.emailVerified) {
+            return res.json({ success: true, alreadyVerified: true });
+        }
+        const code = generateVerificationCode();
+        const expires = verificationExpiryIso();
+        await setVerificationCode(cleanEmail, code, expires);
+        const mailResult = await sendVerificationEmail(cleanEmail, code);
+        const payload = { success: true, sent: mailResult.sent };
+        if (!mailResult.sent) {
+            payload.devCode = code;
+            payload.mailHint = 'Kein SMTP konfiguriert – Code nur für Entwicklung sichtbar.';
+        }
+        res.json(payload);
+    } catch (err) {
+        console.error('Resend-Fehler:', err);
+        res.status(500).json({ error: 'Interner Serverfehler.' });
     }
 });
 
@@ -242,6 +446,15 @@ app.post('/api/auth/login', async (req, res) => {
 
         if (!matches) {
             return res.status(401).json({ error: 'Ungültiges Passwort.' });
+        }
+
+        // Neue Accounts müssen E-Mail bestätigen (bestehende bleiben freigeschaltet)
+        if (!user.emailVerified && !isMasterEmail(cleanEmail)) {
+            return res.status(403).json({
+                error: 'E-Mail noch nicht bestätigt. Bitte den Code aus deiner E-Mail eingeben.',
+                needsVerification: true,
+                email: cleanEmail
+            });
         }
 
         // Master-Account Absicherung
@@ -290,16 +503,30 @@ app.put('/api/user/profile', async (req, res) => {
         const cleanEmail = String(email).trim().toLowerCase();
         let user = await getUserByEmail(cleanEmail);
         if (!user) {
-            // Automatisch erstellen, falls Neuanlage via Client-Adapter
+            // Neuanlage nur mit echter E-Mail (Format + Domain + kein Wegwerf)
+            const validation = await validateRealEmail(cleanEmail);
+            if (!validation.ok) {
+                return res.status(400).json({ error: validation.error });
+            }
+            const role = isMasterEmail(cleanEmail) ? 'master' : (data.role || 'user');
+            const emailVerified = isMasterEmail(cleanEmail) ? 1 : 0;
+            const code = emailVerified ? '' : generateVerificationCode();
+            const expires = emailVerified ? '' : verificationExpiryIso();
             user = await createUser({
                 email: cleanEmail,
                 name: data.name || 'Spieler',
                 passHash: data.passHash || 'auth_pass_placeholder',
-                role: isMasterEmail(cleanEmail) ? 'master' : (data.role || 'user')
+                role,
+                emailVerified,
+                verificationCode: code,
+                verificationExpires: expires
             });
+            if (!emailVerified && code) {
+                await sendVerificationEmail(cleanEmail, code);
+            }
         }
         const updated = await updateUserProfile(cleanEmail, data);
-        res.json({ success: true, user: updated });
+        res.json({ success: true, user: updated, needsVerification: updated && !updated.emailVerified });
     } catch (err) {
         console.error('Update-Fehler:', err);
         res.status(500).json({ error: err.message });

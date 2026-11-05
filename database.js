@@ -203,6 +203,23 @@ export async function initializeDatabase() {
                 }
             });
 
+            // Migration: E-Mail-Verifizierung (bestehende Accounts = bereits verifiziert)
+            db.run(`ALTER TABLE users ADD COLUMN emailVerified INTEGER DEFAULT 1`, (err) => {
+                if (err && !String(err.message || '').includes('duplicate column')) {
+                    console.warn('emailVerified migration:', err.message);
+                }
+            });
+            db.run(`ALTER TABLE users ADD COLUMN verificationCode TEXT DEFAULT ''`, (err) => {
+                if (err && !String(err.message || '').includes('duplicate column')) {
+                    console.warn('verificationCode migration:', err.message);
+                }
+            });
+            db.run(`ALTER TABLE users ADD COLUMN verificationExpires TEXT DEFAULT ''`, (err) => {
+                if (err && !String(err.message || '').includes('duplicate column')) {
+                    console.warn('verificationExpires migration:', err.message);
+                }
+            });
+
             console.log('✅ SQLite-Tabellen & Indizes erfolgreich angelegt/geprüft.');
             resolve();
         });
@@ -233,7 +250,8 @@ export async function getUserByEmail(email) {
         badges: parseJsonArray(row.badges),
         emotes: parseJsonArray(row.emotes),
         isOnline: Boolean(row.isOnline),
-        presenceStatus
+        presenceStatus,
+        emailVerified: row.emailVerified === undefined || row.emailVerified === null ? true : Boolean(row.emailVerified)
     };
 }
 
@@ -246,13 +264,37 @@ export function normalizePresenceStatus(value) {
     return 'online';
 }
 
-export async function createUser({ email, name, passHash, role = 'user' }) {
+export async function createUser({ email, name, passHash, role = 'user', emailVerified = 1, verificationCode = '', verificationExpires = '' }) {
+    const cleanEmail = String(email).trim().toLowerCase();
+    const now = new Date().toISOString();
+    const verified = emailVerified ? 1 : 0;
+    await dbRun(
+        `INSERT INTO users (email, name, passHash, role, emailVerified, verificationCode, verificationExpires, createdAt, updatedAt)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [cleanEmail, name.trim(), passHash, role, verified, verificationCode || '', verificationExpires || '', now, now]
+    );
+    return getUserByEmail(cleanEmail);
+}
+
+export function generateVerificationCode() {
+    return String(Math.floor(100000 + Math.random() * 900000));
+}
+
+export async function setVerificationCode(email, code, expiresIso) {
     const cleanEmail = String(email).trim().toLowerCase();
     const now = new Date().toISOString();
     await dbRun(
-        `INSERT INTO users (email, name, passHash, role, createdAt, updatedAt)
-         VALUES (?, ?, ?, ?, ?, ?)`,
-        [cleanEmail, name.trim(), passHash, role, now, now]
+        `UPDATE users SET verificationCode = ?, verificationExpires = ?, updatedAt = ? WHERE email = ?`,
+        [code, expiresIso, now, cleanEmail]
+    );
+}
+
+export async function markEmailVerified(email) {
+    const cleanEmail = String(email).trim().toLowerCase();
+    const now = new Date().toISOString();
+    await dbRun(
+        `UPDATE users SET emailVerified = 1, verificationCode = '', verificationExpires = '', updatedAt = ? WHERE email = ?`,
+        [now, cleanEmail]
     );
     return getUserByEmail(cleanEmail);
 }

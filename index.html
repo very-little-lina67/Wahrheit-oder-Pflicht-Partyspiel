@@ -25,12 +25,12 @@
     
     <!-- Socket.io Client für latenzfreie WebSocket-Kommunikation -->
     <script src="/socket.io/socket.io.js"></script>
-    <script src="js/wop-socket-client.js?v=2.0.15"></script>
+    <script src="js/wop-socket-client.js?v=2.0.16"></script>
 
     <!-- Ausgelagertes Stylesheet für Themes, Layout & Komponenten -->
-    <link rel="stylesheet" href="css/style.css?v=2.0.15">
+    <link rel="stylesheet" href="css/style.css?v=2.0.16">
     <!-- Sileo Toast (React) Fluid Spring Notification Styles -->
-    <link rel="stylesheet" href="js/sileo-bundle.css?v=2.0.15">
+    <link rel="stylesheet" href="js/sileo-bundle.css?v=2.0.16">
     <style id="wop-early-auth-hide">
       /* Verhindert Login-Flash beim Reload wenn Session vorhanden */
       body.wop-authed #auth-modal { display: none !important; visibility: hidden !important; }
@@ -502,23 +502,30 @@
             <div class="box-section" id="presence-settings-box" style="padding:10px; margin-top:10px;">
                 <h4 id="ui-presence-head" style="margin:0 0 6px 0; color:#34d399; font-size:13px;">🟢 Online-Status</h4>
                 <p id="ui-presence-desc" style="font-size:11px;color:#aaa;margin:0 0 8px 0;">Dein Status wird live angezeigt. Bei „Bitte nicht stören“ können dir keine Spieleinladungen gesendet werden. Offline erscheint sofort, sobald du die App schließt.</p>
-                <div class="presence-status-grid" id="presence-status-grid" role="group" aria-label="Online-Status">
-                    <button type="button" class="presence-status-btn" data-status="online" onclick="setMyPresenceStatus('online')">
-                        <span class="presence-dot presence-dot-online"></span>
-                        <span id="ui-presence-online">Online</span>
+                <div class="presence-pill-wrap" id="presence-status-grid" role="group" aria-label="Online-Status">
+                    <button type="button" class="presence-pill" id="presence-pill-btn" aria-haspopup="listbox" aria-expanded="false">
+                        <span class="presence-dot presence-dot-online" id="presence-pill-dot"></span>
+                        <span id="presence-pill-label">Online</span>
+                        <span class="presence-pill-chevron">▾</span>
                     </button>
-                    <button type="button" class="presence-status-btn" data-status="away" onclick="setMyPresenceStatus('away')">
-                        <span class="presence-dot presence-dot-away"></span>
-                        <span id="ui-presence-away">Abwesend</span>
-                    </button>
-                    <button type="button" class="presence-status-btn" data-status="dnd" onclick="setMyPresenceStatus('dnd')">
-                        <span class="presence-dot presence-dot-dnd"></span>
-                        <span id="ui-presence-dnd">Bitte nicht stören</span>
-                    </button>
-                    <button type="button" class="presence-status-btn" data-status="offline" onclick="setMyPresenceStatus('offline')">
-                        <span class="presence-dot presence-dot-offline"></span>
-                        <span id="ui-presence-offline">Offline</span>
-                    </button>
+                    <div class="presence-pill-menu" id="presence-pill-menu" hidden>
+                        <button type="button" class="presence-status-btn" data-status="online" onclick="setMyPresenceStatus('online')">
+                            <span class="presence-dot presence-dot-online"></span>
+                            <span id="ui-presence-online">Online</span>
+                        </button>
+                        <button type="button" class="presence-status-btn" data-status="away" onclick="setMyPresenceStatus('away')">
+                            <span class="presence-dot presence-dot-away"></span>
+                            <span id="ui-presence-away">Abwesend</span>
+                        </button>
+                        <button type="button" class="presence-status-btn" data-status="dnd" onclick="setMyPresenceStatus('dnd')">
+                            <span class="presence-dot presence-dot-dnd"></span>
+                            <span id="ui-presence-dnd">Bitte nicht stören</span>
+                        </button>
+                        <button type="button" class="presence-status-btn" data-status="offline" onclick="setMyPresenceStatus('offline')">
+                            <span class="presence-dot presence-dot-offline"></span>
+                            <span id="ui-presence-offline">Offline</span>
+                        </button>
+                    </div>
                 </div>
                 <p id="ui-presence-hint" style="font-size:11px;color:#94a3b8;margin:8px 0 0 0;"></p>
             </div>
