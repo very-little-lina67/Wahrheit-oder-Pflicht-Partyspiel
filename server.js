@@ -578,9 +578,15 @@ app.post('/api/push/unsubscribe', async (req, res) => {
 // 5. Feedback
 app.post('/api/feedback', async (req, res) => {
     try {
-        const { email, name, type, text } = req.body;
+        const { email, name, type, text, errorCode, analysis, meta, author } = req.body;
         if (!email || !text) return res.status(400).json({ error: 'E-Mail und Text erforderlich.' });
-        const result = await saveFeedback(email, name, type, text);
+        const result = await saveFeedback(
+            email,
+            name || author || '',
+            type,
+            text,
+            { errorCode, analysis, meta }
+        );
         res.json(result);
     } catch (err) {
         res.status(500).json({ error: err.message });

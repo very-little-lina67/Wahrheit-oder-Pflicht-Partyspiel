@@ -145,9 +145,16 @@ export async function initializeDatabase() {
                     name TEXT DEFAULT '',
                     type TEXT NOT NULL,
                     text TEXT NOT NULL,
+                    errorCode TEXT DEFAULT '',
+                    analysis TEXT DEFAULT '',
+                    meta TEXT DEFAULT '',
                     createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
                 )
             `);
+            // Migration für bestehende DBs (ignoriert Fehler wenn Spalte schon existiert)
+            db.run(`ALTER TABLE feedback ADD COLUMN errorCode TEXT DEFAULT ''`, () => {});
+            db.run(`ALTER TABLE feedback ADD COLUMN analysis TEXT DEFAULT ''`, () => {});
+            db.run(`ALTER TABLE feedback ADD COLUMN meta TEXT DEFAULT ''`, () => {});
 
             // 7. Lobbies (Persistenz / Wiederherstellung)
             db.run(`
@@ -527,12 +534,24 @@ export async function deleteInvite(id) {
 // Feedback
 // ==============================================================================
 
-export async function saveFeedback(email, name, type, text) {
+export async function saveFeedback(email, name, type, text, extra = {}) {
+    const errorCode = extra.errorCode || '';
+    const analysis = extra.analysis || '';
+    const meta = typeof extra.meta === 'string' ? extra.meta : JSON.stringify(extra.meta || {});
     const res = await dbRun(
-        'INSERT INTO feedback (email, name, type, text) VALUES (?, ?, ?, ?)',
-        [String(email).trim().toLowerCase(), name || '', type || 'general', text]
+        `INSERT INTO feedback (email, name, type, text, errorCode, analysis, meta)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [
+            String(email).trim().toLowerCase(),
+            name || '',
+            type || 'general',
+            text,
+            errorCode,
+            analysis,
+            meta
+        ]
     );
-    return { id: res.lastID, success: true };
+    return { id: res.lastID, success: true, errorCode };
 }
 
 export async function getAllFeedback() {
