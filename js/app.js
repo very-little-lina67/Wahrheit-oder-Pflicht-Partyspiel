@@ -4617,17 +4617,44 @@
         async function deleteUser(email) {
             if (myRole !== "master" && myRole !== "admin") return;
             const clean = String(email || "").trim().toLowerCase();
-            if (isMasterAccount(clean)) return;
+            if (isMasterAccount(clean)) {
+                alert(currentLang === "de"
+                    ? "Feste Master-Accounts können nicht gelöscht werden."
+                    : "Fixed master accounts cannot be deleted.");
+                return;
+            }
             const confirmMsg = translations[currentLang]?.alertDeleteAdminConfirm || (currentLang === "de" ? "Diesen Benutzer wirklich löschen?" : "Really delete this user?");
             if (!await customConfirm(confirmMsg)) return;
             adminUserListCache = null;
             adminUserListCacheTime = 0;
             try {
-                await db.collection("users").doc(clean).delete();
+                const requester = String(myEmail || localStorage.getItem("wop_user_email_v6") || "").trim().toLowerCase();
+                const res = await fetch("/api/admin/user", {
+                    method: "DELETE",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ requester, email: clean })
+                });
+                if (!res.ok) {
+                    let errMsg = "HTTP " + res.status;
+                    try {
+                        const body = await res.json();
+                        if (body && body.error) errMsg = body.error;
+                    } catch (_) {}
+                    throw new Error(errMsg);
+                }
+                if (typeof showAppNotification === "function") {
+                    try {
+                        showAppNotification(
+                            currentLang === "de" ? "Benutzer gelöscht" : "User deleted",
+                            clean
+                        );
+                    } catch (_) {}
+                }
                 renderAdminUserList();
             } catch (e) {
                 console.error("deleteUser:", e);
-                alert(msg("msgErrorDelete", "Löschen fehlgeschlagen.", "Could not delete."));
+                alert((currentLang === "de" ? "Löschen fehlgeschlagen: " : "Could not delete: ") + (e.message || ""));
+                renderAdminUserList();
             }
         }
         window.deleteUser = deleteUser;

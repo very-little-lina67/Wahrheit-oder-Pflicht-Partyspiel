@@ -228,6 +228,19 @@
                 } catch (e) { console.error(e); }
             });
         });
+
+        socket.on("auth:deleted", (data) => {
+            try {
+                localStorage.removeItem("wop_user_email_v6");
+                localStorage.removeItem("wop_user_name_v6");
+                if (typeof window !== "undefined") {
+                    window.myEmail = "";
+                    window.myName = "";
+                    alert((data && data.message) || "Dein Konto wurde gelöscht.");
+                    location.reload();
+                }
+            } catch (_) {}
+        });
     }
 
     // 3. Database Adapter
@@ -678,12 +691,24 @@
                 return;
             }
             if (this.collectionName === "users") {
-                const requester = localStorage.getItem("wop_user_email_v6") || "";
-                await fetch("/api/admin/user", {
+                const requester = String(
+                    (typeof window !== "undefined" && window.myEmail)
+                    || localStorage.getItem("wop_user_email_v6")
+                    || ""
+                ).trim().toLowerCase();
+                const res = await fetch("/api/admin/user", {
                     method: "DELETE",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ requester, email: this.id })
                 });
+                if (!res.ok) {
+                    let errText = "Löschen fehlgeschlagen";
+                    try {
+                        const data = await res.json();
+                        if (data && data.error) errText = data.error;
+                    } catch (_) {}
+                    throw new Error(errText);
+                }
                 return;
             }
         }

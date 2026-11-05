@@ -4,6 +4,22 @@ All notable changes to this project are documented in this file in a precise, te
 
 ---
 
+## [2.0.22] - 2026-11-05
+
+### Bug Fixes
+- **Restored Account Deletion for Admins and Masters (`server.js`, `js/app.js`, `js/wop-socket-client.js`, `database.js`):**
+  - Completely reworked authorization in `DELETE /api/admin/user`: previously, an overly strict check (`!isMasterEmail(requester)`) blocked all administrators without exception, as well as masters not in the static `MASTER_EMAILS` list.
+  - Implemented role hierarchy: Masters can delete all accounts (except unalterable fixed master accounts); Administrators can delete regular users and moderators (but not other Admins or Masters).
+  - Unlocked self-account deletion (`deleteOwnAccount`): Authenticated users can now reliably delete their own accounts via the API.
+  - Full cascading cleanup in `database.js`: Deleting a user now also cleans up `push_subscriptions` and hosted `lobbies`.
+  - Immediate session termination: Active WebSocket connections of the deleted user are instantly disconnected via the `auth:deleted` event and network presence is updated.
+  - Client error handling: `DocumentReference.prototype.delete` and `deleteUser` now inspect HTTP status codes and provide transparent frontend error messages.
+
+### Misc
+- Version and cache-busting query parameters bumped to **2.0.22**.
+
+---
+
 ## [2.0.21] - 2026-11-05
 
 ### Bug Fixes

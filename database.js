@@ -466,6 +466,8 @@ export async function deleteUser(email) {
     await dbRun('DELETE FROM direct_messages WHERE fromEmail = ? OR toEmail = ?', [cleanEmail, cleanEmail]);
     await dbRun('DELETE FROM invites WHERE fromEmail = ? OR toEmail = ?', [cleanEmail, cleanEmail]);
     await dbRun('DELETE FROM feedback WHERE email = ?', [cleanEmail]);
+    await dbRun('DELETE FROM push_subscriptions WHERE email = ?', [cleanEmail]);
+    await dbRun('DELETE FROM lobbies WHERE hostEmail = ?', [cleanEmail]);
 }
 
 // ==============================================================================

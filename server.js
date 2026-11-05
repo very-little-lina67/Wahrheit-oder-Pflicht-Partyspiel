@@ -1078,13 +1078,61 @@ app.put('/api/admin/user/role', async (req, res) => {
 
 app.delete('/api/admin/user', async (req, res) => {
     try {
-        const { requester, email } = req.body;
-        const u = await getUserByEmail(requester);
-        if (!u || !isMasterEmail(requester)) {
-            return res.status(403).json({ error: 'Nur der Master-Account darf Konten löschen.' });
+        const cleanRequester = String(req.body?.requester || req.query?.requester || '').trim().toLowerCase();
+        const cleanTarget = String(req.body?.email || req.query?.email || '').trim().toLowerCase();
+
+        if (!cleanRequester || !cleanTarget) {
+            return res.status(400).json({ error: 'Fehlende Parameter (requester / email).' });
         }
-        await deleteUser(email);
-        res.json({ success: true });
+
+        // Feste Master-Accounts können niemals gelöscht werden (Schutz gegen versehentlichen Lockout)
+        if (isMasterEmail(cleanTarget)) {
+            return res.status(403).json({ error: 'Feste Master-Accounts können nicht gelöscht werden.' });
+        }
+
+        const reqUser = await getUserByEmail(cleanRequester);
+        const reqIsMaster = isMasterEmail(cleanRequester) || String(reqUser?.role || '').toLowerCase() === 'master';
+
+        if (!reqUser && !reqIsMaster) {
+            return res.status(403).json({ error: 'Anfragender Benutzer nicht gefunden.' });
+        }
+
+        const isSelf = cleanRequester === cleanTarget;
+        if (!isSelf) {
+            const reqIsAdmin = String(reqUser?.role || '').toLowerCase() === 'admin';
+            if (!reqIsMaster && !reqIsAdmin) {
+                return res.status(403).json({ error: 'Nur Administratoren und der Master-Account dürfen fremde Konten löschen.' });
+            }
+
+            const targetUser = await getUserByEmail(cleanTarget);
+            if (targetUser) {
+                const targetIsMaster = isMasterEmail(cleanTarget) || String(targetUser.role || '').toLowerCase() === 'master';
+                const targetIsAdmin = String(targetUser.role || '').toLowerCase() === 'admin';
+                if (reqIsAdmin && !reqIsMaster && (targetIsMaster || targetIsAdmin)) {
+                    return res.status(403).json({ error: 'Admins dürfen keine Administratoren oder den Master-Account löschen.' });
+                }
+            }
+        }
+
+        await deleteUser(cleanTarget);
+
+        // Aktive Sockets des gelöschten Users sofort trennen
+        const targetSockets = userSockets.get(cleanTarget);
+        if (targetSockets) {
+            for (const sid of targetSockets) {
+                const s = io.sockets.sockets.get(sid);
+                if (s) {
+                    try {
+                        s.emit('auth:deleted', { message: 'Dein Konto wurde gelöscht.' });
+                        s.disconnect(true);
+                    } catch (_) {}
+                }
+            }
+            userSockets.delete(cleanTarget);
+        }
+        broadcastPresence(cleanTarget, false, 'offline');
+
+        res.json({ success: true, message: 'Konto erfolgreich gelöscht.' });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

@@ -109,8 +109,15 @@ Alle REST-Endpunkte laufen unter dem Präfix `/api`.
   - Ruft vollständige Nutzerliste ab.
 - **`PUT /api/admin/user/role`** (Nur Admin / Master)
   - Ändert die Rolle eines Nutzers.
-- **`DELETE /api/admin/user`** (Nur Master)
-  - Löscht ein Benutzerkonto dauerhaft.
+- **`DELETE /api/admin/user`** (Admin / Master / Eigenes Konto)
+  - Löscht ein Benutzerkonto dauerhaft und kaskadierend aus allen Tabellen (`users`, `friends`, `friend_requests`, `direct_messages`, `invites`, `feedback`, `push_subscriptions`, `lobbies`).
+  - Unterstützt Parameter sowohl über den JSON-Body (`{ requester, email }`) als auch über URL-Query-Parameter (`?requester=...&email=...`).
+  - **Berechtigungslogik:**
+    - **Feste Master-Accounts:** Können niemals gelöscht werden (Schutz gegen versehentlichen Ausschluss).
+    - **Eigenes Konto (`requester === email`):** Jeder authentifizierte Nutzer kann sein eigenes Konto eigenständig löschen.
+    - **Master (`isMasterEmail` oder `role === 'master'`):** Darf alle Konten löschen (Nutzer, Moderatoren, Admins, andere Master).
+    - **Admin (`role === 'admin'`):** Darf reguläre Nutzer und Moderatoren löschen (jedoch keine anderen Admins oder Master-Accounts).
+  - Trennt alle aktiven WebSocket-Verbindungen des gelöschten Nutzers sofort mit dem Event `auth:deleted` und aktualisiert den Präsenzstatus im Netzwerk.
 - **`GET /api/admin/feedback`** (Nur Admin / Master)
   - Liest alle Feedback-Einträge.
 - **`DELETE /api/admin/feedback/:id`** (Nur Admin / Master)
