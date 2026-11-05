@@ -4,6 +4,29 @@ All notable changes to this project are documented in this file in a precise, te
 
 ---
 
+## [2.0.14] - 2026-11-05
+
+### New Features
+- **Extended online status (presence) in profile (`index.html`, `js/app.js`, `server.js`, `database.js`):**
+  - New statuses: **Online**, **Away**, **Do not disturb**, **Offline** (selectable in the profile).
+  - Status is broadcast live via WebSocket (`social:presence` / `user:setPresence`) and `PUT /api/user/presence`.
+  - New DB field `presenceStatus` (migration via `ALTER TABLE`).
+- **Immediate offline on disconnect (`server.js`):**
+  - When the last socket disconnects, the user is marked **offline immediately** and broadcast to all clients (no more 5-second grace period) – same idea as chat presence.
+- **Invite rules by status (`server.js`, `js/app.js`):**
+  - Game invites only to **Online** or **Away**.
+  - **Do not disturb** and **Offline** block invites on server and client.
+
+### UX
+- **Discord support card layout (`index.html`, `css/style.css`):**
+  - Text “Questions about the game? Message me on Discord.” sits above the status badge (no longer squeezed beside it).
+  - Status badge and button clearly stacked (`.discord-contact-card--stacked`).
+
+### Misc
+- Version and cache-busting query parameters raised to **2.0.14**.
+
+---
+
 ## [2.0.13] - 2026-11-05
 
 ### Bug Fixes
