@@ -5899,6 +5899,7 @@
         // Spieler-Status wird innerhalb der Lobby synchronisiert.
         let playerStatuses = {};
         let recentTaskCreators = [];
+        let lastCreatorForTarget = {};
 
         let taskCompleted = false;
         let activeLobbyCode = "";
@@ -6315,6 +6316,7 @@
                 currentSharedResult: currentSharedResult || null,
                 playerStatuses: playerStatuses || {},
                 recentTaskCreators: Array.isArray(recentTaskCreators) ? recentTaskCreators : [],
+                lastCreatorForTarget: (lastCreatorForTarget && typeof lastCreatorForTarget === 'object') ? lastCreatorForTarget : {},
                 updatedAt: Date.now()
             };
         }
@@ -6404,6 +6406,9 @@
             }
             if (Array.isArray(data.recentTaskCreators)) {
                 recentTaskCreators = data.recentTaskCreators;
+            }
+            if (data.lastCreatorForTarget && typeof data.lastCreatorForTarget === 'object') {
+                lastCreatorForTarget = data.lastCreatorForTarget;
             }
             if (Array.isArray(data.nextTurnVotedPlayers)) {
                 nextTurnVotedPlayers = data.nextTurnVotedPlayers;
@@ -7043,6 +7048,8 @@
             nextTurnVotedPlayers = [];
             nextRoundVotedPlayers = [];
             playerStatuses = {};
+            recentTaskCreators = [];
+            lastCreatorForTarget = {};
             lastSavedStateHash = "";
 
             if (manual) clearSavedLobbySession();
@@ -7438,6 +7445,8 @@
             currentSharedResult = null;
             nextTurnVotedPlayers = [];
             nextRoundVotedPlayers = [];
+            recentTaskCreators = [];
+            lastCreatorForTarget = {};
             saveLobbyPlayers();
             sendData({ type: 'START_GAME', players: serializePlayersForSync() });
             startGameUI();
@@ -7727,26 +7736,71 @@
         }
 
         function assignTaskCreator(targetName, choice) {
-            let activeOthers = players.filter(p => !p.eliminated && !p.isSpectator && !namesEqual(p, targetName));
-            let eligible = activeOthers;
-            // Wenn 3 oder mehr Kandidaten da sind, schließen wir nur den allerletzten Ersteller aus,
-            // damit nicht 2x hintereinander dieselbe Person drankommt, aber echte Zufallsauswahl bleibt!
-            if (activeOthers.length >= 3 && recentTaskCreators.length > 0) {
-                const lastCreator = recentTaskCreators[recentTaskCreators.length - 1];
-                eligible = activeOthers.filter(p => !namesEqual(p, lastCreator));
-                if (!eligible.length) eligible = activeOthers;
+            const activeOthers = players.filter(p => !p.eliminated && !p.isSpectator && !namesEqual(p, targetName));
+            const targetDisplayName = getUserDisplayName({ name: targetName }, targetName);
+            let chosenPlayer = null;
+
+            if (activeOthers.length === 2) {
+                // Bei exakt 3 Spielern in der Lobby (1 Zielspieler + 2 verbleibende Mitspieler):
+                // Die beiden verbleibenden Spieler stellen streng abwechselnd die Aufgaben für diesen Spieler.
+                const p1 = activeOthers[0];
+                const p2 = activeOthers[1];
+                const n1 = getUserDisplayName(p1);
+                const n2 = getUserDisplayName(p2);
+                const lastForTarget = lastCreatorForTarget[targetDisplayName];
+                const lastGlobal = recentTaskCreators.length > 0 ? recentTaskCreators[recentTaskCreators.length - 1] : null;
+
+                if (lastForTarget && namesEqual(lastForTarget, n1)) {
+                    // Beim letzten Mal hat p1 für diesen Spieler gestellt -> Jetzt ist p2 dran
+                    chosenPlayer = p2;
+                } else if (lastForTarget && namesEqual(lastForTarget, n2)) {
+                    // Beim letzten Mal hat p2 für diesen Spieler gestellt -> Jetzt ist p1 dran
+                    chosenPlayer = p1;
+                } else {
+                    // Erstes Mal für diesen Zielspieler in der Partie:
+                    // Wenn einer der beiden gerade im unmittelbar vorherigen Zug gestellt hat, den anderen wählen
+                    if (lastGlobal && namesEqual(lastGlobal, n1)) {
+                        chosenPlayer = p2;
+                    } else if (lastGlobal && namesEqual(lastGlobal, n2)) {
+                        chosenPlayer = p1;
+                    } else {
+                        // Im Uhrzeigersinn den nachfolgenden aktiven Spieler wählen
+                        const activeList = players.filter(p => !p.eliminated && !p.isSpectator);
+                        const targetIdx = activeList.findIndex(p => namesEqual(p, targetDisplayName));
+                        const nextActive = (targetIdx >= 0 && activeList.length > 1)
+                            ? activeList[(targetIdx + 1) % activeList.length]
+                            : null;
+                        if (nextActive && namesEqual(nextActive, n2)) {
+                            chosenPlayer = p2;
+                        } else {
+                            chosenPlayer = p1;
+                        }
+                    }
+                }
+            } else if (activeOthers.length >= 3) {
+                // Bei 4 oder mehr aktiven Spielern:
+                // Letzten Ersteller ausschließen, damit niemand 2x hintereinander drankommt
+                let eligible = activeOthers;
+                if (recentTaskCreators.length > 0) {
+                    const lastCreator = recentTaskCreators[recentTaskCreators.length - 1];
+                    eligible = activeOthers.filter(p => !namesEqual(p, lastCreator));
+                    if (!eligible.length) eligible = activeOthers;
+                }
+                chosenPlayer = eligible[Math.floor(Math.random() * eligible.length)];
+            } else if (activeOthers.length === 1) {
+                // Bei 2 aktiven Spielern: Immer der einzige andere Spieler
+                chosenPlayer = activeOthers[0];
             }
-            const chosenPlayer = eligible.length
-                ? eligible[Math.floor(Math.random() * eligible.length)]
-                : (activeOthers.length ? activeOthers[0] : null);
 
             const creatorName = chosenPlayer
                 ? getUserDisplayName(chosenPlayer)
-                : getUserDisplayName({ name: targetName }, targetName);
+                : targetDisplayName;
 
             currentTaskCreator = creatorName;
             pendingChoice = choice;
 
+            // Tracking für Wechsel & Historie aktualisieren
+            lastCreatorForTarget[targetDisplayName] = creatorName;
             if (activeOthers.length > 1) {
                 recentTaskCreators.push(creatorName);
                 if (recentTaskCreators.length > 10) recentTaskCreators.shift();

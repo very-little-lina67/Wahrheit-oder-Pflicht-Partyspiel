@@ -4,6 +4,19 @@ Alle wesentlichen Änderungen am Projekt werden in dieser Datei präzise und tec
 
 ---
 
+## [2.0.26] - 2026-11-05
+
+### New Features
+- **Strikt alternierende Aufgabenstellung bei 3 Spielern (`js/app.js`):**
+  - In Lobbies mit 3 aktiven Spielern stellen die beiden verbleibenden Spieler die Fragen oder Pflichten für den aktuell aktiven Spieler nun streng abwechselnd: Hat in Runde N Mitspieler A für den Zielspieler die Aufgabe gestellt, ist in Runde N+1 zwingend Mitspieler B an der Reihe.
+  - Niemand wird mehr durch reinen Zufallsentscheid übergangen oder mehrfach hintereinander gewählt; jeder Spieler beantwortet und stellt in jedem Durchgang genau eine Aufgabe.
+  - Zustandsüberwachung via `lastCreatorForTarget`: Der Wechsel-Status wird persistent im Lobby-Payload festgehalten und über `applyGameStateFromFirebase` für alle Clients synchronisiert.
+
+### Misc
+- Versionsnummer auf **2.0.26** angehoben und alle Cache-Busting-Parameter aktualisiert.
+
+---
+
 ## [2.0.25] - 2026-11-05
 
 ### Bug Fixes

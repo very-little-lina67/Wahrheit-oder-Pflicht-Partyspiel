@@ -4,6 +4,19 @@ All notable changes to this project are documented in this file in a precise, te
 
 ---
 
+## [2.0.26] - 2026-11-05
+
+### New Features
+- **Strictly Alternating Task Assignment in 3-Player Lobbies (`js/app.js`):**
+  - In lobbies with 3 active players, the two remaining players strictly alternate when creating truth questions or dares for the active player: if Player A created the task for the target player in round N, Player B is strictly required to create the task in round N+1.
+  - Eliminates random streak bias where players could be repeatedly skipped or selected multiple times in a row; every player gets to answer and ask exactly one task per complete rotation.
+  - State tracking via `lastCreatorForTarget`: the alternating status is persistently tracked in the lobby game state payload and synchronized across all clients via `applyGameStateFromFirebase`.
+
+### Misc
+- Version bumped to **2.0.26** with updated cache-busting query strings.
+
+---
+
 ## [2.0.25] - 2026-11-05
 
 ### Bug Fixes
