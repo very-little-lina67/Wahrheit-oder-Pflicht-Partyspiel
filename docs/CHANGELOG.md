@@ -4,6 +4,26 @@ Alle wesentlichen Änderungen am Projekt werden in dieser Datei präzise und tec
 
 ---
 
+## [2.0.8] - 2026-11-05 (Branch: `feat/ws-server`)
+
+### New Features
+- **Direkter Antworten-Button in der Toast-Pill (`src/sileo-entry.js`, `js/sileo-bundle.js`):**
+  - Ein kompakter, violetter „Antworten“-Button (`.sileo-reply-btn`) wird nun direkt im Titel-Kopf der Pill gerendert, sodass der Empfänger sofort und ohne manuelles Aufklappen des Toasts mit einem Klick in den Chat wechseln kann.
+
+### Bug Fixes
+- **Vertikale Text- & Icon-Verschiebung auf Android / Mobile behoben (`src/sileo-entry.js`, `js/sileo-bundle.js`):**
+  - Globales `box-sizing: border-box !important` und Margin-Reset auf allen Elementen innerhalb von `[data-sileo-viewport]` erzwungen.
+  - Das native `padding: 0.5rem` auf `[data-sileo-header]` bei `content-box` hatte zuvor den Inhalt nach unten gegen den Pill-Rand verschoben; durch feste Zentrierung (`display: flex; align-items: center; height: var(--sileo-height); padding: 0 14px`) sitzt der gesamte Inhalt nun exakt vertikal zentriert.
+  - SVG-Hintergrundform (`rect` und `path`) mit `fill: #000000 !important` tiefschwarz fixiert.
+- **Vollständige Unterdrückung von iOS-System-Benachrichtigungen bei aktiver App (`server.js`, `js/wop-socket-client.js`, `js/app.js`):**
+  - WebKit auf iOS führt Push-Events im Service Worker in isolierten Prozessen aus, bei denen `clients.matchAll()` stets ein leeres Array liefert und ein Apple-Zustellbanner erzwungen wird.
+  - Die Unterdrückung wurde server-seitig gelöst: `js/wop-socket-client.js` meldet die App-Sichtbarkeit (`visibilitychange`) an den Server.
+  - In `server.js` prüft `/api/dm/send` über `isUserActiveInApp(toEmail)`, ob der Empfänger gerade mit sichtbarer App im Vordergrund online ist. Ist dies der Fall, wird kein Web Push an APNs versendet, wodurch das System-Banner auf iOS vollständig entfällt und nur der Sileo In-App-Toast erscheint.
+  - In `js/app.js` redundanten `showAppNotification`-Aufruf innerhalb von `showDmToast` entfernt.
+  - Service Worker Cache auf `wop-party-v6` angehoben.
+
+---
+
 ## [2.0.7] - 2026-11-05 (Branch: `feat/ws-server`)
 
 ### New Features

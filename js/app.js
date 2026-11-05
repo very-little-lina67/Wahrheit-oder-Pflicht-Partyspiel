@@ -4386,19 +4386,6 @@
                 clearTimeout(el._t);
                 el._t = setTimeout(() => { try { el.remove(); } catch (e) {} }, 8000);
             }
-
-            // 2. System-Benachrichtigung: NUR wenn die App im Hintergrund oder nicht sichtbar ist!
-            if (document.visibilityState !== "visible") {
-                try {
-                    const notifTitle = currentLang === "de" ? "Neue Nachricht" : "New message";
-                    const body = (fromName || "…") + ": " + preview;
-                    showAppNotification(notifTitle, body, {
-                        tag: "wop-dm-" + String(fromEmail || "x"),
-                        fromEmail: fromEmail,
-                        fromName: fromName
-                    });
-                } catch (e) {}
-            }
         }
 
         function listenForDirectMessages() {

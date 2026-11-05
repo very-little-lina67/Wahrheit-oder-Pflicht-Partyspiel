@@ -27,7 +27,20 @@
                 const email = localStorage.getItem("wop_user_email_v6");
                 const name = localStorage.getItem("wop_user_name_v6");
                 if (email) {
-                    socket.emit("auth:identify", { email, name });
+                    socket.emit("auth:identify", {
+                        email,
+                        name,
+                        isVisible: document.visibilityState === "visible"
+                    });
+                }
+            });
+
+            // Sichtbarkeitsstatus an Server übermitteln (unterdrückt System-Push wenn App im Vordergrund ist)
+            document.addEventListener("visibilitychange", () => {
+                if (socket && socket.connected) {
+                    socket.emit("user:visibility", {
+                        isVisible: document.visibilityState === "visible"
+                    });
                 }
             });
 
@@ -51,7 +64,12 @@
     window.wopIdentify = function(email, name, currentLobby = "") {
         if (!email) return;
         if (socket && socket.connected) {
-            socket.emit("auth:identify", { email, name: name || "Spieler", currentLobby });
+            socket.emit("auth:identify", {
+                email,
+                name: name || "Spieler",
+                currentLobby,
+                isVisible: document.visibilityState === "visible"
+            });
         }
     };
 

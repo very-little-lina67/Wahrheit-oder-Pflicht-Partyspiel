@@ -130,6 +130,18 @@ function emitToUser(email, event, data) {
     });
 }
 
+function isUserActiveInApp(email) {
+    if (!email) return false;
+    const cleanEmail = String(email).trim().toLowerCase();
+    const sockets = getSocketsForEmail(cleanEmail);
+    if (!sockets || !sockets.length) return false;
+    // Prüfen, ob mindestens ein Socket für diese E-Mail aktuell sichtbar/im Vordergrund ist
+    return sockets.some(sId => {
+        const u = socketUsers.get(sId);
+        return u && u.isVisible !== false;
+    });
+}
+
 // Master / Admin Prüfung
 function isAdminOrMaster(role, email) {
     const cleanEmail = String(email || '').trim().toLowerCase();
@@ -450,18 +462,23 @@ app.post('/api/dm/send', async (req, res) => {
         emitToUser(fromEmail, 'dm:incoming', msg);
 
         // 2. Web Push an Empfänger senden (weckt Smartphone im Standby/Hintergrund auf)
-        sendWebPushNotification(toEmail, {
-            title: `💬 ${fromName || 'Neue Nachricht'}`,
-            body: String(text).slice(0, 100),
-            icon: './icon-192.png',
-            badge: './favicon-48.png',
-            tag: `dm-${String(fromEmail).toLowerCase()}`,
-            data: {
-                url: './',
-                fromEmail: String(fromEmail).toLowerCase(),
-                fromName: fromName || 'Spieler'
-            }
-        }).catch(e => console.warn('Push-Benachrichtigung fehlgeschlagen:', e.message));
+        // WICHTIG: Wenn der Empfänger aktuell mit sichtbarer App im Vordergrund aktiv ist, KEIN System-Web-Push!
+        // Verhindert auf iOS und Android doppelte Benachrichtigungen (OS-Banner über App-Ansicht).
+        const recipientIsActive = isUserActiveInApp(toEmail);
+        if (!recipientIsActive) {
+            sendWebPushNotification(toEmail, {
+                title: `💬 ${fromName || 'Neue Nachricht'}`,
+                body: String(text).slice(0, 100),
+                icon: './icon-192.png',
+                badge: './favicon-48.png',
+                tag: `dm-${String(fromEmail).toLowerCase()}`,
+                data: {
+                    url: './',
+                    fromEmail: String(fromEmail).toLowerCase(),
+                    fromName: fromName || 'Spieler'
+                }
+            }).catch(e => console.warn('Push-Benachrichtigung fehlgeschlagen:', e.message));
+        }
 
         res.json({ success: true, message: msg });
     } catch (err) {
@@ -636,8 +653,9 @@ io.on('connection', (socket) => {
         const email = String(data.email).trim().toLowerCase();
         const name = data.name || 'Spieler';
         const currentLobby = data.currentLobby || '';
+        const isVisible = data.isVisible !== false;
 
-        socketUsers.set(socket.id, { email, name });
+        socketUsers.set(socket.id, { email, name, isVisible });
         if (!userSockets.has(email)) {
             userSockets.set(email, new Set());
         }
@@ -648,10 +666,23 @@ io.on('connection', (socket) => {
         io.emit('social:presence', { email, isOnline: true, currentLobby });
     });
 
+    // Client meldet Änderung der Sichtbarkeit (App im Vordergrund vs. Hintergrund/Minimiert)
+    socket.on('user:visibility', (data) => {
+        const user = socketUsers.get(socket.id);
+        if (user && data) {
+            user.isVisible = Boolean(data.isVisible);
+        }
+    });
+
     socket.on('user:heartbeat', async (data) => {
         if (!data || !data.email) return;
         const email = String(data.email).trim().toLowerCase();
         const currentLobby = data.currentLobby || '';
+        const isVisible = data.isVisible !== false;
+
+        const existing = socketUsers.get(socket.id) || { email, name: 'Spieler' };
+        existing.isVisible = isVisible;
+        socketUsers.set(socket.id, existing);
 
         if (!userSockets.has(email)) {
             userSockets.set(email, new Set());
