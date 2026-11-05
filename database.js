@@ -220,6 +220,9 @@ export async function initializeDatabase() {
                 }
             });
 
+            // Beim Serverstart alle User als offline markieren (da noch keine WebSockets verbunden sind)
+            db.run(`UPDATE users SET isOnline = 0, currentLobby = ''`);
+
             console.log('✅ SQLite-Tabellen & Indizes erfolgreich angelegt/geprüft.');
             resolve();
         });

@@ -1579,33 +1579,21 @@
             const ms = getLastActiveMillis(lastActive);
             const now = Date.now();
             const status = normalizePresenceClient(presenceStatus);
-            // Expliziter Presence-Status hat Vorrang, wenn gesetzt und online-Flag wahr
-            if (presenceStatus !== undefined && presenceStatus !== null && presenceStatus !== "") {
-                if (status === "offline" || !isOnlineFlag) {
-                    // offline + lastActive-Text
-                } else {
-                    return {
-                        isOnline: true,
-                        presenceStatus: status,
-                        text: presenceLabel(status),
-                        color: presenceColor(status),
-                        canInvite: canInvitePresence(status)
-                    };
-                }
-            }
 
-            const isOnline = !!isOnlineFlag || (ms > 0 && (now - ms < ONLINE_TIMEOUT_MS));
-            
+            // Wenn das Online-Flag false ist oder der Status 'offline' ist -> User ist strikt OFFLINE
+            const isOnline = Boolean(isOnlineFlag) && status !== "offline";
+
             if (isOnline) {
+                const effectiveStatus = (status && status !== "offline") ? status : "online";
                 return {
                     isOnline: true,
-                    presenceStatus: "online",
-                    text: currentLang === "de" ? "Jetzt online" : "Online now",
-                    color: "#28a745",
-                    canInvite: true
+                    presenceStatus: effectiveStatus,
+                    text: presenceLabel(effectiveStatus),
+                    color: presenceColor(effectiveStatus),
+                    canInvite: canInvitePresence(effectiveStatus)
                 };
             }
-            
+
             if (!ms) {
                 return {
                     isOnline: false,
@@ -1615,12 +1603,12 @@
                     canInvite: false
                 };
             }
-            
-            const diffSec = Math.floor((now - ms) / 1000);
+
+            const diffSec = Math.max(0, Math.floor((now - ms) / 1000));
             const diffMin = Math.floor(diffSec / 60);
             const diffHours = Math.floor(diffMin / 60);
             const diffDays = Math.floor(diffHours / 24);
-            
+
             let timeStr = "";
             if (diffMin < 1) {
                 timeStr = currentLang === "de" ? "Gerade eben" : "Just now";
@@ -1639,7 +1627,7 @@
                 const dateStr = `${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth()+1).padStart(2, "0")}.${d.getFullYear()}`;
                 timeStr = currentLang === "de" ? `am ${dateStr}` : `on ${dateStr}`;
             }
-            
+
             return {
                 isOnline: false,
                 presenceStatus: "offline",
@@ -2382,7 +2370,7 @@
                     let data = doc.data() || {};
                     const playerName = getUserDisplayName(data);
                     const lastActiveMs = getLastActiveMillis(data.lastActive);
-                    const isRecentlyOnline = (!!data.isOnline && (lastActiveMs === 0 || (now - lastActiveMs) <= ONLINE_TIMEOUT_MS * 2)) || (lastActiveMs > 0 && (now - lastActiveMs) <= ONLINE_TIMEOUT_MS);
+                    const isRecentlyOnline = Boolean(data.isOnline) && normalizePresenceClient(data.presenceStatus) !== "offline";
 
                     if (playerName !== myName && isRecentlyOnline) {
                         found = true;
@@ -6512,6 +6500,7 @@
             saveLobbySession();
             updateOnlineStatus(true);
             window.activeLobbyCode = activeLobbyCode;
+            try { restoreLobbyChat(activeLobbyCode); } catch (_) {}
             if (isHost && window.wopSocket && window.wopSocket.connected) {
                 window.wopSocket.emit("lobby:create", {
                     code: activeLobbyCode,
@@ -6587,6 +6576,7 @@
             saveLobbySession();
             updateOnlineStatus(true);
             window.activeLobbyCode = activeLobbyCode;
+            try { restoreLobbyChat(activeLobbyCode); } catch (_) {}
             if (isHost && window.wopSocket && window.wopSocket.connected) {
                 window.wopSocket.emit("lobby:create", {
                     code: activeLobbyCode,
@@ -7052,7 +7042,16 @@
             lastCreatorForTarget = {};
             lastSavedStateHash = "";
 
-            if (manual) clearSavedLobbySession();
+            if (manual) {
+                clearSavedLobbySession();
+                if (activeLobbyCode) {
+                    try {
+                        const clean = String(activeLobbyCode).trim().toLowerCase();
+                        sessionStorage.removeItem("wop_lobby_chat_v1_" + clean);
+                        localStorage.removeItem("wop_lobby_chat_v1_" + clean);
+                    } catch (_) {}
+                }
+            }
 
             updateHUD();
             updateOnlineStatus(true);
@@ -7468,6 +7467,7 @@
             document.getElementById("leave-lobby-btn").classList.remove("hidden");
             startRoundTimer();
             updateWopTurn();
+            try { restoreLobbyChat(activeLobbyCode); } catch (_) {}
             if (isHost) scheduleSaveGameState();
         }
 
@@ -8621,11 +8621,78 @@
                 : "Nachricht blockiert.");
         }
 
-        function appendChat(sender, text) {
+        const LOBBY_CHAT_STORAGE_PREFIX = "wop_lobby_chat_v1_";
+
+        function getLobbyChatHistory(code) {
+            const clean = String(code || activeLobbyCode || "").trim().toLowerCase();
+            if (!clean) return [];
+            try {
+                const raw = sessionStorage.getItem(LOBBY_CHAT_STORAGE_PREFIX + clean) || localStorage.getItem(LOBBY_CHAT_STORAGE_PREFIX + clean);
+                return raw ? JSON.parse(raw) : [];
+            } catch (_) {
+                return [];
+            }
+        }
+
+        function saveLobbyChatMessage(code, msg) {
+            const clean = String(code || activeLobbyCode || "").trim().toLowerCase();
+            if (!clean || !msg || !msg.text) return;
+            try {
+                const list = getLobbyChatHistory(clean);
+                const exists = list.some(m => (msg.id && m.id === msg.id) || (m.timestamp && m.timestamp === msg.timestamp && m.sender === msg.sender && m.text === msg.text));
+                if (!exists) {
+                    list.push(msg);
+                    if (list.length > 100) list.shift();
+                    sessionStorage.setItem(LOBBY_CHAT_STORAGE_PREFIX + clean, JSON.stringify(list));
+                    localStorage.setItem(LOBBY_CHAT_STORAGE_PREFIX + clean, JSON.stringify(list));
+                }
+            } catch (_) {}
+        }
+
+        function restoreLobbyChat(code) {
+            const clean = String(code || activeLobbyCode || "").trim().toLowerCase();
+            if (!clean) return;
+            const list = getLobbyChatHistory(clean);
+            const box = document.getElementById("chat-messages");
+            if (!box) return;
+            box.innerHTML = "";
+            list.forEach(msg => {
+                if (msg.id) chatSeenIds.add(msg.id);
+                if (msg.isPrivate) {
+                    appendPrivateChat(msg.sender, msg.to, msg.text, namesEqual(msg.sender, myName), true);
+                } else {
+                    appendChat(msg.sender, msg.text, true);
+                }
+            });
+        }
+
+        if (typeof window !== "undefined") {
+            window.addEventListener("wop:chat_history", (ev) => {
+                const data = (ev && ev.detail) || {};
+                const code = data.code || activeLobbyCode;
+                const messages = Array.isArray(data.messages) ? data.messages : [];
+                if (!messages.length) return;
+                messages.forEach(msg => {
+                    if (!msg || !msg.text) return;
+                    saveLobbyChatMessage(code, msg);
+                });
+                restoreLobbyChat(code);
+            });
+        }
+
+        function appendChat(sender, text, isRestoring = false) {
             let box = document.getElementById("chat-messages");
             if (!box) return;
             if (String(sender || "").toLowerCase() !== "system" && typeof passChatFilter === "function" && !passChatFilter(text)) {
                 return;
+            }
+            if (!isRestoring && activeLobbyCode) {
+                saveLobbyChatMessage(activeLobbyCode, {
+                    id: "chat_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6),
+                    sender: sender,
+                    text: text,
+                    timestamp: Date.now()
+                });
             }
             const safeSender = String(sender || "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
             const safeText = String(text || "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -8639,10 +8706,21 @@
          * @param {string} toName
          * @param {string} text
          * @param {boolean} isOwn – true = ich habe gesendet
+         * @param {boolean} [isRestoring=false] – true = aus Speicher wiederherstellen
          */
-        function appendPrivateChat(fromName, toName, text, isOwn) {
+        function appendPrivateChat(fromName, toName, text, isOwn, isRestoring = false) {
             const box = document.getElementById("chat-messages");
             if (!box) return;
+            if (!isRestoring && activeLobbyCode) {
+                saveLobbyChatMessage(activeLobbyCode, {
+                    id: "pm_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6),
+                    sender: fromName,
+                    to: toName,
+                    text: text,
+                    isPrivate: true,
+                    timestamp: Date.now()
+                });
+            }
             const t = translations[currentLang] || translations.de;
             const safeFrom = String(fromName || "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
             const safeTo = String(toName || "").replace(/</g, "&lt;").replace(/>/g, "&gt;");

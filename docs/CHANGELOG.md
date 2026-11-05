@@ -4,6 +4,26 @@ Alle wesentlichen Änderungen am Projekt werden in dieser Datei präzise und tec
 
 ---
 
+## [2.0.27] - 2026-11-05
+
+### Bug Fixes
+- **Lobby-Chat-Persistenz bei Neuladen der Seite (`server.js`, `js/app.js`, `js/wop-socket-client.js`):**
+  - Chatnachrichten (öffentlich sowie privat) werden nun parallel in `sessionStorage` und `localStorage` unter `wop_lobby_chat_v1_<code.toLowerCase()>` zwischengespeichert und beim Reload (`showLobbyUI`, `startGameUI`) sofort wiederhergestellt.
+  - Serverseitige Chat-Historie: `activeLobbies` speichert die letzten 100 Nachrichten und sendet sie beim Beitreten oder Reconnecten via `lobby:chat_history` automatisch an den Client.
+  - Beim manuellen Verlassen der Lobby wird der lokale Chat-Speicher für diesen Raum sauber gelöscht.
+- **Sofortige Offline-Erkennung & Bereinigung von Geister-Online-Status (`server.js`, `database.js`, `js/app.js`, `js/wop-socket-client.js`):**
+  - Beendete Apps (Taskmanager-Kill / Schließen): Socket.io Heartbeat-Intervalle auf `pingInterval: 8000` und `pingTimeout: 5000` optimiert, sodass tote Sockets innerhalb von 8–13 Sekunden verlässlich getrennt werden.
+  - `pagehide`-Offline-Beacon: Beim Schließen des Tabs oder App-Wechsel wird via `navigator.sendBeacon('/api/user/offline')` ein sofortiger Offline-Status gemeldet.
+  - Kritischer Fehler in `/api/user/profile` behoben: Der statische Datenbank-Wert `Boolean(user.isOnline)` wurde zuvor fälschlicherweise geleakt (`userSockets.has(user.email) || Boolean(...)`). Der Status spiegelt nun strikt die tatsächliche Live-Verbindung wider.
+  - `formatLastOnline`-Korrektur in `js/app.js`: Offline-Nutzer wurden zuvor durch `ONLINE_TIMEOUT_MS` (2,5 Min.) fälschlicherweise als "Jetzt online" gerendert. Wenn das Online-Flag false ist, wird der Nutzer nun sofort als offline mit genauer Verweildauer ("Zuletzt online: vor X Min.") dargestellt.
+  - Periodischer Server-Sweep (alle 15 Sek.) bereinigt zombifizierte Sockets und sendet `social:presence`-Broadcasts.
+  - Server-Startup-Reset: Bei Initialisierung der SQLite-Datenbank werden alle Nutzer auf `isOnline = 0, currentLobby = ''` zurückgesetzt.
+
+### Misc
+- Versionsnummer auf **2.0.27** angehoben und alle Cache-Busting-Parameter aktualisiert.
+
+---
+
 ## [2.0.26] - 2026-11-05
 
 ### New Features

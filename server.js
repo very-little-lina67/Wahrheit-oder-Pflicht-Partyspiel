@@ -333,8 +333,8 @@ const io = new Server(server, {
         origin: '*',
         methods: ['GET', 'POST']
     },
-    pingInterval: 25000,
-    pingTimeout: 20000
+    pingInterval: 8000,
+    pingTimeout: 5000
 });
 
 // ==============================================================================
@@ -621,10 +621,49 @@ app.get('/api/user/profile', async (req, res) => {
         if (!email) return res.status(400).json({ error: 'E-Mail erforderlich.' });
         const user = await getUserByEmail(email);
         if (!user) return res.status(404).json({ error: 'Benutzer nicht gefunden.' });
-        user.isOnline = userSockets.has(user.email) || Boolean(user.isOnline);
+        const clean = String(user.email || '').trim().toLowerCase();
+        const liveOnline = userSockets.has(clean);
+        const storedStatus = normalizePresenceStatus(user.presenceStatus);
+        const effectiveStatus = !liveOnline ? 'offline' : storedStatus;
+        user.isOnline = liveOnline && effectiveStatus !== 'offline';
+        user.presenceStatus = effectiveStatus;
         res.json(user);
     } catch (err) {
         res.status(500).json({ error: err.message });
+    }
+});
+
+// Beacon / Unload Offline-Endpoint
+app.post('/api/user/offline', async (req, res) => {
+    try {
+        let email = '';
+        if (typeof req.body === 'string') {
+            try { email = JSON.parse(req.body).email; } catch (_) {}
+        } else if (req.body && req.body.email) {
+            email = req.body.email;
+        }
+        if (email) {
+            const clean = String(email).trim().toLowerCase();
+            const sockets = userSockets.get(clean);
+            if (sockets) {
+                for (const sId of sockets) {
+                    socketUsers.delete(sId);
+                    const s = io.sockets.sockets.get(sId);
+                    if (s) s.disconnect(true);
+                }
+                userSockets.delete(clean);
+            }
+            await setOnlineStatus(clean, false);
+            io.emit('social:presence', {
+                email: clean,
+                isOnline: false,
+                presenceStatus: 'offline',
+                currentLobby: ''
+            });
+        }
+        res.json({ success: true });
+    } catch (_) {
+        res.status(200).json({ success: false });
     }
 });
 
@@ -1294,6 +1333,7 @@ io.on('connection', (socket) => {
             settings: settings || {},
             players: hostPlayer ? [hostPlayer] : [],
             spectators: [],
+            chatMessages: [],
             state: {
                 started: false,
                 currentPlayerIndex: 0,
@@ -1332,6 +1372,7 @@ io.on('connection', (socket) => {
                     settings: persisted.settings || {},
                     players: persisted.state?.players || [],
                     spectators: [],
+                    chatMessages: persisted.state?.chatMessages || [],
                     state: persisted.state || {},
                     updatedAt: Date.now()
                 };
@@ -1372,6 +1413,14 @@ io.on('connection', (socket) => {
             io.emit('social:presence', { email: pEmail, isOnline: true, currentLobby: cleanCode });
         }
         await saveLobbyState(cleanCode, lobby.hostEmail, lobby.settings, { ...lobby.state, players: lobby.players }).catch(() => {});
+
+        // Chat-Verlauf an neu beigetretenen / reconnectenden Client senden
+        if (lobby.chatMessages && lobby.chatMessages.length > 0) {
+            socket.emit('lobby:chat_history', {
+                code: cleanCode,
+                messages: lobby.chatMessages
+            });
+        }
 
         // Broadcast an alle in der Lobby
         io.to(roomName).emit('lobby:player_joined', { player, isSpectator, players: lobby.players });
@@ -1448,6 +1497,19 @@ io.on('connection', (socket) => {
             if (!senderInLobby) {
                 return;
             }
+            if (!lobby.chatMessages) lobby.chatMessages = [];
+            const msgObj = {
+                id: data.id || `chat_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+                type: 'CHAT_MSG',
+                sender: data.sender,
+                text: data.text,
+                timestamp: data.timestamp || Date.now()
+            };
+            data.id = msgObj.id;
+            lobby.chatMessages.push(msgObj);
+            if (lobby.chatMessages.length > 100) lobby.chatMessages.shift();
+            lobby.state = { ...(lobby.state || {}), chatMessages: lobby.chatMessages };
+            saveLobbyState(cleanCode, lobby.hostEmail, lobby.settings, lobby.state).catch(() => {});
         }
 
         if (targetEmail) {
@@ -1517,6 +1579,29 @@ initializeDatabase().then(async () => {
     } catch (pushErr) {
         console.warn('⚠️ Web-Push VAPID Initialisierung fehlgeschlagen:', pushErr.message);
     }
+
+    // Periodischer Bereinigungs-Sweep für getrennte / zombifizierte Sockets (alle 15 Sek.)
+    setInterval(() => {
+        for (const [email, socketIds] of userSockets.entries()) {
+            for (const sId of socketIds) {
+                const s = io.sockets.sockets.get(sId);
+                if (!s || !s.connected) {
+                    socketIds.delete(sId);
+                    socketUsers.delete(sId);
+                }
+            }
+            if (socketIds.size === 0) {
+                userSockets.delete(email);
+                setOnlineStatus(email, false).catch(() => {});
+                io.emit('social:presence', {
+                    email,
+                    isOnline: false,
+                    presenceStatus: 'offline',
+                    currentLobby: ''
+                });
+            }
+        }
+    }, 15000);
 
     server.listen(PORT, '0.0.0.0', () => {
         console.log('====================================================');

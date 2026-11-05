@@ -66,6 +66,23 @@
             window.addEventListener("focus", reportVisibility);
             window.addEventListener("pageshow", reportVisibility);
 
+            // Bei Schließen / Taskwechsel Offline-Beacon senden
+            window.addEventListener("pagehide", () => {
+                const email = (typeof window !== "undefined" && window.myEmail) || localStorage.getItem("wop_user_email_v6");
+                if (email && navigator.sendBeacon) {
+                    try {
+                        const blob = new Blob([JSON.stringify({ email })], { type: "application/json" });
+                        navigator.sendBeacon("/api/user/offline", blob);
+                    } catch (_) {}
+                }
+            });
+
+            socket.on("lobby:chat_history", (data) => {
+                if (data && Array.isArray(data.messages)) {
+                    window.dispatchEvent(new CustomEvent("wop:chat_history", { detail: data }));
+                }
+            });
+
             socket.on("disconnect", (reason) => {
                 console.warn("⚠️ WebSocket getrennt:", reason);
             });

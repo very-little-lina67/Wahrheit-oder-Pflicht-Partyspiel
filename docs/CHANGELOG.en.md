@@ -4,6 +4,26 @@ All notable changes to this project are documented in this file in a precise, te
 
 ---
 
+## [2.0.27] - 2026-11-05
+
+### Bug Fixes
+- **Lobby Chat Persistence on Page Reload (`server.js`, `js/app.js`, `js/wop-socket-client.js`):**
+  - Chat messages (both public and direct) are now cached locally in `sessionStorage` and `localStorage` under `wop_lobby_chat_v1_<code.toLowerCase()>` and immediately restored upon reload (`showLobbyUI`, `startGameUI`).
+  - Server-side chat history: `activeLobbies` retains the last 100 chat messages and dispatches them on join or reconnect via `lobby:chat_history`.
+  - Leaving a lobby manually cleans up the stored chat cache for that specific room.
+- **Immediate Offline Detection & Phantom Online Status Cleanup (`server.js`, `database.js`, `js/app.js`, `js/wop-socket-client.js`):**
+  - Force-closed / task-manager-killed apps: optimized Socket.io heartbeat to `pingInterval: 8000` and `pingTimeout: 5000` so disconnected sockets are detected in 8–13s.
+  - Added `pagehide` beacon (`navigator.sendBeacon('/api/user/offline')`) to cleanly report offline state upon closing tabs or background termination.
+  - Fixed `/api/user/profile` bug that leaked stale SQLite database flags (`userSockets.has(...) || Boolean(user.isOnline)`), accurately reflecting live connection status now.
+  - Corrected `formatLastOnline` in `js/app.js`: offline users were previously marked "Online now" due to `ONLINE_TIMEOUT_MS` (2.5 mins). An explicit offline status is now respected instantly with accurate last-seen timestamps.
+  - Server periodic sweep (every 15s) cleans zombie sockets and emits `social:presence` broadcasts.
+  - Database initialization marks all users offline (`isOnline = 0, currentLobby = ''`) on server startup.
+
+### Misc
+- Version bumped to **2.0.27** with updated cache-busting query strings.
+
+---
+
 ## [2.0.26] - 2026-11-05
 
 ### New Features
