@@ -2814,10 +2814,11 @@
 // ==============================================================================
         function addRewards(isDare) {
             // Spiel-Streak: +1 pro erfolgreiche Runde (ohne Leak)
+            // Coins fest: Wahrheit +4, Pflicht +8 (kein Multiplikator)
             gameStreak = (Number(gameStreak) || 0) + 1;
             let mult = gameStreak >= 5 ? 2 : 1;
-            let xpGain = isDare ? 20 : 10;
-            let coinGain = (isDare ? 8 : 4) * mult;
+            let xpGain = (isDare ? 20 : 10) * mult;
+            let coinGain = isDare ? 8 : 4;
 
             userXP += xpGain;
             userCoins += coinGain;
@@ -2830,6 +2831,9 @@
             calculateLevel();
             checkBadges();
             updateHUD();
+            // Rangliste-Cache leeren, damit Monatscoins sofort sichtbar werden
+            leaderboardCache = null;
+            leaderboardCacheTime = 0;
             saveUserDataToCloud();
         }
 
@@ -4187,10 +4191,14 @@
             }
             const closeBtn = document.getElementById("ui-dm-close-btn");
             if (closeBtn) {
-                // Zurück-Pfeil behalten, Schrift/Label an App anpassen (kein langer Text „Schließen“)
+                // Zurück-Pfeil: zurück zur Nachrichten-Liste (Bild 1), nicht zur Lobby
                 closeBtn.innerHTML = "←";
-                closeBtn.setAttribute("aria-label", currentLang === "de" ? "Zurück" : "Back");
-                closeBtn.title = currentLang === "de" ? "Zurück" : "Back";
+                closeBtn.setAttribute("aria-label", currentLang === "de" ? "Zurück zur Übersicht" : "Back to inbox");
+                closeBtn.title = currentLang === "de" ? "Zurück zur Übersicht" : "Back to inbox";
+                closeBtn.onclick = function (ev) {
+                    if (ev) ev.preventDefault();
+                    closeDmModal();
+                };
             }
             document.getElementById("dm-modal")?.classList.remove("hidden");
             try { document.getElementById("friends-modal")?.classList.add("hidden"); } catch (e) {}
@@ -4204,16 +4212,25 @@
         }
 
         function closeDmModal() {
+            // Chat schließen → immer zur Nachrichten-Übersicht (Liste der Chats),
+            // NIE direkt zur Lobby / zum Spiel. Zur Lobby geht man erst mit ← in der Übersicht.
             document.getElementById("dm-modal")?.classList.add("hidden");
             dmTargetEmail = "";
             dmTargetName = "";
-            // Zurück zur Inbox wenn offen, sonst Nav zurücksetzen
+            try {
+                // openDmInbox öffnet die Konversationsliste und aktualisiert sie
+                if (typeof openDmInbox === "function") {
+                    openDmInbox();
+                    return;
+                }
+            } catch (e) {}
+            // Fallback falls openDmInbox nicht greift
             const inbox = document.getElementById("dm-inbox-modal");
-            if (inbox && !inbox.classList.contains("hidden")) {
+            if (inbox) {
+                try { closeAppPagesExcept("dm-inbox-modal"); } catch (e) {}
+                inbox.classList.remove("hidden");
                 setBottomNavActive("ui-btn-messages");
                 renderDmInbox();
-            } else {
-                setBottomNavActive(null);
             }
             refreshDmUnreadCount();
         }
@@ -7134,9 +7151,8 @@
                 const nextRoundBtn = document.getElementById("next-round-btn");
                 if (nextRoundBtn) nextRoundBtn.disabled = isSpectator ? true : false;
                 if (!isSpectator) {
+                    // Nur XP fürs Rad – keine Coins mehr (Coins nur noch über Wahrheit/Pflicht)
                     userXP += 25;
-                    userCoins += 12;
-                    addMonthlyCoins(12);
                     calculateLevel();
                     updateHUD();
                     updateProfileModal();
