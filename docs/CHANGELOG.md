@@ -4,6 +4,35 @@ Alle wesentlichen Änderungen am Projekt werden in dieser Datei präzise und tec
 
 ---
 
+## [2.0.16] - 2026-11-05
+
+### New Features
+- **Erfolge / Badges mit Stufen (Bronze → Silber → Gold → Platin) (`js/app.js`, `css/style.css`):**
+  - Badges haben jetzt eine Stufe (Bronze / Silber / Gold / Platin) und farbige Hervorhebung.
+  - Klick auf einen Erfolg öffnet ein Detail-Overlay mit Fortschrittsbalken, aktuellem Stand und Hinweis zur nächsten Stufe.
+  - Neue Erfolge: Coin-Tycoon/Legende, Eternal-Streak, 50/100 Wahrheiten, Pflicht-Legende, Aufgaben-Gott, Sitzungs-König, Ausdauer-Meister, Challenge-Hero, Last One Standing.
+- **Kompakter Online-Status-Pill (wie im Screenshot) (`index.html`, `css/style.css`, `js/app.js`):**
+  - Status-Auswahl als kleines Pill-Dropdown (Dot + Label + Chevron) statt großem 2×2-Grid.
+  - Ausgewählter Status bleibt sichtbar und aktiv, bis man ihn ändert.
+- **Echte E-Mail-Pflicht + Bestätigungscode (`server.js`, `database.js`, `js/app.js`):**
+  - Registrierung nur mit gültiger E-Mail (Format-Check).
+  - Wegwerf-/Spaß-Domains werden blockiert.
+  - Domain muss existieren (MX-/DNS-Prüfung) – fiktive Adressen werden abgelehnt.
+  - Neuer Account erhält 6-stelligen Bestätigungscode (30 Min. gültig); Login erst nach Bestätigung.
+  - Endpoints: `POST /api/auth/verify-email`, `POST /api/auth/resend-code`.
+  - Bestehende Accounts bleiben verifiziert (Migration `emailVerified DEFAULT 1`).
+  - Optional SMTP (`SMTP_HOST`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`); ohne SMTP Code im Server-Log + Dev-Hinweis.
+
+### UX
+- Badge-Tiles klickbar und mit Tier-Label; Profile zeigt „Erfolge“-Gesamtzahl.
+- Presence-Pill schließt sich nach Auswahl und bei Klick außerhalb.
+- Verifizierungs-Overlay nach Registrierung bzw. Login ohne bestätigte E-Mail.
+
+### Misc
+- Versionsnummer und Cache-Busting-Query-Parameter auf **2.0.16** angehoben.
+
+---
+
 ## [2.0.15] - 2026-11-05
 
 ### UX

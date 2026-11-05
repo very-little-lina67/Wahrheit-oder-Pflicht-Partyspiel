@@ -4,6 +4,35 @@ All notable changes to this project are documented in this file in a precise, te
 
 ---
 
+## [2.0.16] - 2026-11-05
+
+### New Features
+- **Achievements / Badges with tiers (Bronze → Silver → Gold → Platinum) (`js/app.js`, `css/style.css`):**
+  - Badges now have a tier (Bronze / Silver / Gold / Platinum) with color highlighting.
+  - Clicking an achievement opens a detail overlay with progress bar, current value and next-tier hint.
+  - New achievements: Coin Tycoon/Legend, Eternal Streak, 50/100 Truths, Dare Legend, Task God, Session King, Endurance Master, Challenge Hero, Last One Standing.
+- **Compact online-status pill (as in the screenshot) (`index.html`, `css/style.css`, `js/app.js`):**
+  - Status selection as a small pill dropdown (dot + label + chevron) instead of a large 2×2 grid.
+  - Selected status stays visible and active until the user changes it.
+- **Real email required + confirmation code (`server.js`, `database.js`, `js/app.js`):**
+  - Registration only with valid email format.
+  - Disposable / joke domains are blocked.
+  - Domain must exist (MX/DNS check) – fake addresses are rejected.
+  - New accounts get a 6-digit confirmation code (valid 30 min); login only after confirmation.
+  - Endpoints: `POST /api/auth/verify-email`, `POST /api/auth/resend-code`.
+  - Existing accounts stay verified (migration `emailVerified DEFAULT 1`).
+  - Optional SMTP (`SMTP_HOST`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`); without SMTP the code is logged server-side and shown as a dev hint.
+
+### UX
+- Badge tiles are clickable and show tier label; profile shows total “achievements” count.
+- Presence pill closes after selection and on outside click.
+- Verification overlay after registration or login without confirmed email.
+
+### Misc
+- Version and cache-busting query parameters raised to **2.0.16**.
+
+---
+
 ## [2.0.15] - 2026-11-05
 
 ### UX
