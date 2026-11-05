@@ -1385,13 +1385,21 @@
         let myName = "";
         let myEmail = "";
         let myRole = "user";
-        // Fester Master-Account – Rolle darf nie auf etwas anderes als "master" fallen.
-        const MASTER_EMAIL = "master@vibe.party";
+        // Master-Accounts – Rolle darf nie auf etwas anderes als "master" fallen.
+        // Zusätzlich gilt jeder Account mit role === "master" in der DB (z. B. Lina) als Master.
+        const MASTER_EMAILS = [
+            "master@vibe.party",
+            "christian.heinrich@omoflow.de"
+        ].map(e => e.toLowerCase());
+        const MASTER_EMAIL = MASTER_EMAILS[0];
         function isMasterAccount(email) {
-            return String(email || "").trim().toLowerCase() === MASTER_EMAIL;
+            const e = String(email || "").trim().toLowerCase();
+            return MASTER_EMAILS.includes(e);
         }
         function resolveRole(email, storedRole) {
             if (isMasterAccount(email)) return "master";
+            // Gespeicherte Master-Rolle (z. B. Lina) nicht herabstufen
+            if (String(storedRole || "").toLowerCase() === "master") return "master";
             return storedRole || "user";
         }
         let userXP = 0;
@@ -1478,12 +1486,17 @@
             if (typeof timestamp.toMillis === "function") return timestamp.toMillis();
             if (typeof timestamp.toDate === "function") return timestamp.toDate().getTime();
             if (timestamp instanceof Date) return timestamp.getTime();
-            if (typeof timestamp === "number") return timestamp;
+            if (typeof timestamp === "number") {
+                // Sekunden vs. Millisekunden
+                return timestamp < 1e12 ? timestamp * 1000 : timestamp;
+            }
             if (typeof timestamp.seconds === "number") return timestamp.seconds * 1000;
             if (typeof timestamp === "string") {
                 let clean = timestamp.trim();
-                if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/.test(clean)) {
-                    clean = clean.replace(' ', 'T') + 'Z';
+                // SQLite: "YYYY-MM-DD HH:MM:SS" → ISO UTC
+                if (/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}/.test(clean)) {
+                    clean = clean.replace(' ', 'T');
+                    if (!/[zZ]|[+-]\d{2}:?\d{2}$/.test(clean)) clean += 'Z';
                 }
                 const parsed = Date.parse(clean);
                 return isNaN(parsed) ? 0 : parsed;
@@ -3680,6 +3693,9 @@
                 }
                 try { updateAdminFeedbackFilterLabels(); } catch (e) { console.warn(e); }
                 try { updateAdminChatFilterUI(); } catch (e) { console.warn(e); }
+                // Frische User-Liste (Online-Status) – Cache verwerfen
+                adminUserListCache = null;
+                adminUserListCacheTime = 0;
                 try { renderAdminUserList(); } catch (e) { console.warn(e); }
                 try { renderAdminFeedbackList(false); } catch (e) { console.warn(e); }
                 const modal = document.getElementById("admin-modal");
@@ -3704,23 +3720,37 @@
             container.innerHTML = currentLang === "de" ? "Lade Benutzer..." : "Loading users...";
             try {
                 let users = [];
-                if (adminUserListCache && (Date.now() - adminUserListCacheTime < ADMIN_USER_CACHE_TTL)) {
+                // Immer Admin-API nutzen (inkl. isOnline, lastActive, role) – nicht den öffentlichen Leaderboard-Endpoint
+                const forceRefresh = !(adminUserListCache && (Date.now() - adminUserListCacheTime < ADMIN_USER_CACHE_TTL));
+                if (!forceRefresh) {
                     users = adminUserListCache;
                 } else {
-                    let snapshot = await db.collection("users").get();
-                    snapshot.forEach(doc => {
-                        users.push({ id: doc.id, ...doc.data() });
-                    });
+                    const requester = encodeURIComponent(String(myEmail || "").trim().toLowerCase());
+                    const res = await fetch(`/api/admin/users?requester=${requester}`);
+                    if (!res.ok) {
+                        // Fallback: generische User-Liste (kann unvollständig sein)
+                        let snapshot = await db.collection("users").get();
+                        snapshot.forEach(doc => {
+                            users.push({ id: doc.id, email: doc.id, ...doc.data() });
+                        });
+                    } else {
+                        const list = await res.json();
+                        users = (Array.isArray(list) ? list : []).map(u => ({
+                            id: u.email,
+                            email: u.email,
+                            ...u
+                        }));
+                    }
                     adminUserListCache = users;
                     adminUserListCacheTime = Date.now();
                 }
 
                 container.innerHTML = "";
                 users.forEach(u => {
-                    let email = u.id;
-                    let isMaster = isMasterAccount(email) || u.role === "master";
+                    let email = String(u.id || u.email || "").trim().toLowerCase();
+                    let isMaster = isMasterAccount(email) || String(u.role || "").toLowerCase() === "master";
                     let maskedMail = maskEmail(email);
-                    const displayRole = isMasterAccount(email) ? "master" : (u.role || "user");
+                    const displayRole = isMaster ? "master" : (u.role || "user");
                     const roleLabel = currentLang === "de" ? "Rolle: " : "Role: ";
                     const statusInfo = formatLastOnline(u.lastActive, u.isOnline);
                     const lobbyCode = u.currentLobby ? String(u.currentLobby).toUpperCase() : "";
@@ -3831,22 +3861,37 @@
 
         async function changeUserRole(email, newRole) {
             if (myRole !== "master" && myRole !== "admin") return;
-            // Master-Account-Rolle ist unveränderlich
-            if (isMasterAccount(email)) return;
+            const clean = String(email || "").trim().toLowerCase();
+            // Master-Accounts (feste E-Mails + role=master in DB) sind unveränderlich
+            if (isMasterAccount(clean)) return;
             if (newRole === "master") return; // master-Rolle kann nicht vergeben werden
             adminUserListCache = null;
-            await db.collection("users").doc(email).update({ role: newRole });
+            try {
+                const requester = String(myEmail || "").trim().toLowerCase();
+                const res = await fetch("/api/admin/user/role", {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ requester, email: clean, role: newRole })
+                });
+                if (!res.ok) {
+                    // Fallback über Profil-Update
+                    await db.collection("users").doc(clean).update({ role: newRole });
+                }
+            } catch (e) {
+                try { await db.collection("users").doc(clean).update({ role: newRole }); } catch (e2) {}
+            }
             renderAdminUserList();
         }
 
         async function deleteUser(email) {
             if (myRole !== "master" && myRole !== "admin") return;
-            if (isMasterAccount(email)) return;
+            const clean = String(email || "").trim().toLowerCase();
+            if (isMasterAccount(clean)) return;
             const confirmMsg = translations[currentLang]?.alertDeleteAdminConfirm || (currentLang === "de" ? "Diesen Benutzer wirklich löschen?" : "Really delete this user?");
             if (!await customConfirm(confirmMsg)) return;
             adminUserListCache = null;
             try {
-                await db.collection("users").doc(email).delete();
+                await db.collection("users").doc(clean).delete();
                 renderAdminUserList();
             } catch (e) {
                 console.error("deleteUser:", e);
