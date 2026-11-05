@@ -1534,7 +1534,8 @@
         let myPresenceStatus = "online";
         try {
             const savedPresence = localStorage.getItem("wop_presence_status_v1");
-            if (savedPresence) myPresenceStatus = normalizePresenceClient(savedPresence);
+            myPresenceStatus = (savedPresence === "dnd") ? "dnd" : "online";
+            localStorage.setItem("wop_presence_status_v1", myPresenceStatus);
         } catch (e) {}
 
         function normalizePresenceClient(value) {
@@ -1944,7 +1945,8 @@
                     // nicht durch veraltete/überschriebene Cloud-Daten verloren gehen.
                     myRole = resolveRole(myEmail, data.role);
                     if (data.presenceStatus) {
-                        myPresenceStatus = normalizePresenceClient(data.presenceStatus);
+                        const loadedStatus = normalizePresenceClient(data.presenceStatus);
+                        myPresenceStatus = (loadedStatus === "dnd") ? "dnd" : "online";
                         try { updatePresenceButtonsUI(); } catch (e) {}
                     }
 
@@ -2175,7 +2177,7 @@
                 const email = String(p.email || "").toLowerCase();
                 if (!email) return;
                 if (myEmail && email === String(myEmail).toLowerCase()) {
-                    if (p.presenceStatus) {
+                    if (p.presenceStatus && p.isOnline) {
                         myPresenceStatus = normalizePresenceClient(p.presenceStatus);
                         try { updatePresenceButtonsUI(); } catch (e) {}
                     }
@@ -3654,11 +3656,8 @@
             if (!document.hidden && !leavingLobbyManually && activeLobbyCode) {
                 updateOnlineStatus(true);
 
-                if (isHost) {
-                    if (!peer || peer.destroyed || peer.disconnected) {
-                        reconnectLobby();
-                    }
-                } else if (!hostConnection || !hostConnection.open) {
+                // Reconnect nur einleiten, wenn die WebSocket-Verbindung tatsächlich unterbrochen ist
+                if (window.wopSocket && !window.wopSocket.connected) {
                     scheduleLobbyReconnect();
                 }
             }
@@ -6012,7 +6011,22 @@
                                 isSpectator: !!(oldHost && oldHost.isSpectator),
                                 isLocal: false
                             });
+                            seenNames.add(hostKey);
                         }
+                    }
+
+                    // Während des laufenden Spiels: Aktive Spieler niemals versehentlich droppen
+                    if (gameStarted) {
+                        (players || []).forEach(existingPlayer => {
+                            if (!existingPlayer) return;
+                            const eName = getUserDisplayName(existingPlayer);
+                            if (!eName) return;
+                            const eKey = String(eName).trim().toLowerCase();
+                            if (!seenNames.has(eKey)) {
+                                nextPlayers.push(existingPlayer);
+                                seenNames.add(eKey);
+                            }
+                        });
                     }
 
                     const changed = JSON.stringify(players) !== JSON.stringify(nextPlayers);
@@ -6460,6 +6474,7 @@
 
         function scheduleLobbyReconnect() {
             if (leavingLobbyManually || !activeLobbyCode || reconnectTimer) return;
+            if (window.wopSocket && window.wopSocket.connected) return;
 
             reconnectAttempts++;
             const delay = Math.min(RECONNECT_DELAY * Math.max(1, Math.min(reconnectAttempts, 8)), 10000);
@@ -7144,10 +7159,12 @@
                     if (isHost) scheduleSaveGameState();
                 }
             } else if (data.type === 'CHAT_MSG') {
+                const msgId = data.id || `${data.sender}_${data.text}_${data.timestamp || ""}`;
+                if (chatSeenIds.has(msgId)) return;
+                chatSeenIds.add(msgId);
                 // Eigene Nachricht wird beim Absenden sofort lokal angezeigt.
-                // Bei weitergeleiteten Nachrichten nur anzeigen, wenn sie von
-                // einem anderen Spieler stammt, damit der Absender keine Duplikate sieht.
-                if (data.sender !== myName) {
+                // Nur anzeigen, wenn sie nicht von mir stammt (case-insensitive check)
+                if (!namesEqual(data.sender, myName)) {
                     appendChat(data.sender, data.text);
                 }
             } else if (data.type === 'ADMIN_END_ROUND') {
@@ -8242,6 +8259,13 @@
                     sendData({ type: "LEAVE_LOBBY", playerName: myName });
                 } catch (e) {}
 
+                if (window.wopSocket && window.wopSocket.connected && activeLobbyCode) {
+                    try {
+                        window.wopSocket.emit("lobby:leave", { code: activeLobbyCode, playerName: myName });
+                    } catch (e) {}
+                }
+                window.activeLobbyCode = "";
+
                 leavingLobbyManually = true;
                 stopReconnectTimer();
                 clearLobbyJoinTimeout();
@@ -8501,7 +8525,17 @@
             box.scrollTop = box.scrollHeight;
         }
 
+        const chatSeenIds = new Set();
+
         function sendChatMessage() {
+            if (!activeLobbyCode) return;
+            const myPlayer = (players || []).find(p => namesEqual(p, myName));
+            if (myPlayer && myPlayer.eliminated) {
+                alert(currentLang === "de"
+                    ? "Du bist ausgeschieden und kannst nicht mehr im Chat schreiben."
+                    : "You are eliminated and cannot write in the chat.");
+                return;
+            }
             const input = document.getElementById("chat-input");
             if (!input) return;
             const text = input.value.trim();
@@ -8511,9 +8545,11 @@
             const recipient = sel ? (sel.value || "all") : "all";
 
             if (recipient === "all") {
-                // Öffentlicher Chat – wie bisher
+                // Öffentlicher Chat
+                const msgId = "chat_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6);
+                chatSeenIds.add(msgId);
                 appendChat(myName, text);
-                sendData({ type: "CHAT_MSG", sender: myName, text: text });
+                sendData({ id: msgId, type: "CHAT_MSG", sender: myName, text: text, timestamp: Date.now() });
             } else {
                 // Privatnachricht an einen Mitspieler
                 if (namesEqual(recipient, myName)) {

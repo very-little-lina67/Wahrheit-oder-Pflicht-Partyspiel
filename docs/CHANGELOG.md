@@ -4,6 +4,27 @@ Alle wesentlichen Änderungen am Projekt werden in dieser Datei präzise und tec
 
 ---
 
+## [2.0.20] - 2026-11-05
+
+### Bug Fixes
+- **Automatischer Online-Status beim App-Start (`server.js`, `js/app.js`, `js/wop-socket-client.js`):**
+  - Beim Trennen einer Verbindung (z. B. Standby/Schließen) wird `presenceStatus` in SQLite nicht mehr mit `offline` überschrieben. Dadurch bleibt die Nutzer-Präferenz erhalten.
+  - Beim Öffnen der App bzw. beim WebSocket-Connect (`auth:identify`) setzt sich der Status automatisch auf `online` (außer bei explizit gewähltem `dnd`).
+  - `loadUserDataFromCloud()` und `wop:presence` überschreiben den lokalen Status nicht mehr fälschlicherweise auf `offline`, wenn die App aktiv im Vordergrund läuft.
+- **Verhinderung doppelter Chat-Nachrichten in der Lobby (`js/wop-socket-client.js`, `js/app.js`):**
+  - Doppelte Event-Verarbeitung behoben: `socket.on("lobby:data")` leitet nun exklusiv an `window.handleIncomingData` weiter und triggert nicht mehr parallel den Snapshot-Listener `listeners.lobbyHost`.
+  - Nachrichten-Deduplizierung per eindeutiger ID (`chatSeenIds`) und case-insensitivem Namensabgleich (`namesEqual`) verhindert jegliches doppeltes Rendern.
+- **Schutz vor unbeabsichtigtem Rausfliegen von Spielern (`server.js`, `js/app.js`, `js/wop-socket-client.js`):**
+  - `startHostFirestoreLobby` behält während einer laufenden Runde (`gameStarted === true`) alle bestehenden Mitspieler im Zustand und droppt diese nicht mehr bei temporären Snapshot-Lücken.
+  - Veralteter PeerJS-Check (`!hostConnection || !hostConnection.open`) bei Sichtbarkeitswechseln entfernt, welcher zuvor bei jedem App-/Tab-Wechsel fälschlicherweise `scheduleLobbyReconnect` auslöste.
+  - Beim Wiederverbinden des WebSockets (`socket.on("connect")`) tritt der Client der aktiven Lobby automatisch wieder bei (`lobby:join`).
+  - Kicking/Elimination-Schutz: Ausgeschiedene oder gekickte Spieler können nicht mehr in der Lobby chatten (`sendChatMessage` und Server `lobby:data` prüfen Berechtigung), und `kickEliminatedPlayerToSetup` trennt die Socket-Lobby-Verbindung sauber via `lobby:leave`.
+
+### Misc
+- Versionsnummer und Cache-Busting-Query-Parameter auf **2.0.20** angehoben.
+
+---
+
 ## [2.0.19] - 2026-11-05
 
 ### Bug Fixes

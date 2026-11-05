@@ -26,11 +26,27 @@
                 console.log("✅ WebSocket verbunden mit WOP-Server [ID:", socket.id + "]");
                 const email = localStorage.getItem("wop_user_email_v6");
                 const name = localStorage.getItem("wop_user_name_v6");
+                const currentLobby = window.activeLobbyCode || "";
+                const savedPresence = localStorage.getItem("wop_presence_status_v1");
+                const presenceStatus = savedPresence === "dnd" ? "dnd" : "online";
                 if (email) {
                     socket.emit("auth:identify", {
                         email,
                         name,
+                        currentLobby,
+                        presenceStatus,
                         isVisible: document.visibilityState === "visible"
+                    });
+                }
+                // Falls der Spieler in einer aktiven Lobby war: Sofort Raum wieder beitreten
+                if (currentLobby) {
+                    const savedLobby = (typeof window.getSavedLobbySession === "function") ? window.getSavedLobbySession() : null;
+                    const isSpec = savedLobby ? (savedLobby.isSpectator || savedLobby.role === "spectator") : false;
+                    const accessory = localStorage.getItem("wop_equipped_accessory") || "";
+                    socket.emit("lobby:join", {
+                        code: currentLobby,
+                        player: { name: name || "Spieler", email, accessory },
+                        isSpectator: isSpec
                     });
                 }
             });
@@ -184,21 +200,22 @@
         });
 
         socket.on("lobby:data", (data) => {
-            // Direkte Weiterleitung an handleIncomingData, falls vorhanden
+            // Direkte Weiterleitung an handleIncomingData (verhindert Doppelausführung)
             if (typeof window.handleIncomingData === "function") {
                 window.handleIncomingData(data);
+            } else {
+                listeners.lobbyHost.forEach(cb => {
+                    try {
+                        cb({
+                            exists: true,
+                            data: () => ({
+                                currentLobby: window.activeLobbyCode || "",
+                                hostMessage: { seq: Date.now(), data, recent: [{ seq: Date.now(), data }] }
+                            })
+                        });
+                    } catch (e) { console.error(e); }
+                });
             }
-            listeners.lobbyHost.forEach(cb => {
-                try {
-                    cb({
-                        exists: true,
-                        data: () => ({
-                            currentLobby: window.activeLobbyCode || "",
-                            hostMessage: { seq: Date.now(), data, recent: [{ seq: Date.now(), data }] }
-                        })
-                    });
-                } catch (e) { console.error(e); }
-            });
         });
 
         socket.on("lobby:state", (state) => {

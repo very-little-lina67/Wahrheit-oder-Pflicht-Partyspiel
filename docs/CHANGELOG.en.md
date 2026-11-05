@@ -4,6 +4,27 @@ All notable changes to this project are documented in this file in a precise, te
 
 ---
 
+## [2.0.20] - 2026-11-05
+
+### Bug Fixes
+- **Automatic Online Status on App Open (`server.js`, `js/app.js`, `js/wop-socket-client.js`):**
+  - When disconnecting, `presenceStatus` is no longer overwritten to `offline` in SQLite, keeping the user preference intact.
+  - On app launch and WebSocket connect (`auth:identify`), status automatically resets to `online` (unless user explicitly configured `dnd`).
+  - `loadUserDataFromCloud()` and `wop:presence` no longer set local status to `offline` while the app is active in the foreground.
+- **Lobby Chat Message Deduplication (`js/wop-socket-client.js`, `js/app.js`):**
+  - Resolved double event processing: `socket.on("lobby:data")` now exclusively delegates to `window.handleIncomingData` instead of also invoking `listeners.lobbyHost`.
+  - Unique message ID deduplication (`chatSeenIds`) and case-insensitive sender comparison (`namesEqual`) completely prevent duplicate chat bubbles.
+- **Protection Against Players Accidentally Dropping (`server.js`, `js/app.js`, `js/wop-socket-client.js`):**
+  - `startHostFirestoreLobby` preserves all existing players during an active game (`gameStarted === true`) and does not drop them on temporary snapshot discrepancies.
+  - Removed outdated PeerJS check (`!hostConnection || !hostConnection.open`) on visibility change which erroneously triggered `scheduleLobbyReconnect` on tab switches.
+  - On WebSocket reconnect (`socket.on("connect")`), clients automatically re-join the active lobby room (`lobby:join`).
+  - Elimination & kicking enforcement: Eliminated or removed players can no longer send lobby chat messages (enforced by `sendChatMessage` and server `lobby:data`), and `kickEliminatedPlayerToSetup` explicitly executes `lobby:leave`.
+
+### Misc
+- Version and cache-busting query parameters raised to **2.0.20**.
+
+---
+
 ## [2.0.19] - 2026-11-05
 
 ### Bug Fixes

@@ -1047,11 +1047,11 @@ io.on('connection', (socket) => {
         socket.join(`user:${email}`);
 
         // Gespeicherten Presence-Status laden (manuelles Offline bleibt offline)
-        const dbUser = await getUserByEmail(email);
-        let status = normalizePresenceStatus(dbUser?.presenceStatus);
-        if (data.presenceStatus) {
+        let status = 'online';
+        if (data.presenceStatus && data.presenceStatus !== 'offline') {
             status = normalizePresenceStatus(data.presenceStatus);
         }
+
         const isOnlineFlag = status !== 'offline';
         await setOnlineStatus(email, isOnlineFlag, currentLobby, status);
         io.emit('social:presence', {
@@ -1232,6 +1232,19 @@ io.on('connection', (socket) => {
     socket.on('lobby:data', ({ code, data, targetEmail }) => {
         const cleanCode = String(code).trim().toLowerCase();
         const roomName = `lobby:${cleanCode}`;
+        const lobby = activeLobbies.get(cleanCode);
+
+        // Chat-Filter: Nur Spieler/Zuschauer, die wirklich in dieser Lobby sind, dürfen darin chatten
+        if (lobby && data && data.type === 'CHAT_MSG' && data.sender) {
+            const senderInLobby = (lobby.players || []).some(p =>
+                (p.name && p.name.toLowerCase() === String(data.sender).toLowerCase())
+            ) || (lobby.spectators || []).some(s =>
+                (s.name && s.name.toLowerCase() === String(data.sender).toLowerCase())
+            );
+            if (!senderInLobby) {
+                return;
+            }
+        }
 
         if (targetEmail) {
             // Gezielt an einen Spieler
@@ -1271,9 +1284,9 @@ io.on('connection', (socket) => {
                 if (sockets.size === 0) {
                     userSockets.delete(email);
 
-                    // Sofort offline anzeigen (wie Chat) – Reconnect setzt den Status wieder
+                    // Sofort offline anzeigen – presenceStatus in SQLite nicht überschreiben, damit der User beim Wiederöffnen online geht
                     try {
-                        await setOnlineStatus(email, false, '', 'offline');
+                        await setOnlineStatus(email, false);
                     } catch (_) { /* ignore */ }
                     io.emit('social:presence', {
                         email,
