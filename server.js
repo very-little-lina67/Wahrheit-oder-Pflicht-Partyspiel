@@ -15,6 +15,7 @@ import {
     setOnlineStatus,
     searchUsers,
     getAllUsers,
+    getLeaderboardUsers,
     updateUserRole,
     deleteUser,
     getFriends,
@@ -317,6 +318,17 @@ app.get('/api/users/search', async (req, res) => {
         }));
         res.json(enriched);
     } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Öffentliche Rangliste (Coins / Monats-Coins / XP) – für alle eingeloggten Nutzer
+app.get('/api/leaderboard', async (req, res) => {
+    try {
+        const users = await getLeaderboardUsers();
+        res.json(users);
+    } catch (err) {
+        console.error('Leaderboard-Fehler:', err);
         res.status(500).json({ error: err.message });
     }
 });
