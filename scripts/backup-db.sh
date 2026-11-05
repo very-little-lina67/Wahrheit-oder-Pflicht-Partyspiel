@@ -45,3 +45,4 @@ DELETED_COUNT="$(find "${BACKUP_DIR}" -type f -name "wop_*.sqlite.gz" -mtime +"$
 if [ "${DELETED_COUNT}" -gt 0 ]; then
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] 🧹 ${DELETED_COUNT} veraltete(s) Backup(s) (> ${RETENTION_DAYS} Tage) gelöscht."
 fi
+
