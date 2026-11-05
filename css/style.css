@@ -2912,3 +2912,52 @@ body:not(.wop-authed) #app-bottom-nav {
 .user-presence-away { color: #faa61a; border-color: rgba(250, 166, 26, 0.35); }
 .user-presence-dnd { color: #ed4245; border-color: rgba(237, 66, 69, 0.35); }
 .user-presence-offline { color: #888; border-color: rgba(136, 136, 136, 0.3); }
+
+
+/* Erfolge ribbon grid (Profil) – wie Screenshot, einklappbar */
+.erfolge-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px 8px;
+    padding: 8px 4px 4px;
+}
+@media (max-width: 420px) {
+    .erfolge-grid { grid-template-columns: repeat(3, 1fr); }
+}
+.erfolge-tile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 4px;
+    border: none;
+    border-radius: 14px;
+    background: rgba(15, 23, 42, 0.55);
+    cursor: pointer;
+    color: inherit;
+    transition: transform 0.12s ease, background 0.12s ease;
+}
+.erfolge-tile:hover { transform: scale(1.04); background: rgba(30, 41, 59, 0.8); }
+.erfolge-tile.locked { opacity: 0.45; filter: grayscale(0.35); }
+.erfolge-tile.unlocked { opacity: 1; filter: none; }
+.erfolge-ribbon { display: flex; align-items: center; justify-content: center; line-height: 0; }
+.erfolge-name {
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-align: center;
+    line-height: 1.15;
+    color: #e2e8f0;
+    text-transform: uppercase;
+}
+.erfolge-tile.locked .erfolge-name { color: #94a3b8; }
+.erfolge-prog {
+    font-size: 8px;
+    color: #64748b;
+    font-weight: 600;
+}
+.erfolge-tile.unlocked.erfolge-tier-gold .erfolge-ribbon { color: #fbbf24; }
+.erfolge-tile.unlocked.erfolge-tier-bronze .erfolge-ribbon { color: #cd7f32; }
+.erfolge-tile.unlocked.erfolge-tier-silver .erfolge-ribbon { color: #94a3b8; }
+.erfolge-tile.unlocked.erfolge-tier-blue .erfolge-ribbon { color: #38bdf8; }
+.erfolge-tile.unlocked.erfolge-tier-platinum .erfolge-ribbon { color: #e2e8f0; filter: drop-shadow(0 0 4px rgba(226,232,240,0.35)); }
