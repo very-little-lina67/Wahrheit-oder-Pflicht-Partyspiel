@@ -626,11 +626,26 @@ app.get('/api/admin/users', async (req, res) => {
 app.put('/api/admin/user/role', async (req, res) => {
     try {
         const { requester, email, role } = req.body;
-        const u = await getUserByEmail(requester);
-        if (!u || !isAdminOrMaster(u.role, requester)) {
+        const cleanRequester = String(requester || '').trim().toLowerCase();
+        const cleanEmail = String(email || '').trim().toLowerCase();
+        const newRole = String(role || '').trim().toLowerCase();
+        const u = await getUserByEmail(cleanRequester);
+        if (!u || !isAdminOrMaster(u.role, cleanRequester)) {
             return res.status(403).json({ error: 'Zugriff verweigert.' });
         }
-        await updateUserRole(email, role);
+        // Feste Master-E-Mails dürfen nie geändert werden
+        if (isMasterEmail(cleanEmail)) {
+            return res.status(403).json({ error: 'Feste Master-Accounts sind unveränderlich.' });
+        }
+        const requesterIsMaster = isMasterEmail(cleanRequester) || String(u.role || '').toLowerCase() === 'master';
+        // Admin darf nur user/moderator/admin setzen; Master darf zusätzlich master vergeben
+        const allowed = requesterIsMaster
+            ? ['user', 'moderator', 'admin', 'master']
+            : ['user', 'moderator', 'admin'];
+        if (!allowed.includes(newRole)) {
+            return res.status(403).json({ error: 'Diese Rolle darf nicht vergeben werden.' });
+        }
+        await updateUserRole(cleanEmail, newRole);
         res.json({ success: true });
     } catch (err) {
         res.status(500).json({ error: err.message });
