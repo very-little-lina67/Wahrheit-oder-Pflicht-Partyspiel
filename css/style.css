@@ -1774,34 +1774,77 @@ textarea:focus {
     box-shadow: 0 0 0 1px rgba(168, 85, 247, 0.35);
 }
 
-/* Shop: Profil-Emojis kompakter */
+/* Shop: einheitliche Karten für Emojis, Accessoires, Joker, Themes */
 .shop-grid-emotes {
-    grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)) !important;
-    gap: 8px !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 10px !important;
+}
+@media (max-width: 380px) {
+    .shop-grid-emotes {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
 }
 .shop-item-emote {
     text-align: center;
-    padding: 8px 6px !important;
+    padding: 12px 8px 10px !important;
+    border-radius: 14px !important;
+    background: linear-gradient(160deg, rgba(28, 34, 56, 0.95), rgba(16, 20, 36, 0.98)) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    min-height: 0;
+}
+.shop-item-emote:hover {
+    border-color: rgba(130, 155, 255, 0.35) !important;
+    background: linear-gradient(160deg, rgba(34, 42, 68, 0.98), rgba(20, 26, 44, 0.98)) !important;
 }
 .shop-emote-preview {
-    font-size: 28px;
+    font-size: 32px;
     line-height: 1.2;
-    margin-bottom: 4px;
+    margin-bottom: 6px;
+    filter: drop-shadow(0 2px 6px rgba(0,0,0,0.25));
 }
 .shop-emote-meta {
     display: flex;
     flex-direction: column;
     gap: 2px;
-    margin-bottom: 4px;
+    margin-bottom: 6px;
+    width: 100%;
 }
 .shop-emote-name {
-    font-size: 11px;
-    color: #ddd;
+    font-size: 12px;
+    color: #e8ecf4;
+    font-weight: 600;
+    line-height: 1.25;
 }
 .shop-emote-price {
-    font-size: 11px;
+    font-size: 12px;
     color: #ffcc00;
     font-weight: 700;
+}
+.shop-item-emote .shop-action-btn,
+.shop-item-emote .emote-action-btn,
+.shop-item-emote .theme-action-btn,
+.shop-item-emote .joker-buy-btn {
+    width: 100% !important;
+    margin-top: auto !important;
+    border-radius: 10px !important;
+    padding: 7px 6px !important;
+    font-size: 11px !important;
+    font-weight: 600;
+}
+.shop-panel h4 {
+    font-size: 14px !important;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+}
+.shop-panel > p {
+    font-size: 11px !important;
+    color: #9aa3b5 !important;
+    line-height: 1.4;
 }
 
 /* Discord-Status-Legende (farbige Erklärungen) */
