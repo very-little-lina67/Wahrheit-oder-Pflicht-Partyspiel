@@ -4,6 +4,29 @@ Alle wesentlichen Änderungen am Projekt werden in dieser Datei präzise und tec
 
 ---
 
+## [2.0.23] - 2026-11-05
+
+### Bug Fixes
+- **Lobby-Beitritt & Host-Sync stabilisiert (`js/app.js`, `server.js`):**
+  - Kritischen Bug in `showLobbyUI` behoben: Beitretende Clients sendeten beim Öffnen der Lobby fälschlicherweise `lobby:create`, wodurch bestehende Lobbies auf dem Server überschrieben und Spieler sofort wieder herausgeworfen wurden. `lobby:create` wird nun strikt nur noch vom Host ausgeführt.
+  - Case-Insensitive Lobby-Code-Prüfung (`normalizeLobbyCode`) in `startHostFirestoreLobby` und `startClientFirestoreLobby` implementiert, um Abweichungen durch Groß-/Kleinschreibung zu eliminieren.
+  - Spieler-Preservation: `startHostFirestoreLobby` behält bereits beigetretene Spieler auch im Pre-Game-Zustand (`!gameStarted`) bei und droppt sie nicht mehr bei asynchronen Firestore-Snapshots.
+- **Automatisches Schließen von Lobbies beim Verlassen des Hosts (`server.js`, `js/app.js`, `js/wop-socket-client.js`):**
+  - Wenn der Host eine Lobby verlässt (`lobby:leave` mit `isHost: true` oder Host-E-Mail), wird die gesamte Lobby geschlossen, mit `lobby:closed` an alle Teilnehmer signalisiert und aus dem Arbeitsspeicher sowie SQLite bereinigt.
+  - Verbleibende Clients erhalten einen Hinweis und werden sauber zur Spielauswahl zurückgeführt.
+- **Flackern der Freundesliste behoben (`js/app.js`):**
+  - `renderFriendsList` überschreibt `container.innerHTML` bei Re-Renders nicht mehr vorab mit `"Lade Freunde..."`, sondern tauscht die DOM-Knoten erst aus, wenn die Daten vorliegen.
+  - Nutzung des optimierten Backend-Endpoints `/api/social/friends?email=...` (Single-Query mit Socket-Presence) statt N sequentieller `getUserProfile`-Aufrufe.
+  - Debouncing für Live-Presence-Events (`wop:presence`) hinzugefügt.
+- **Echtzeit-Synchronisation der Lobby-Anzeige im Admin-Panel (`server.js`, `js/app.js`):**
+  - Neuer Server-Helper `findLiveLobbyForUser` gleicht die aktive Lobby direkt mit der In-Memory-Map `activeLobbies` ab, sodass der im Admin-Panel angezeigte Lobby-Code immer absolut synchron mit dem tatsächlichen Spielzustand ist.
+  - Bei `wop:presence` wird die Admin-Benutzerliste bei geöffnetem Modal automatisch debounced und flackerfrei aktualisiert.
+
+### Misc
+- Versionsnummer und Cache-Busting-Query-Parameter auf **2.0.23** angehoben.
+
+---
+
 ## [2.0.22] - 2026-11-05
 
 ### Bug Fixes

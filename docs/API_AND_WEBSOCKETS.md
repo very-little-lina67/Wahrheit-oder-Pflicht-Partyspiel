@@ -33,8 +33,12 @@ Der Socket.io-Namespace `/` wickelt die gesamte Echtzeit-Kommunikation ab.
   - Antwort: `{ success: boolean, lobby?: object, error?: string }`
   - Tritt dem Raum bei, sendet `lobby:player_joined` an alle im Raum.
 - **`lobby:leave`** (Client → Server)
-  - Payload: `{ code: string, playerName: string }`
-  - Informiert den Raum (`lobby:player_left`) und verlässt den Socket-Room.
+  - Payload: `{ code: string, playerName: string, isHost?: boolean }`
+  - Wenn ein regulärer Spieler die Lobby verlässt: Informiert den Raum (`lobby:player_left`), aktualisiert die Spielerliste (`lobby:players_updated`) und setzt `currentLobby = ""` für den Nutzer.
+  - Wenn der Host die Lobby verlässt: Schließt die gesamte Lobby sofort mit dem Event `lobby:closed` für alle verbleibenden Teilnehmer, entfernt die Lobby aus dem Arbeitsspeicher und SQLite und setzt `currentLobby` aller Beteiligten zurück.
+- **`lobby:closed`** (Server → Room)
+  - Payload: `{ code: string, reason: string, message: string }`
+  - Benachrichtigt alle Mitspieler, dass der Host die Lobby verlassen hat oder die Lobby beendet wurde; Clients bereinigen ihren Zustand und kehren zur Spielauswahl zurück.
 - **`lobby:data`** (Client → Server → Room)
   - Payload: `{ code: string, data: object, targetEmail?: string }`
   - Sendet Spielaktionen (z. B. `SUBMIT_CHOICE`, `SPIN_WHEEL`, `UPDATE_PLAYERS`, `CHAT_MESSAGE`, `JOKER_ACTION`) latenzfrei an alle Mitspieler oder zielgerichtet an einen bestimmten Spieler.

@@ -343,6 +343,17 @@ const socketUsers = new Map();
 // lobbyCode -> { code, hostEmail, settings, players: [], state: {}, spectators: [] }
 const activeLobbies = new Map();
 
+function findLiveLobbyForUser(userEmail) {
+    const clean = String(userEmail || '').trim().toLowerCase();
+    if (!clean) return '';
+    for (const [code, lobby] of activeLobbies.entries()) {
+        if (lobby.hostEmail && lobby.hostEmail.toLowerCase() === clean) return code;
+        if (Array.isArray(lobby.players) && lobby.players.some(p => p.email && p.email.toLowerCase() === clean)) return code;
+        if (Array.isArray(lobby.spectators) && lobby.spectators.some(s => s.email && s.email.toLowerCase() === clean)) return code;
+    }
+    return '';
+}
+
 function getSocketsForEmail(email) {
     if (!email) return [];
     const set = userSockets.get(String(email).trim().toLowerCase());
@@ -1028,11 +1039,13 @@ app.get('/api/admin/users', async (req, res) => {
             const liveOnline = userSockets.has(email);
             const stored = normalizePresenceStatus(user.presenceStatus);
             const effective = !liveOnline ? 'offline' : stored;
+            const liveLobby = liveOnline ? findLiveLobbyForUser(email) : '';
             return {
                 ...user,
                 email,
                 isOnline: effective !== 'offline',
                 presenceStatus: effective,
+                currentLobby: liveLobby || (liveOnline ? (user.currentLobby || '') : ''),
                 // lastActive als ISO-String für den Client
                 lastActive: user.lastActive
                     ? (typeof user.lastActive === 'string'
@@ -1286,6 +1299,12 @@ io.on('connection', (socket) => {
         activeLobbies.set(cleanCode, lobbyObj);
         await saveLobbyState(cleanCode, lobbyObj.hostEmail, lobbyObj.settings, lobbyObj.state);
 
+        if (hostPlayer && hostPlayer.email) {
+            const hEmail = String(hostPlayer.email).trim().toLowerCase();
+            await dbRun('UPDATE users SET currentLobby = ? WHERE email = ?', [cleanCode, hEmail]).catch(() => {});
+            io.emit('social:presence', { email: hEmail, isOnline: true, currentLobby: cleanCode });
+        }
+
         if (typeof callback === 'function') {
             callback({ success: true, code: cleanCode, lobby: lobbyObj });
         }
@@ -1340,6 +1359,13 @@ io.on('connection', (socket) => {
 
         lobby.updatedAt = Date.now();
 
+        if (player && player.email) {
+            const pEmail = String(player.email).trim().toLowerCase();
+            await dbRun('UPDATE users SET currentLobby = ? WHERE email = ?', [cleanCode, pEmail]).catch(() => {});
+            io.emit('social:presence', { email: pEmail, isOnline: true, currentLobby: cleanCode });
+        }
+        await saveLobbyState(cleanCode, lobby.hostEmail, lobby.settings, { ...lobby.state, players: lobby.players }).catch(() => {});
+
         // Broadcast an alle in der Lobby
         io.to(roomName).emit('lobby:player_joined', { player, isSpectator, players: lobby.players });
         io.to(roomName).emit('lobby:players_updated', { players: lobby.players });
@@ -1349,21 +1375,52 @@ io.on('connection', (socket) => {
         }
     });
 
-    socket.on('lobby:leave', ({ code, playerName }) => {
+    socket.on('lobby:leave', async ({ code, playerName, isHost }) => {
         const cleanCode = String(code).trim().toLowerCase();
         const roomName = `lobby:${cleanCode}`;
         socket.leave(roomName);
 
         const lobby = activeLobbies.get(cleanCode);
-        if (lobby && playerName) {
-            lobby.players = lobby.players.filter(p => p.name !== playerName);
-            lobby.spectators = lobby.spectators.filter(s => s.name !== playerName);
-            io.to(roomName).emit('lobby:player_left', { playerName, players: lobby.players });
-            io.to(roomName).emit('lobby:players_updated', { players: lobby.players });
+        const userInfo = socketUsers.get(socket.id);
+        const userEmail = String(userInfo?.email || '').trim().toLowerCase();
+
+        if (userEmail) {
+            await dbRun('UPDATE users SET currentLobby = "" WHERE email = ?', [userEmail]).catch(() => {});
+            io.emit('social:presence', { email: userEmail, isOnline: true, currentLobby: '' });
+        }
+
+        if (lobby) {
+            const isHostLeaving = !!isHost ||
+                (userEmail && lobby.hostEmail && userEmail === lobby.hostEmail.toLowerCase()) ||
+                (playerName && lobby.hostName && playerName.toLowerCase() === lobby.hostName.toLowerCase());
+
+            if (isHostLeaving) {
+                // Host verlässt die Lobby -> Ganze Lobby wird für alle geschlossen!
+                io.to(roomName).emit('lobby:closed', {
+                    code: cleanCode,
+                    reason: 'host_left',
+                    message: 'Der Host hat die Lobby verlassen. Die Lobby wurde beendet.'
+                });
+                io.in(roomName).socketsLeave(roomName);
+                activeLobbies.delete(cleanCode);
+                deleteLobbyState(cleanCode).catch(() => {});
+                await dbRun('UPDATE users SET currentLobby = "" WHERE currentLobby = ?', [cleanCode]).catch(() => {});
+                return;
+            }
+
+            if (playerName) {
+                lobby.players = lobby.players.filter(p => p.name !== playerName);
+                lobby.spectators = lobby.spectators.filter(s => s.name !== playerName);
+                io.to(roomName).emit('lobby:player_left', { playerName, players: lobby.players });
+                io.to(roomName).emit('lobby:players_updated', { players: lobby.players });
+            }
 
             if (lobby.players.length === 0) {
                 activeLobbies.delete(cleanCode);
                 deleteLobbyState(cleanCode).catch(() => {});
+                await dbRun('UPDATE users SET currentLobby = "" WHERE currentLobby = ?', [cleanCode]).catch(() => {});
+            } else {
+                saveLobbyState(cleanCode, lobby.hostEmail, lobby.settings, { ...lobby.state, players: lobby.players }).catch(() => {});
             }
         }
     });

@@ -2182,16 +2182,30 @@
                         try { updatePresenceButtonsUI(); } catch (e) {}
                     }
                 }
-                // Freunde-/Online-Listen aktualisieren, wenn geöffnet
+                // Freunde-/Online- und Admin-Listen flackerfrei aktualisieren, wenn geöffnet
                 try {
-                    const friendsList = document.getElementById("friends-list");
-                    if (friendsList && !document.getElementById("friends-modal")?.classList.contains("hidden")) {
-                        friendsListCache = null;
-                        renderFriendsList();
+                    const friendsModal = document.getElementById("friends-modal");
+                    if (friendsModal && !friendsModal.classList.contains("hidden")) {
+                        clearTimeout(window.__friendsDebounceTimer);
+                        window.__friendsDebounceTimer = setTimeout(() => {
+                            renderFriendsList();
+                        }, 120);
                     }
                     const onlineList = document.getElementById("friends-online-list") || document.getElementById("online-players-list");
                     if (onlineList && onlineList.offsetParent !== null) {
-                        loadOnlinePlayersInto(onlineList);
+                        clearTimeout(window.__onlinePlayersDebounceTimer);
+                        window.__onlinePlayersDebounceTimer = setTimeout(() => {
+                            loadOnlinePlayersInto(onlineList);
+                        }, 150);
+                    }
+                    const adminModal = document.getElementById("admin-modal");
+                    if (adminModal && !adminModal.classList.contains("hidden")) {
+                        clearTimeout(window.__adminListDebounceTimer);
+                        window.__adminListDebounceTimer = setTimeout(() => {
+                            adminUserListCache = null;
+                            adminUserListCacheTime = 0;
+                            renderAdminUserList();
+                        }, 150);
                     }
                 } catch (e) {}
             });
@@ -4338,7 +4352,10 @@
 
         async function renderAdminUserList() {
             let container = document.getElementById("admin-user-list");
-            container.innerHTML = currentLang === "de" ? "Lade Benutzer..." : "Loading users...";
+            if (!container) return;
+            if (!container.children.length && !container.innerHTML.trim()) {
+                container.innerHTML = currentLang === "de" ? "Lade Benutzer..." : "Loading users...";
+            }
             try {
                 let users = [];
                 // Immer Admin-API nutzen (inkl. isOnline, lastActive, role) – nicht den öffentlichen Leaderboard-Endpoint
@@ -5573,7 +5590,9 @@
         async function renderFriendsList() {
             const container = document.getElementById("friends-list");
             if (!container) return;
-            container.innerHTML = currentLang === "de" ? "Lade Freunde..." : "Loading friends...";
+            if (!container.children.length && !container.innerHTML.trim()) {
+                container.innerHTML = `<span style="font-size:12px;color:#888;">${currentLang === "de" ? "Lade Freunde..." : "Loading friends..."}</span>`;
+            }
 
             if (!myFriends.length) {
                 container.innerHTML = `<span style="font-size:12px;color:#888;">${currentLang === "de" ? "Noch keine Freunde. Sende eine Anfrage!" : "No friends yet. Send a request!"}</span>`;
@@ -5582,9 +5601,18 @@
 
             try {
                 let friendsData = [];
-                if (friendsListCache && (Date.now() - friendsListCacheTime < FRIENDS_CACHE_TTL)) {
-                    friendsData = friendsListCache;
-                } else {
+                // Direkte, performante Einzelabfrage über den Social-Friends-Endpoint
+                if (myEmail) {
+                    const res = await fetch(`/api/social/friends?email=${encodeURIComponent(myEmail)}`);
+                    if (res.ok) {
+                        const list = await res.json();
+                        friendsData = (Array.isArray(list) ? list : []).map(f => ({
+                            email: f.email,
+                            data: f
+                        }));
+                    }
+                }
+                if (!friendsData.length) {
                     const docs = await Promise.all(myFriends.map(email => 
                         db.collection("users").doc(email).get().catch(() => null)
                     ));
@@ -5592,8 +5620,6 @@
                         email: doc.id,
                         data: doc.data() || {}
                     }));
-                    friendsListCache = friendsData;
-                    friendsListCacheTime = Date.now();
                 }
 
                 let html = "";
@@ -5968,7 +5994,7 @@
                         const d = doc.data() || {};
                         const name = getUserDisplayName(d, "Spieler");
 
-                        if (d.currentLobby === activeLobbyCode && name) {
+                        if (normalizeLobbyCode(d.currentLobby) === normalizeLobbyCode(activeLobbyCode) && name) {
                             const oldPlayer = players.find(p => namesEqual(p, name));
                             const playerIsSpec = !!d.isSpectator || d.lobbyRole === "spectator";
                             const entry = {
@@ -6042,19 +6068,17 @@
                         }
                     }
 
-                    // Während des laufenden Spiels: Aktive Spieler niemals versehentlich droppen
-                    if (gameStarted) {
-                        (players || []).forEach(existingPlayer => {
-                            if (!existingPlayer) return;
-                            const eName = getUserDisplayName(existingPlayer);
-                            if (!eName) return;
-                            const eKey = String(eName).trim().toLowerCase();
-                            if (!seenNames.has(eKey)) {
-                                nextPlayers.push(existingPlayer);
-                                seenNames.add(eKey);
-                            }
-                        });
-                    }
+                    // Aktive Spieler (vor und während des Spiels) niemals versehentlich durch leere/verzögerte Snapshots droppen
+                    (players || []).forEach(existingPlayer => {
+                        if (!existingPlayer) return;
+                        const eName = getUserDisplayName(existingPlayer);
+                        if (!eName) return;
+                        const eKey = String(eName).trim().toLowerCase();
+                        if (!seenNames.has(eKey)) {
+                            nextPlayers.push(existingPlayer);
+                            seenNames.add(eKey);
+                        }
+                    });
 
                     const changed = JSON.stringify(players) !== JSON.stringify(nextPlayers);
                     players = nextPlayers;
@@ -6081,7 +6105,7 @@
                     if (!doc.exists || leavingLobbyManually || isHost) return;
 
                     const d = doc.data() || {};
-                    if (d.currentLobby !== activeLobbyCode) return;
+                    if (normalizeLobbyCode(d.currentLobby) !== normalizeLobbyCode(activeLobbyCode)) return;
 
                     const msg = d.hostMessage;
                     const seq = Number(msg && msg.seq) || 0;
@@ -6484,7 +6508,7 @@
             saveLobbySession();
             updateOnlineStatus(true);
             window.activeLobbyCode = activeLobbyCode;
-            if (window.wopSocket && window.wopSocket.connected) {
+            if (isHost && window.wopSocket && window.wopSocket.connected) {
                 window.wopSocket.emit("lobby:create", {
                     code: activeLobbyCode,
                     hostPlayer: { name: myName, email: myEmail, accessory: equippedAccessory }
@@ -6559,7 +6583,7 @@
             saveLobbySession();
             updateOnlineStatus(true);
             window.activeLobbyCode = activeLobbyCode;
-            if (window.wopSocket && window.wopSocket.connected) {
+            if (isHost && window.wopSocket && window.wopSocket.connected) {
                 window.wopSocket.emit("lobby:create", {
                     code: activeLobbyCode,
                     hostPlayer: { name: myName, email: myEmail, accessory: equippedAccessory }
@@ -6945,11 +6969,37 @@
             stopRoundTimer(true);
             leavingLobbyManually = true;
             stopReconnectTimer();
-            try { sendData({ type: 'LEAVE_LOBBY', playerName: myName }); } catch (e) {}
+            if (isHost) {
+                try {
+                    sendData({
+                        type: 'LOBBY_CLOSED',
+                        message: currentLang === 'de' ? 'Der Host hat die Lobby verlassen. Die Lobby wurde beendet.' : 'The host has left the lobby. The lobby has been closed.'
+                    });
+                } catch (e) {}
+            } else {
+                try { sendData({ type: 'LEAVE_LOBBY', playerName: myName }); } catch (e) {}
+            }
             clearSavedLobbySession();
             cleanupAndResetLobby(true);
             resetSessionStats();
         }
+
+        function handleLobbyClosed(data) {
+            if (activeLobbyCode && !isHost) {
+                const msgText = (data && data.message) || (currentLang === "de" ? "Der Host hat die Lobby verlassen. Die Lobby wurde beendet." : "The host has left the lobby. The lobby has been closed.");
+                alert(msgText);
+                cleanupAndResetLobby(true);
+                document.getElementById("setup")?.classList.remove("hidden");
+                document.getElementById("lobby-wait-box")?.classList.add("hidden");
+                document.getElementById("leave-lobby-btn")?.classList.add("hidden");
+                document.getElementById("woP-phase")?.classList.add("hidden");
+                document.getElementById("wheel-phase")?.classList.add("hidden");
+                document.getElementById("player-status-panel")?.classList.add("hidden");
+                document.getElementById("chat-box-container")?.classList.add("hidden");
+                document.getElementById("emergency-box")?.classList.add("hidden");
+            }
+        }
+        window.handleLobbyClosed = handleLobbyClosed;
 
         function cleanupAndResetLobby(manual = false) {
             clearTimeout(window.__autoNextTurnTimer);
@@ -6967,7 +7017,7 @@
 
             if (window.wopSocket && window.wopSocket.connected && activeLobbyCode) {
                 try {
-                    window.wopSocket.emit("lobby:leave", { code: activeLobbyCode, playerName: myName });
+                    window.wopSocket.emit("lobby:leave", { code: activeLobbyCode, playerName: myName, isHost: !!isHost });
                 } catch (e) {}
             }
             window.activeLobbyCode = "";
@@ -7081,6 +7131,8 @@
                 updatePlayerList();
             } else if (data.type === 'LEAVE_LOBBY') {
                 handlePlayerLeaving(data.playerName);
+            } else if (data.type === 'LOBBY_CLOSED') {
+                handleLobbyClosed(data);
             } else if (data.type === 'START_GAME') {
                 const incoming = Array.isArray(data.players) ? data.players : [];
                 const prevList = players || [];

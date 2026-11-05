@@ -4,6 +4,29 @@ All notable changes to this project are documented in this file in a precise, te
 
 ---
 
+## [2.0.23] - 2026-11-05
+
+### Bug Fixes
+- **Lobby Join & Host Synchronization Stabilized (`js/app.js`, `server.js`):**
+  - Fixed critical bug in `showLobbyUI`: joining clients inadvertently emitted `lobby:create` upon opening the lobby UI, overwriting existing lobbies on the server and immediately dropping players. `lobby:create` is now strictly restricted to the host.
+  - Implemented case-insensitive lobby code matching (`normalizeLobbyCode`) in `startHostFirestoreLobby` and `startClientFirestoreLobby` to eliminate casing mismatches.
+  - Player preservation: `startHostFirestoreLobby` now preserves already-joined players in pre-game state (`!gameStarted`), preventing asynchronous Firestore snapshots from wiping them.
+- **Automatic Lobby Teardown on Host Exit (`server.js`, `js/app.js`, `js/wop-socket-client.js`):**
+  - When the host leaves a lobby (`lobby:leave` with `isHost: true` or matching host email), the entire lobby is closed immediately, signaled to all connected participants via `lobby:closed`, and removed from memory and SQLite.
+  - Remaining clients receive a notification and are gracefully routed back to setup.
+- **Resolved Friends List Flickering (`js/app.js`):**
+  - `renderFriendsList` no longer clears `container.innerHTML` with `"Loading friends..."` during re-renders, seamlessly swapping DOM nodes once data is loaded.
+  - Replaced N sequential `getUserProfile` calls with the optimized `/api/social/friends?email=...` endpoint (single SQL query with realtime socket presence).
+  - Added debouncing for live presence events (`wop:presence`).
+- **Real-Time Lobby Display Synchronization in Admin Panel (`server.js`, `js/app.js`):**
+  - Added server helper `findLiveLobbyForUser` to synchronize active lobbies directly from the `activeLobbies` in-memory map, ensuring the lobby code shown in the Admin Panel is always accurate.
+  - Admin user list refreshes smoothly upon `wop:presence` events when the modal is open.
+
+### Misc
+- Version and cache-busting query parameters bumped to **2.0.23**.
+
+---
+
 ## [2.0.22] - 2026-11-05
 
 ### Bug Fixes

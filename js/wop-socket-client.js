@@ -229,6 +229,12 @@
             });
         });
 
+        socket.on("lobby:closed", (data) => {
+            if (typeof window.handleLobbyClosed === "function") {
+                window.handleLobbyClosed(data);
+            }
+        });
+
         socket.on("auth:deleted", (data) => {
             try {
                 localStorage.removeItem("wop_user_email_v6");
