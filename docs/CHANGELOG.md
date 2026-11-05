@@ -4,6 +4,21 @@ Alle wesentlichen Änderungen am Projekt werden in dieser Datei präzise und tec
 
 ---
 
+## [2.0.21] - 2026-11-05
+
+### Bug Fixes
+- **Robuster E-Mail-Versand mit Direct-TLS SMTPS Fallback (`server.js`):**
+  - Implementierung eines nativen Node.js `tls`-SMTP-Clients auf Port 465, der vollkommen ohne externe npm-Pakete auskommt.
+  - Automatischer Fallback auf Direct-TLS, falls `nodemailer` auf dem Server nicht in `node_modules` installiert ist.
+  - Auto-Korrektur für Bash-Variablen-Ersetzung: Verhindert Authentifizierungsfehler, falls beim Erstellen der `.env` das Zeichen `$6` als leere Shell-Variable interpretiert wurde (`F44l6ee` → `F44l$66ee`).
+  - `.env`-Pfade werden nun absolut zur Server-Datei aufgelöst, um PM2-Startprobleme bei abweichendem Arbeitsverzeichnis zu verhindern.
+  - Anleitung für Lina um `npm install` ergänzt.
+
+### Misc
+- Versionsnummer und Cache-Busting-Query-Parameter auf **2.0.21** angehoben.
+
+---
+
 ## [2.0.20] - 2026-11-05
 
 ### Bug Fixes

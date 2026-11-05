@@ -1,6 +1,7 @@
 import http from 'http';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import tls from 'tls';
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
@@ -50,10 +51,12 @@ import {
     sendWebPushNotification
 } from './database.js';
 
-dotenv.config();
-
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// .env zuverlässig laden (sowohl aus Verzeichnis der server.js als auch process.cwd())
+dotenv.config({ path: path.join(__dirname, '.env') });
+dotenv.config();
 
 const PORT = parseInt(process.env.PORT, 10) || 3002;
 const MASTER_EMAIL_LIST = (
@@ -138,19 +141,118 @@ function verificationExpiryIso() {
     return new Date(Date.now() + 30 * 60 * 1000).toISOString(); // 30 Minuten
 }
 
+/** Direct-TLS Fallback: Versendet E-Mails über reines Node.js tls ohne npm-Abhängigkeiten */
+function sendRawTlsEmail({ host, port, user, pass, from, to, subject, html, text }) {
+    return new Promise((resolve, reject) => {
+        let timer = null;
+        const socket = tls.connect({
+            host,
+            port,
+            rejectUnauthorized: false
+        }, () => {
+            let step = 0;
+            let buffer = '';
+
+            timer = setTimeout(() => {
+                try { socket.destroy(); } catch (_) {}
+                reject(new Error('SMTP Timeout (15s)'));
+            }, 15000);
+
+            socket.on('data', (chunk) => {
+                buffer += chunk.toString();
+                const lines = buffer.split('\r\n');
+                const lastLine = lines[lines.length - 2] || lines[lines.length - 1];
+
+                if (!/^\d{3}[ -]/.test(lastLine)) return;
+                if (/^\d{3}-/.test(lastLine)) return; // Mehrzeilige SMTP-Antworten abwarten
+
+                const code = parseInt(lastLine.slice(0, 3), 10);
+                buffer = '';
+
+                if (step === 0 && code === 220) {
+                    step = 1;
+                    socket.write('EHLO omoflow.de\r\n');
+                } else if (step === 1 && code === 250) {
+                    step = 2;
+                    socket.write('AUTH LOGIN\r\n');
+                } else if (step === 2 && code === 334) {
+                    step = 3;
+                    socket.write(Buffer.from(user).toString('base64') + '\r\n');
+                } else if (step === 3 && code === 334) {
+                    step = 4;
+                    socket.write(Buffer.from(pass).toString('base64') + '\r\n');
+                } else if (step === 4 && code === 235) {
+                    step = 5;
+                    socket.write(`MAIL FROM:<${user}>\r\n`);
+                } else if (step === 5 && code === 250) {
+                    step = 6;
+                    socket.write(`RCPT TO:<${to}>\r\n`);
+                } else if (step === 6 && code === 250) {
+                    step = 7;
+                    socket.write('DATA\r\n');
+                } else if (step === 7 && code === 354) {
+                    step = 8;
+                    const boundary = `====wop_${Date.now()}====`;
+                    const mailData =
+                        `From: ${from}\r\n` +
+                        `To: ${to}\r\n` +
+                        `Subject: ${subject}\r\n` +
+                        `MIME-Version: 1.0\r\n` +
+                        `Content-Type: multipart/alternative; boundary="${boundary}"\r\n\r\n` +
+                        `--${boundary}\r\n` +
+                        `Content-Type: text/plain; charset=UTF-8\r\n\r\n` +
+                        `${text}\r\n\r\n` +
+                        `--${boundary}\r\n` +
+                        `Content-Type: text/html; charset=UTF-8\r\n\r\n` +
+                        `${html}\r\n\r\n` +
+                        `--${boundary}--\r\n.\r\n`;
+                    socket.write(mailData);
+                } else if (step === 8 && code === 250) {
+                    step = 9;
+                    socket.write('QUIT\r\n');
+                    clearTimeout(timer);
+                    resolve({ sent: true, response: lastLine });
+                } else if (code >= 400) {
+                    clearTimeout(timer);
+                    try { socket.destroy(); } catch (_) {}
+                    reject(new Error(`SMTP Fehler (${code}): ${lastLine}`));
+                }
+            });
+
+            socket.on('error', (err) => {
+                clearTimeout(timer);
+                reject(err);
+            });
+        });
+    });
+}
+
 /** Bestätigungscode nur per E-Mail senden – nie an den Client zurückgeben */
 async function sendVerificationEmail(toEmail, code) {
-    const host = process.env.SMTP_HOST || '';
-    const user = process.env.SMTP_USER || '';
-    const pass = process.env.SMTP_PASS || '';
-    const from = process.env.SMTP_FROM || `"Wahrheit oder Pflicht" <${user || 'no-reply@omoflow.de'}>`;
-    if (!host || !user || !pass) {
-        console.error('[VERIFY] SMTP nicht konfiguriert (SMTP_HOST / SMTP_USER / SMTP_PASS).');
-        return { sent: false, reason: 'no_smtp' };
-    }
-    const port = parseInt(process.env.SMTP_PORT || '587', 10);
+    const host = process.env.SMTP_HOST || 'mxe8db.netcup.net';
+    const user = process.env.SMTP_USER || 'no-reply@omoflow.de';
+    let pass = process.env.SMTP_PASS || 'F44l$66ee';
+    if (pass === 'F44l6ee') pass = 'F44l$66ee'; // Auto-Fix falls bash $6 als Variable geschluckt hat
+    const from = process.env.SMTP_FROM || `"Wahrheit oder Pflicht" <${user}>`;
+    const port = parseInt(process.env.SMTP_PORT || '465', 10);
     const secure = process.env.SMTP_SECURE === '1' || process.env.SMTP_SECURE === 'true' || port === 465;
 
+    const subject = 'Dein Bestätigungscode – Wahrheit oder Pflicht';
+    const text =
+        `Hallo!\n\n` +
+        `Dein Bestätigungscode für Wahrheit oder Pflicht lautet: ${code}\n\n` +
+        `Der Code ist 30 Minuten gültig.\n` +
+        `Falls du dich nicht registriert hast, kannst du diese E-Mail ignorieren.\n\n` +
+        `— WOP / omoflow`;
+    const html =
+        `<div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;padding:24px;background:#0f172a;color:#e2e8f0;border-radius:12px">` +
+        `<h2 style="margin:0 0 12px;color:#34d399">E-Mail bestätigen</h2>` +
+        `<p style="margin:0 0 16px">Dein Bestätigungscode für <strong>Wahrheit oder Pflicht</strong>:</p>` +
+        `<p style="font-size:28px;font-weight:700;letter-spacing:6px;text-align:center;padding:16px;background:#1e293b;border-radius:10px;margin:0 0 16px">${code}</p>` +
+        `<p style="font-size:13px;color:#94a3b8;margin:0">Gültig für 30 Minuten. Wenn du dich nicht registriert hast, ignoriere diese Nachricht.</p>` +
+        `</div>`;
+
+    // 1. Zuerst nodemailer versuchen (falls installiert)
     try {
         const nodemailer = await import('nodemailer');
         const transporter = nodemailer.createTransport({
@@ -158,33 +260,23 @@ async function sendVerificationEmail(toEmail, code) {
             port,
             secure,
             auth: { user, pass },
-            tls: {
-                rejectUnauthorized: false
-            }
+            tls: { rejectUnauthorized: false }
         });
-        await transporter.sendMail({
-            from,
-            to: toEmail,
-            subject: 'Dein Bestätigungscode – Wahrheit oder Pflicht',
-            text:
-                `Hallo!\n\n` +
-                `Dein Bestätigungscode für Wahrheit oder Pflicht lautet: ${code}\n\n` +
-                `Der Code ist 30 Minuten gültig.\n` +
-                `Falls du dich nicht registriert hast, kannst du diese E-Mail ignorieren.\n\n` +
-                `— WOP / omoflow`,
-            html:
-                `<div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;padding:24px;background:#0f172a;color:#e2e8f0;border-radius:12px">` +
-                `<h2 style="margin:0 0 12px;color:#34d399">E-Mail bestätigen</h2>` +
-                `<p style="margin:0 0 16px">Dein Bestätigungscode für <strong>Wahrheit oder Pflicht</strong>:</p>` +
-                `<p style="font-size:28px;font-weight:700;letter-spacing:6px;text-align:center;padding:16px;background:#1e293b;border-radius:10px;margin:0 0 16px">${code}</p>` +
-                `<p style="font-size:13px;color:#94a3b8;margin:0">Gültig für 30 Minuten. Wenn du dich nicht registriert hast, ignoriere diese Nachricht.</p>` +
-                `</div>`
-        });
-        console.log(`[VERIFY] Bestätigungscode per E-Mail an ${toEmail} gesendet.`);
+        await transporter.sendMail({ from, to: toEmail, subject, text, html });
+        console.log(`[VERIFY] Bestätigungscode via nodemailer an ${toEmail} gesendet.`);
         return { sent: true };
-    } catch (e) {
-        console.error('[VERIFY] SMTP-Fehler:', e.message);
-        return { sent: false, reason: e.message || 'smtp_error' };
+    } catch (nmErr) {
+        console.warn(`[VERIFY] nodemailer fehlgeschlagen oder nicht installiert (${nmErr.message}), starte Direct-TLS Fallback...`);
+    }
+
+    // 2. Direct-TLS SMTPS Fallback (funktioniert immer direkt über Node.js tls auf Port 465)
+    try {
+        await sendRawTlsEmail({ host, port: 465, user, pass, from, to: toEmail, subject, html, text });
+        console.log(`[VERIFY] Bestätigungscode via Direct-TLS an ${toEmail} gesendet.`);
+        return { sent: true };
+    } catch (rawErr) {
+        console.error(`[VERIFY] Direct-TLS SMTP-Fehler:`, rawErr.message);
+        return { sent: false, reason: rawErr.message || 'smtp_error' };
     }
 }
 

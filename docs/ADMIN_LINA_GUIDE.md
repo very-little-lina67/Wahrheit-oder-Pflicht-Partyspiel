@@ -22,7 +22,7 @@ Danach akzeptiert Git deine Befehle dauerhaft ohne Nachfrage.
 Sobald neuer Code oder Updates bereitstehen, führst du diesen Befehl aus:
 
 ```bash
-cd /var/www/wop && git pull && sudo -u admin_ch pm2 restart wop-server
+cd /var/www/wop && git pull && npm install && sudo -u admin_ch pm2 restart wop-server
 ```
 
 > **Wichtig:** Achte darauf, dass bei `sudo -u` kein Leerzeichen zwischen dem Minus und dem `u` steht. Dank der NOPASSWD-Regel wird kein Passwort abgefragt!
@@ -76,6 +76,6 @@ Du kannst dir diese Befehle in der **Termius-App** unter **„Snippets“** als 
 
 | Snippet-Name | Befehl |
 |---|---|
-| **Update & Restart** | `cd /var/www/wop && git pull && sudo -u admin_ch pm2 restart wop-server` |
+| **Update & Restart** | `cd /var/www/wop && git pull && npm install && sudo -u admin_ch pm2 restart wop-server` |
 | **Status prüfen** | `sudo -u admin_ch pm2 status` |
 | **Backup wiederherstellen** | `/var/www/wop/scripts/restore-db.sh` |

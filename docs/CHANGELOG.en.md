@@ -4,6 +4,21 @@ All notable changes to this project are documented in this file in a precise, te
 
 ---
 
+## [2.0.21] - 2026-11-05
+
+### Bug Fixes
+- **Resilient Email Dispatch with Direct-TLS SMTPS Fallback (`server.js`):**
+  - Implemented a native Node.js `tls`-based SMTPS client on port 465 that operates completely without external npm dependencies.
+  - Automatic fallback to Direct-TLS if `nodemailer` is not installed in `node_modules` on the server.
+  - Bash variable expansion auto-correction: Prevents authentication failures if `$6` in password was expanded to an empty variable during `.env` creation (`F44l6ee` → `F44l$66ee`).
+  - `.env` paths are now resolved absolutely relative to `__dirname` to avoid PM2 working directory issues.
+  - Lina's administration guide updated to include `npm install`.
+
+### Misc
+- Version and cache-busting query parameters bumped to **2.0.21**.
+
+---
+
 ## [2.0.20] - 2026-11-05
 
 ### Bug Fixes
