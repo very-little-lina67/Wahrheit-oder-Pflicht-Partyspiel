@@ -1532,6 +1532,10 @@
         }
 
         let myPresenceStatus = "online";
+        try {
+            const savedPresence = localStorage.getItem("wop_presence_status_v1");
+            if (savedPresence) myPresenceStatus = normalizePresenceClient(savedPresence);
+        } catch (e) {}
 
         function normalizePresenceClient(value) {
             const v = String(value || "online").toLowerCase().trim();
@@ -1713,6 +1717,7 @@
             if (!myEmail) return;
             const next = normalizePresenceClient(status);
             myPresenceStatus = next;
+            try { localStorage.setItem("wop_presence_status_v1", next); } catch (e) {}
             updatePresenceButtonsUI();
             try {
                 if (window.wopSocket && typeof window.wopSocket.emit === "function") {
@@ -2951,83 +2956,32 @@
             const level = Number(userLevel) || 1;
             const truths = Number(truthCount) || 0;
             const dares = Number(dareCount) || 0;
-            // Tiers: bronze < silver < gold < platinum
+            // Erreichbare Trophäen mit den klassischen Spiel-Namen + Stufen
             return [
                 {
-                    id: "start",
-                    title: de ? "🌟 Erste Schritte" : "🌟 First Steps",
+                    id: "erfolge",
+                    title: de ? "Erfolge" : "Achievements",
                     items: [
-                        { id: "🌟 Erste Schritte", icon: "🏅", name: de ? "Erste Schritte" : "First Steps", current: totalTasks, target: 1, tier: "bronze" }
-                    ]
-                },
-                {
-                    id: "coins",
-                    title: de ? "💰 Coin-Erfolge" : "💰 Coin Achievements",
-                    items: [
-                        { id: "💰 Coin-Sammler", icon: "💵", name: de ? "Coin-Sammler" : "Coin Collector", current: coins, target: 200, tier: "bronze" },
-                        { id: "💰 Coin-König", icon: "👑", name: de ? "Coin-König" : "Coin King", current: coins, target: 500, tier: "silver" },
-                        { id: "💰 Coin-Tycoon", icon: "💎", name: de ? "Coin-Tycoon" : "Coin Tycoon", current: coins, target: 1500, tier: "gold" },
-                        { id: "💰 Coin-Legende", icon: "🏆", name: de ? "Coin-Legende" : "Coin Legend", current: coins, target: 5000, tier: "platinum" }
-                    ]
-                },
-                {
-                    id: "streak",
-                    title: de ? "⚡ Streak-Meilensteine" : "⚡ Streak Milestones",
-                    items: [
-                        { id: "⚡ Streak-Monster", icon: "⚡", name: de ? "Streak-Monster" : "Streak Monster", current: bestStreak, target: 5, tier: "bronze" },
-                        { id: "⚡ Streak-Legende", icon: "⚡", name: de ? "Streak-Legende" : "Streak Legend", current: bestStreak, target: 15, tier: "silver" },
-                        { id: "⚡ Unstoppable", icon: "🌟", name: "Unstoppable", current: bestStreak, target: 30, tier: "gold" },
-                        { id: "⚡ Eternal-Streak", icon: "🔥", name: de ? "Eternal-Streak" : "Eternal Streak", current: bestStreak, target: 50, tier: "platinum" }
-                    ]
-                },
-                {
-                    id: "party",
-                    title: de ? "🎉 Party-Ränge" : "🎉 Party Ranks",
-                    items: [
-                        { id: "🏆 Partystufe 10", icon: "🏆", name: de ? "Partystufe 10" : "Party Level 10", current: level, target: 10, tier: "bronze" },
-                        { id: "🍻 Party-Animal", icon: "🍻", name: "Party-Animal", current: totalTasks >= 30 && bestStreak >= 10 ? 1 : 0, target: 1, tier: "silver" },
-                        { id: "🏆 Partystufe 25", icon: "🏆", name: de ? "Partystufe 25" : "Party Level 25", current: level, target: 25, tier: "gold" },
-                        { id: "🏆 Partystufe 50", icon: "👑", name: de ? "Partystufe 50" : "Party Level 50", current: level, target: 50, tier: "platinum" }
-                    ]
-                },
-                {
-                    id: "truth",
-                    title: de ? "💡 Wahrheits-Meister" : "💡 Truth Master",
-                    items: [
-                        { id: "💡 10 Wahrheiten", icon: "💡", name: de ? "10 Wahrheiten" : "10 Truths", current: truths, target: 10, tier: "bronze" },
-                        { id: "💡 25 Wahrheiten", icon: "❓", name: de ? "25 Wahrheiten" : "25 Truths", current: truths, target: 25, tier: "silver" },
-                        { id: "💡 50 Wahrheiten", icon: "🧠", name: de ? "50 Wahrheiten" : "50 Truths", current: truths, target: 50, tier: "gold" },
-                        { id: "💡 Wahrheit-Orakel", icon: "🔮", name: de ? "Wahrheit-Orakel" : "Truth Oracle", current: truths, target: 100, tier: "platinum" }
-                    ]
-                },
-                {
-                    id: "dare",
-                    title: de ? "🔥 Pflicht-Herausforderungen" : "🔥 Dare Challenges",
-                    items: [
-                        { id: "🔥 10 Pflichten", icon: "🔥", name: de ? "10 Pflichten" : "10 Dares", current: dares, target: 10, tier: "bronze" },
-                        { id: "🔥 25 Pflichten", icon: "🔥", name: de ? "25 Pflichten" : "25 Dares", current: dares, target: 25, tier: "silver" },
-                        { id: "🔥 50 Pflichten", icon: "🔥", name: de ? "50 Pflichten" : "50 Dares", current: dares, target: 50, tier: "gold" },
-                        { id: "🔥 Pflicht-Legende", icon: "💥", name: de ? "Pflicht-Legende" : "Dare Legend", current: dares, target: 100, tier: "platinum" }
-                    ]
-                },
-                {
-                    id: "tasks",
-                    title: de ? "🎯 Aufgaben-König" : "🎯 Task King",
-                    items: [
-                        { id: "🎯 25 Aufgaben", icon: "🎯", name: de ? "25 Aufgaben" : "25 Tasks", current: totalTasks, target: 25, tier: "bronze" },
-                        { id: "🎯 50 Aufgaben", icon: "🎯", name: de ? "50 Aufgaben" : "50 Tasks", current: totalTasks, target: 50, tier: "silver" },
-                        { id: "🎯 100 Aufgaben", icon: "🎯", name: de ? "100 Aufgaben" : "100 Tasks", current: totalTasks, target: 100, tier: "gold" },
-                        { id: "🎯 Aufgaben-Gott", icon: "👑", name: de ? "Aufgaben-Gott" : "Task God", current: totalTasks, target: 250, tier: "platinum" }
-                    ]
-                },
-                {
-                    id: "session",
-                    title: de ? "⏱️ Session & Ausdauer" : "⏱️ Session & Endurance",
-                    items: [
-                        { id: "⏱️ Sitzungs-König", icon: "⏱️", name: de ? "Sitzungs-König" : "Session King", current: bestStreak, target: 8, tier: "bronze" },
-                        { id: "💪 Ausdauer-Meister", icon: "💪", name: de ? "Ausdauer-Meister" : "Endurance Master", current: totalTasks, target: 40, tier: "silver" },
-                        { id: "🦸 Challenge-Hero", icon: "🦸", name: de ? "Challenge-Hero" : "Challenge Hero", current: dares, target: 35, tier: "gold" },
-                        { id: "🏅 Last One Standing", icon: "🏅", name: "Last One Standing", current: bestStreak, target: 20, tier: "platinum" }
+                        { id: "🌟 Erste Schritte", name: de ? "Erste Schritte" : "First Steps", current: totalTasks, target: 1, tier: "bronze" },
+                        { id: "🔥 10 Pflichten", name: de ? "10 Pflichten" : "10 Dares", current: dares, target: 10, tier: "bronze" },
+                        { id: "🔥 25 Pflichten", name: de ? "25 Pflichten" : "25 Dares", current: dares, target: 25, tier: "silver" },
+                        { id: "🔥 50 Pflichten", name: de ? "50 Pflichten" : "50 Dares", current: dares, target: 50, tier: "gold" },
+                        { id: "💡 10 Wahrheiten", name: de ? "10 Wahrheiten" : "10 Truths", current: truths, target: 10, tier: "bronze" },
+                        { id: "💡 25 Wahrheiten", name: de ? "25 Wahrheiten" : "25 Truths", current: truths, target: 25, tier: "silver" },
+                        { id: "💡 50 Wahrheiten", name: de ? "50 Wahrheiten" : "50 Truths", current: truths, target: 50, tier: "gold" },
+                        { id: "⚡ Streak-Monster", name: de ? "Streak-Monster" : "Streak Monster", current: bestStreak, target: 5, tier: "bronze" },
+                        { id: "⚡ Streak-Legende", name: de ? "Streak-Legende" : "Streak Legend", current: bestStreak, target: 15, tier: "silver" },
+                        { id: "⚡ Unstoppable", name: "Unstoppable", current: bestStreak, target: 30, tier: "gold" },
+                        { id: "🎯 25 Aufgaben", name: de ? "25 Aufgaben" : "25 Tasks", current: totalTasks, target: 25, tier: "bronze" },
+                        { id: "🎯 50 Aufgaben", name: de ? "50 Aufgaben" : "50 Tasks", current: totalTasks, target: 50, tier: "silver" },
+                        { id: "🎯 100 Aufgaben", name: de ? "100 Aufgaben" : "100 Tasks", current: totalTasks, target: 100, tier: "gold" },
+                        { id: "🏆 Partystufe 10", name: de ? "Partystufe 10" : "Party Level 10", current: level, target: 10, tier: "bronze" },
+                        { id: "🏆 Partystufe 25", name: de ? "Partystufe 25" : "Party Level 25", current: level, target: 25, tier: "silver" },
+                        { id: "🏆 Partystufe 50", name: de ? "Partystufe 50" : "Party Level 50", current: level, target: 50, tier: "gold" },
+                        { id: "💰 Coin-Sammler", name: de ? "Coin-Sammler" : "Coin Collector", current: coins, target: 200, tier: "bronze" },
+                        { id: "💰 Coin-König", name: de ? "Coin-König" : "Coin King", current: coins, target: 500, tier: "silver" },
+                        { id: "💰 Coin-Tycoon", name: de ? "Coin-Tycoon" : "Coin Tycoon", current: coins, target: 1000, tier: "gold" },
+                        { id: "🍻 Party-Animal", name: "Party-Animal", current: (totalTasks >= 30 && bestStreak >= 10) ? 1 : 0, target: 1, tier: "platinum" }
                     ]
                 }
             ];
@@ -3053,44 +3007,49 @@
             const catalog = getBadgeCatalog();
             let total = 0;
             let unlocked = 0;
-            let html = "";
-            const tierColors = { bronze: "#cd7f32", silver: "#c0c0c0", gold: "#ffd700", platinum: "#e5e4e2" };
-            const tierLabels = { bronze: de ? "Bronze" : "Bronze", silver: de ? "Silber" : "Silver", gold: de ? "Gold" : "Gold", platinum: de ? "Platin" : "Platinum" };
+            const tierColors = {
+                bronze: "#cd7f32",
+                silver: "#94a3b8",
+                gold: "#fbbf24",
+                platinum: "#e2e8f0",
+                blue: "#38bdf8"
+            };
+            let html = '<div class="erfolge-grid">';
             catalog.forEach(cat => {
-                total += cat.items.length;
-                html += `<div class="badge-cat badge-cat-${cat.id}">`;
-                html += `<div class="badge-cat-title">${cat.title}</div>`;
-                html += `<div class="badge-cat-items">`;
                 cat.items.forEach(item => {
+                    total++;
                     const has = (unlockedBadges || []).includes(item.id);
                     if (has) unlocked++;
                     const cur = Math.min(Number(item.current) || 0, item.target);
-                    const prog = has
-                        ? (de ? "Erreicht" : "Complete")
-                        : `${cur}/${item.target}`;
                     const tier = item.tier || "bronze";
-                    const color = has ? (tierColors[tier] || "#ffd700") : "#64748b";
-                    html += `<div class="badge-tile${has ? " unlocked" : ""} badge-tier-${tier}" data-badge-id="${item.id.replace(/"/g, "&quot;")}" style="--badge-tier-color:${color}" title="${getBadgeDisplayName(item.id)} – ${tierLabels[tier] || tier}" role="button" tabindex="0">`;
-                    html += `<div class="badge-tile-icon" style="color:${color}">${item.icon}</div>`;
-                    html += `<div class="badge-tile-name">${item.name}</div>`;
-                    html += `<div class="badge-tile-prog">${prog}</div>`;
-                    html += `<div class="badge-tile-tier">${tierLabels[tier] || tier}</div>`;
-                    html += `</div>`;
+                    const color = has ? (tierColors[tier] || "#fbbf24") : "#475569";
+                    const lockedClass = has ? "unlocked" : "locked";
+                    html += `<button type="button" class="erfolge-tile ${lockedClass} erfolge-tier-${tier}" data-badge-id="${String(item.id).replace(/"/g, "&quot;")}" title="${item.name}">`;
+                    html += `<span class="erfolge-ribbon" style="color:${color}" aria-hidden="true">`;
+                    html += `<svg viewBox="0 0 48 48" width="36" height="36" fill="none" xmlns="http://www.w3.org/2000/svg">`;
+                    html += `<path d="M24 6c-6.6 0-12 5.4-12 12 0 4.4 2.4 8.2 6 10.2V40l6-3.5L30 40V28.2c3.6-2 6-5.8 6-10.2 0-6.6-5.4-12-12-12z" stroke="currentColor" stroke-width="2.5" fill="${has ? "currentColor" : "none"}" fill-opacity="${has ? "0.15" : "0"}"/>`;
+                    html += `<circle cx="24" cy="18" r="7" stroke="currentColor" stroke-width="2.5" fill="none"/>`;
+                    html += `</svg></span>`;
+                    html += `<span class="erfolge-name">${item.name}</span>`;
+                    if (!has) {
+                        html += `<span class="erfolge-prog">${cur}/${item.target}</span>`;
+                    }
+                    html += `</button>`;
                 });
-                html += `</div></div>`;
             });
+            html += "</div>";
             box.innerHTML = html;
-            // Click to show progress / next tier detail
-            box.querySelectorAll(".badge-tile").forEach(tile => {
+            box.querySelectorAll(".erfolge-tile").forEach(tile => {
                 tile.addEventListener("click", () => showBadgeDetail(tile.getAttribute("data-badge-id")));
-                tile.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); showBadgeDetail(tile.getAttribute("data-badge-id")); } });
             });
             const totalEl = document.getElementById("profile-badge-total");
             if (totalEl) {
                 totalEl.innerText = de
-                    ? `Gesamt: ${unlocked} / ${total} Erfolge`
-                    : `Total: ${unlocked} / ${total} achievements`;
+                    ? `${unlocked} / ${total}`
+                    : `${unlocked} / ${total}`;
             }
+            const head = document.getElementById("ui-profile-badges-head");
+            if (head) head.innerText = de ? "🏅 Erfolge" : "🏅 Achievements";
         }
 
         function showBadgeDetail(badgeId) {
@@ -3108,7 +3067,7 @@
             const cur = Number(item.current) || 0;
             const target = Number(item.target) || 1;
             const pct = Math.min(100, Math.round((cur / target) * 100));
-            const tierLabels = { bronze: de ? "Bronze" : "Bronze", silver: de ? "Silber" : "Silver", gold: de ? "Gold" : "Gold", platinum: de ? "Platin" : "Platinum" };
+            const tierLabels = { bronze: de ? "Bronze" : "Bronze", silver: de ? "Silber" : "Silver", gold: de ? "Gold" : "Gold", platinum: de ? "Platin" : "Platinum", blue: de ? "Spezial" : "Special" };
             const nextTierOrder = ["bronze", "silver", "gold", "platinum"];
             const tierIdx = nextTierOrder.indexOf(item.tier || "bronze");
             const nextTier = tierIdx >= 0 && tierIdx < nextTierOrder.length - 1 ? nextTierOrder[tierIdx + 1] : null;
@@ -3124,8 +3083,8 @@
             }
             const remaining = Math.max(0, target - cur);
             const msg = de
-                ? `<div style="text-align:left"><strong>${item.icon} ${item.name}</strong><br><span style="font-size:12px;color:#94a3b8">${catTitle}</span><br><br>Fortschritt: <strong>${cur} / ${target}</strong> (${pct}%)<br>${remaining > 0 ? `Noch ${remaining} bis zur Freischaltung.` : "Ziel erreicht!"}</div>${nextInfo}<div style="margin-top:10px;height:8px;background:#1e293b;border-radius:4px;overflow:hidden"><div style="height:100%;width:${pct}%;background:linear-gradient(90deg,#f59e0b,#eab308);border-radius:4px"></div></div>`
-                : `<div style="text-align:left"><strong>${item.icon} ${item.name}</strong><br><span style="font-size:12px;color:#94a3b8">${catTitle}</span><br><br>Progress: <strong>${cur} / ${target}</strong> (${pct}%)<br>${remaining > 0 ? `${remaining} left to unlock.` : "Goal reached!"}</div>${nextInfo}<div style="margin-top:10px;height:8px;background:#1e293b;border-radius:4px;overflow:hidden"><div style="height:100%;width:${pct}%;background:linear-gradient(90deg,#f59e0b,#eab308);border-radius:4px"></div></div>`;
+                ? `<div style="text-align:left"><strong>${item.name}</strong><br><span style="font-size:12px;color:#94a3b8">${catTitle}</span><br><br>Fortschritt: <strong>${cur} / ${target}</strong> (${pct}%)<br>${remaining > 0 ? `Noch ${remaining} bis zur Freischaltung.` : "Ziel erreicht!"}</div>${nextInfo}<div style="margin-top:10px;height:8px;background:#1e293b;border-radius:4px;overflow:hidden"><div style="height:100%;width:${pct}%;background:linear-gradient(90deg,#f59e0b,#eab308);border-radius:4px"></div></div>`
+                : `<div style="text-align:left"><strong>${item.name}</strong><br><span style="font-size:12px;color:#94a3b8">${catTitle}</span><br><br>Progress: <strong>${cur} / ${target}</strong> (${pct}%)<br>${remaining > 0 ? `${remaining} left to unlock.` : "Goal reached!"}</div>${nextInfo}<div style="margin-top:10px;height:8px;background:#1e293b;border-radius:4px;overflow:hidden"><div style="height:100%;width:${pct}%;background:linear-gradient(90deg,#f59e0b,#eab308);border-radius:4px"></div></div>`;
             // Simple modal via alert-style or existing toast if available; fallback alert for compatibility
             if (typeof showAppNotification === "function") {
                 try { showAppNotification(de ? "Erfolg" : "Achievement", msg.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()); } catch (e) {}
@@ -3215,58 +3174,36 @@
         }
 
         function checkBadges() {
-            const totalTasks = truthCount + dareCount;
+            const totalTasks = (Number(truthCount) || 0) + (Number(dareCount) || 0);
             const bestStreak = Math.max(Number(gameStreak) || 0, Number(userStreak) || 0);
+            const truths = Number(truthCount) || 0;
+            const dares = Number(dareCount) || 0;
+            const level = Number(userLevel) || 1;
+            const coins = Number(userCoins) || 0;
             const addBadge = (id) => {
                 if (!unlockedBadges.includes(id)) unlockedBadges.push(id);
             };
 
-            // Erste Schritte
             if (totalTasks >= 1) addBadge("🌟 Erste Schritte");
-
-            // Pflichten (Dares)
-            if (dareCount >= 10) addBadge("🔥 10 Pflichten");
-            if (dareCount >= 25) addBadge("🔥 25 Pflichten");
-            if (dareCount >= 50) addBadge("🔥 50 Pflichten");
-            if (dareCount >= 100) addBadge("🔥 Pflicht-Legende");
-
-            // Wahrheiten (Truths)
-            if (truthCount >= 10) addBadge("💡 10 Wahrheiten");
-            if (truthCount >= 25) addBadge("💡 25 Wahrheiten");
-            if (truthCount >= 50) addBadge("💡 50 Wahrheiten");
-            if (truthCount >= 100) addBadge("💡 Wahrheit-Orakel");
-
-            // Spiel-Streak (HUD) + Tages-Streak (Profil)
+            if (dares >= 10) addBadge("🔥 10 Pflichten");
+            if (dares >= 25) addBadge("🔥 25 Pflichten");
+            if (dares >= 50) addBadge("🔥 50 Pflichten");
+            if (truths >= 10) addBadge("💡 10 Wahrheiten");
+            if (truths >= 25) addBadge("💡 25 Wahrheiten");
+            if (truths >= 50) addBadge("💡 50 Wahrheiten");
             if (bestStreak >= 5) addBadge("⚡ Streak-Monster");
             if (bestStreak >= 15) addBadge("⚡ Streak-Legende");
             if (bestStreak >= 30) addBadge("⚡ Unstoppable");
-            if (bestStreak >= 50) addBadge("⚡ Eternal-Streak");
-
-            // Gesamt-Aufgaben
             if (totalTasks >= 25) addBadge("🎯 25 Aufgaben");
             if (totalTasks >= 50) addBadge("🎯 50 Aufgaben");
             if (totalTasks >= 100) addBadge("🎯 100 Aufgaben");
-            if (totalTasks >= 250) addBadge("🎯 Aufgaben-Gott");
-
-            // Level / Partystufe
-            if (userLevel >= 10) addBadge("🏆 Partystufe 10");
-            if (userLevel >= 25) addBadge("🏆 Partystufe 25");
-            if (userLevel >= 50) addBadge("🏆 Partystufe 50");
-
-            // Coins
-            if (userCoins >= 200) addBadge("💰 Coin-Sammler");
-            if (userCoins >= 500) addBadge("💰 Coin-König");
-            if (userCoins >= 1500) addBadge("💰 Coin-Tycoon");
-            if (userCoins >= 5000) addBadge("💰 Coin-Legende");
-
-            // Party-Animal (viele Aufgaben + guter Streak)
+            if (level >= 10) addBadge("🏆 Partystufe 10");
+            if (level >= 25) addBadge("🏆 Partystufe 25");
+            if (level >= 50) addBadge("🏆 Partystufe 50");
+            if (coins >= 200) addBadge("💰 Coin-Sammler");
+            if (coins >= 500) addBadge("💰 Coin-König");
+            if (coins >= 1000) addBadge("💰 Coin-Tycoon");
             if (totalTasks >= 30 && bestStreak >= 10) addBadge("🍻 Party-Animal");
-
-            // Session / Ausdauer
-            if (bestStreak >= 8) addBadge("⏱️ Sitzungs-König");
-            if (totalTasks >= 40) addBadge("💪 Ausdauer-Meister");
-            if (dareCount >= 35) addBadge("🦸 Challenge-Hero");
-            if (bestStreak >= 20) addBadge("🏅 Last One Standing");
         }
 
         async function setAvatarEmote(emote) {
@@ -3779,7 +3716,7 @@
                 }
 
                 if (regData.needsVerification) {
-                    showEmailVerifyModal(email, regData.devCode || null);
+                    showEmailVerifyModal(email);
                     return;
                 }
 
@@ -3807,25 +3744,21 @@
             }
         }
 
-        function showEmailVerifyModal(email, devCode) {
+        function showEmailVerifyModal(email) {
             const de = currentLang === "de";
             let overlay = document.getElementById("email-verify-overlay");
             if (overlay) overlay.remove();
             overlay = document.createElement("div");
             overlay.id = "email-verify-overlay";
             overlay.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px;";
-            const hint = devCode
-                ? (de
-                    ? `<p style="font-size:12px;color:#fbbf24;margin:8px 0">Dev (kein SMTP): Code = <strong>${devCode}</strong></p>`
-                    : `<p style="font-size:12px;color:#fbbf24;margin:8px 0">Dev (no SMTP): code = <strong>${devCode}</strong></p>`)
-                : (de
-                    ? `<p style="font-size:12px;color:#94a3b8;margin:8px 0">Wir haben einen 6-stelligen Code an <strong>${email}</strong> gesendet.</p>`
-                    : `<p style="font-size:12px;color:#94a3b8;margin:8px 0">We sent a 6-digit code to <strong>${email}</strong>.</p>`);
+            const hint = de
+                ? `<p style="font-size:12px;color:#94a3b8;margin:8px 0">Wir haben einen 6-stelligen Code an <strong>${email}</strong> gesendet. Bitte prüfe dein Postfach (auch Spam).</p>`
+                : `<p style="font-size:12px;color:#94a3b8;margin:8px 0">We sent a 6-digit code to <strong>${email}</strong>. Please check your inbox (and spam).</p>`;
             overlay.innerHTML = `
                 <div style="background:#0f172a;border:1px solid rgba(255,255,255,0.12);border-radius:16px;max-width:360px;width:100%;padding:20px;color:#e2e8f0;box-shadow:0 20px 40px rgba(0,0,0,0.5)">
                     <h3 style="margin:0 0 8px;font-size:16px">${de ? "E-Mail bestätigen" : "Confirm email"}</h3>
                     ${hint}
-                    <input id="email-verify-code" type="text" inputmode="numeric" maxlength="6" placeholder="123456"
+                    <input id="email-verify-code" type="text" inputmode="numeric" maxlength="6" placeholder="123456" autocomplete="one-time-code"
                         style="width:100%;padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.15);background:#1e293b;color:#fff;font-size:18px;letter-spacing:4px;text-align:center;box-sizing:border-box;margin:8px 0" />
                     <button type="button" id="email-verify-submit" style="width:100%;padding:12px;border:none;border-radius:10px;background:#34d399;color:#0f172a;font-weight:700;cursor:pointer;margin-top:8px">
                         ${de ? "Bestätigen" : "Confirm"}
@@ -3841,6 +3774,7 @@
             document.getElementById("email-verify-submit").onclick = async () => {
                 const code = (codeInput.value || "").trim();
                 if (!/^\d{6}$/.test(code)) {
+                    msgEl.style.color = "#f87171";
                     msgEl.textContent = de ? "Bitte 6-stelligen Code eingeben." : "Enter the 6-digit code.";
                     return;
                 }
@@ -3852,6 +3786,7 @@
                     });
                     const data = await res.json().catch(() => ({}));
                     if (!res.ok) {
+                        msgEl.style.color = "#f87171";
                         msgEl.textContent = data.error || (de ? "Ungültiger Code." : "Invalid code.");
                         return;
                     }
@@ -3872,6 +3807,7 @@
                     loadFriendsData();
                     listenForFriendRequests();
                 } catch (e) {
+                    msgEl.style.color = "#f87171";
                     msgEl.textContent = e.message || "Error";
                 }
             };
@@ -3884,14 +3820,14 @@
                     });
                     const data = await res.json().catch(() => ({}));
                     if (!res.ok) {
+                        msgEl.style.color = "#f87171";
                         msgEl.textContent = data.error || "Error";
                         return;
                     }
                     msgEl.style.color = "#34d399";
-                    msgEl.textContent = data.devCode
-                        ? (de ? `Neuer Code (Dev): ${data.devCode}` : `New code (dev): ${data.devCode}`)
-                        : (de ? "Neuer Code gesendet." : "New code sent.");
+                    msgEl.textContent = de ? "Neuer Code wurde an deine E-Mail gesendet." : "A new code was sent to your email.";
                 } catch (e) {
+                    msgEl.style.color = "#f87171";
                     msgEl.textContent = e.message || "Error";
                 }
             };
@@ -3922,7 +3858,7 @@
                         if (!verified && !isMasterAccount(email)) {
                             myEmail = email;
                             myName = getUserDisplayName(data, localStorage.getItem("wop_user_name_v6") || "Spieler");
-                            showEmailVerifyModal(email, null);
+                            showEmailVerifyModal(email);
                             return;
                         }
 
