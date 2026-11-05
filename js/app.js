@@ -3545,6 +3545,123 @@
             document.getElementById("account-modal").classList.add("hidden");
         }
 
+        // Letzte Laufzeitfehler für Bug-Reports sammeln
+        window.__wopLastError = window.__wopLastError || null;
+        window.__wopErrorLog = window.__wopErrorLog || [];
+        if (!window.__wopErrorListenersBound) {
+            window.__wopErrorListenersBound = true;
+            window.addEventListener("error", (ev) => {
+                const entry = {
+                    kind: "error",
+                    message: String(ev.message || (ev.error && ev.error.message) || "Unknown error"),
+                    source: ev.filename || "",
+                    line: ev.lineno || 0,
+                    col: ev.colno || 0,
+                    stack: ev.error && ev.error.stack ? String(ev.error.stack).slice(0, 800) : "",
+                    at: new Date().toISOString()
+                };
+                window.__wopLastError = entry;
+                window.__wopErrorLog.push(entry);
+                if (window.__wopErrorLog.length > 15) window.__wopErrorLog.shift();
+            });
+            window.addEventListener("unhandledrejection", (ev) => {
+                const reason = ev.reason;
+                const entry = {
+                    kind: "unhandledrejection",
+                    message: String(reason && reason.message ? reason.message : reason || "Promise rejection"),
+                    source: "",
+                    line: 0,
+                    col: 0,
+                    stack: reason && reason.stack ? String(reason.stack).slice(0, 800) : "",
+                    at: new Date().toISOString()
+                };
+                window.__wopLastError = entry;
+                window.__wopErrorLog.push(entry);
+                if (window.__wopErrorLog.length > 15) window.__wopErrorLog.shift();
+            });
+        }
+
+        /** Analysiert Bug-Text + ggf. letzten JS-Fehler → Error-Code + Kurzanalyse */
+        function analyzeBugReport(text, runtimeError) {
+            const t = String(text || "").toLowerCase();
+            const rules = [
+                { code: "ERR-AUTH", area: "Login / Authentifizierung", keys: ["login", "einlogg", "anmeld", "passwort", "password", "registr", "auth", "konto", "account", "session"] },
+                { code: "ERR-LOBBY", area: "Lobby / Multiplayer", keys: ["lobby", "beitret", "host", "code", "spieler", "join", "room", "raum"] },
+                { code: "ERR-SOCKET", area: "Verbindung / WebSocket", keys: ["socket", "verbind", "disconnect", "timeout", "offline", "netzwerk", "network", "reconnect", "latency"] },
+                { code: "ERR-CHAT", area: "Chat / Nachrichten", keys: ["chat", "nachricht", "message", "dm", "inbox", "schreiben"] },
+                { code: "ERR-COINS", area: "Coins / Belohnungen", keys: ["coin", "münze", "belohnung", "reward", "xp ", "level"] },
+                { code: "ERR-RANKING", area: "Rangliste", keys: ["rangliste", "ranking", "leaderboard", "monat", "monthly"] },
+                { code: "ERR-SHOP", area: "Shop / Käufe", keys: ["shop", "kaufen", "emoji", "accessoire", "joker", "theme", "freischalt"] },
+                { code: "ERR-WHEEL", area: "Glücksrad", keys: ["rad", "wheel", "glücksrad", "spin"] },
+                { code: "ERR-ONLINE", area: "Online-Status", keys: ["online", "offline", "status", "anwesend", "presence"] },
+                { code: "ERR-SOCIAL", area: "Freunde / Social", keys: ["freund", "friend", "anfrage", "invite", "einlad"] },
+                { code: "ERR-UI", area: "Anzeige / UI", keys: ["anzeig", "layout", "button", "knopf", "design", "weiß", "schwarz", "scroll", "darstell"] },
+                { code: "ERR-CRASH", area: "Absturz / Freeze", keys: ["crash", "absturz", "hängt", "freeze", "lädt nicht", "loading", "stuck", "kaputt", "fehler"] }
+            ];
+
+            let best = null;
+            let bestScore = 0;
+            rules.forEach(r => {
+                let score = 0;
+                r.keys.forEach(k => { if (t.includes(k)) score += 1; });
+                if (score > bestScore) { bestScore = score; best = r; }
+            });
+
+            const rtMsg = runtimeError ? String(runtimeError.message || "").toLowerCase() : "";
+            const rtSrc = runtimeError ? String(runtimeError.source || "").toLowerCase() : "";
+            if (rtMsg || rtSrc) {
+                const blob = rtMsg + " " + rtSrc;
+                if (/firebase|permission|auth|login/.test(blob) && (!best || bestScore < 2)) {
+                    best = rules.find(r => r.code === "ERR-AUTH"); bestScore = Math.max(bestScore, 2);
+                } else if (/socket|websocket|network|fetch|failed to fetch/.test(blob) && (!best || bestScore < 2)) {
+                    best = rules.find(r => r.code === "ERR-SOCKET"); bestScore = Math.max(bestScore, 2);
+                } else if (/lobby|room/.test(blob) && (!best || bestScore < 2)) {
+                    best = rules.find(r => r.code === "ERR-LOBBY"); bestScore = Math.max(bestScore, 2);
+                }
+            }
+
+            if (!best) {
+                best = { code: "ERR-GENERAL", area: currentLang === "de" ? "Allgemein / unklar" : "General / unclear" };
+            }
+
+            let hash = 0;
+            const src = String(text || "") + (runtimeError ? runtimeError.message : "");
+            for (let i = 0; i < src.length; i++) hash = ((hash << 5) - hash) + src.charCodeAt(i) | 0;
+            const short = Math.abs(hash).toString(16).toUpperCase().slice(0, 4).padStart(4, "0");
+            const errorCode = `WOP-${best.code}-${short}`;
+
+            const de = currentLang === "de";
+            let analysis = de
+                ? `Vermuteter Bereich: ${best.area}. Fehlercode: ${errorCode}.`
+                : `Suspected area: ${best.area}. Error code: ${errorCode}.`;
+            if (runtimeError && runtimeError.message) {
+                analysis += de
+                    ? ` Erkannter Laufzeitfehler: „${runtimeError.message}“`
+                    : ` Detected runtime error: "${runtimeError.message}"`;
+                if (runtimeError.source) {
+                    analysis += ` in ${runtimeError.source}${runtimeError.line ? ":" + runtimeError.line : ""}.`;
+                } else {
+                    analysis += ".";
+                }
+            } else if (bestScore === 0) {
+                analysis += de
+                    ? " Keine klaren Schlüsselwörter – bitte mehr Details (wo genau, was geklickt?)."
+                    : " No clear keywords – please add more details (where, what was clicked?).";
+            } else {
+                analysis += de
+                    ? ` Erkannt anhand der Beschreibung (Treffer: ${bestScore}).`
+                    : ` Detected from description (matches: ${bestScore}).`;
+            }
+
+            return {
+                errorCode,
+                area: best.area,
+                areaCode: best.code,
+                analysis,
+                confidence: bestScore
+            };
+        }
+
         function openFeedbackModal() {
             document.getElementById("feedback-text-input").value = "";
             document.getElementById("feedback-modal").classList.remove("hidden");
@@ -3554,21 +3671,73 @@
             let type = document.getElementById("feedback-type").value;
             let text = document.getElementById("feedback-text-input").value.trim();
             if (!text) { alert(translations[currentLang].alertFeedbackEmpty); return; }
+            if (!myEmail) {
+                alert(msg("msgLoginFirst", "Bitte zuerst einloggen.", "Please log in first."));
+                return;
+            }
+
+            let errorCode = "";
+            let analysis = "";
+            let meta = {};
+            if (String(type).toLowerCase() === "bug") {
+                const runtimeError = window.__wopLastError || null;
+                const analyzed = analyzeBugReport(text, runtimeError);
+                errorCode = analyzed.errorCode;
+                analysis = analyzed.analysis;
+                meta = {
+                    area: analyzed.area,
+                    areaCode: analyzed.areaCode,
+                    confidence: analyzed.confidence,
+                    runtimeError: runtimeError || null,
+                    userAgent: navigator.userAgent || "",
+                    url: location.href || "",
+                    lang: currentLang,
+                    lobby: (typeof activeLobbyCode !== "undefined" ? (activeLobbyCode || "") : ""),
+                    at: new Date().toISOString()
+                };
+            }
 
             try {
                 await db.collection("feedback").add({
+                    email: myEmail,
+                    name: myName,
                     author: myName,
                     emailMasked: maskEmail(myEmail),
                     type: type,
                     text: text,
+                    errorCode: errorCode,
+                    analysis: analysis,
+                    meta: meta,
                     date: new Date().toLocaleString()
                 });
                 document.getElementById("feedback-modal").classList.add("hidden");
-                alert(translations[currentLang].alertFeedbackSuccess);
+                if (errorCode) {
+                    alert(
+                        (translations[currentLang].alertFeedbackSuccess || "Feedback gesendet.") +
+                        "\n\n" + (currentLang === "de" ? "Fehlercode: " : "Error code: ") + errorCode
+                    );
+                } else {
+                    alert(translations[currentLang].alertFeedbackSuccess);
+                }
             } catch (e) {
                 console.error("Fehler beim Senden des Feedbacks:", e);
+                alert(currentLang === "de" ? "Senden fehlgeschlagen." : "Could not send feedback.");
             }
         }
+
+        function toggleFeedbackDetail(id) {
+            const el = document.getElementById("fb-detail-" + id);
+            if (!el) return;
+            el.classList.toggle("hidden");
+            const btn = document.getElementById("fb-toggle-" + id);
+            if (btn) {
+                const open = !el.classList.contains("hidden");
+                btn.innerText = open
+                    ? (currentLang === "de" ? "▲ Zuklappen" : "▲ Collapse")
+                    : (currentLang === "de" ? "▼ Details / Analyse" : "▼ Details / Analysis");
+            }
+        }
+        window.toggleFeedbackDetail = toggleFeedbackDetail;
 
 // ==============================================================================
 // 10. ADMIN-BEREICH (USER-VERWALTUNG & FEEDBACK)
@@ -3837,20 +4006,61 @@
 
                 const deleteBtnText = currentLang === "de" ? "Löschen" : "Delete";
                 filtered.forEach(fb => {
-                    const docId = fb.id;
+                    const docId = String(fb.id);
                     const isBug = String(fb.type || "").toLowerCase() === "bug";
                     const typeColor = isBug ? "#ff3300" : "#00bfff";
                     const typeLabel = isBug
                         ? "Bug"
                         : (currentLang === "de" ? "Vorschlag / Verbesserung" : "Suggestion / Improvement");
                     const displayMail = fb.emailMasked || maskEmail(fb.email || "");
-                    const safeAuthor = String(fb.author || "—").replace(/</g, "&lt;");
+                    const safeAuthor = String(fb.author || fb.name || "—").replace(/</g, "&lt;");
                     const safeText = String(fb.text || "").replace(/</g, "&lt;");
                     const canDelete = myRole === "master" || myRole === "admin";
-                    container.innerHTML += `<div style="background:rgba(255,255,255,0.05); padding:6px; border-radius:6px; margin-bottom:5px; font-size:12px; border-left:4px solid ${typeColor};">
-                        <div><b>${safeAuthor}</b> (${displayMail}) – <span style="color:${typeColor}; font-weight:bold;">${typeLabel}</span></div>
-                        <div style="margin-top:2px; color:#fff;">${safeText}</div>
-                        ${canDelete ? `<button class="btn-danger" style="padding:2px 5px; font-size:9px; margin-top:3px;" onclick="deleteFeedback('${docId}')">${deleteBtnText}</button>` : ""}
+                    const errorCode = String(fb.errorCode || "").replace(/</g, "&lt;");
+                    let analysis = String(fb.analysis || "").replace(/</g, "&lt;");
+                    let metaObj = {};
+                    try {
+                        if (fb.meta) metaObj = typeof fb.meta === "string" ? JSON.parse(fb.meta) : (fb.meta || {});
+                    } catch (e) { metaObj = {}; }
+                    // Falls alte Bugs ohne Analyse: on-the-fly analysieren
+                    if (isBug && !errorCode) {
+                        const live = analyzeBugReport(fb.text || "", metaObj.runtimeError || null);
+                        if (!analysis) analysis = String(live.analysis || "").replace(/</g, "&lt;");
+                    }
+                    const displayCode = errorCode || (isBug ? (analyzeBugReport(fb.text || "", null).errorCode) : "");
+                    const safeCode = String(displayCode || "").replace(/</g, "&lt;");
+                    const rt = metaObj.runtimeError || null;
+                    const rtHtml = rt && rt.message
+                        ? `<div style="margin-top:6px;padding:6px;background:rgba(255,50,50,0.12);border-radius:6px;font-size:11px;color:#fecaca;">
+                                <b>${currentLang === "de" ? "Laufzeitfehler" : "Runtime error"}:</b> ${String(rt.message).replace(/</g, "&lt;")}<br>
+                                ${rt.source ? `<span style="color:#fca5a5;">${String(rt.source).replace(/</g, "&lt;")}${rt.line ? ":" + rt.line : ""}</span>` : ""}
+                                ${rt.stack ? `<pre style="white-space:pre-wrap;font-size:10px;margin:4px 0 0;color:#fda4af;max-height:120px;overflow:auto;">${String(rt.stack).replace(/</g, "&lt;")}</pre>` : ""}
+                           </div>`
+                        : "";
+                    const metaHtml = isBug
+                        ? `<div style="margin-top:6px;font-size:11px;color:#cbd5e1;line-height:1.45;">
+                                <div><b>${currentLang === "de" ? "Analyse" : "Analysis"}:</b> ${analysis || "—"}</div>
+                                ${metaObj.area ? `<div><b>${currentLang === "de" ? "Bereich" : "Area"}:</b> ${String(metaObj.area).replace(/</g, "&lt;")}</div>` : ""}
+                                ${metaObj.url ? `<div><b>URL:</b> ${String(metaObj.url).replace(/</g, "&lt;")}</div>` : ""}
+                                ${metaObj.lobby ? `<div><b>Lobby:</b> ${String(metaObj.lobby).replace(/</g, "&lt;")}</div>` : ""}
+                                ${metaObj.userAgent ? `<div style="opacity:0.75;word-break:break-all;"><b>UA:</b> ${String(metaObj.userAgent).replace(/</g, "&lt;").slice(0, 120)}…</div>` : ""}
+                                ${rtHtml}
+                           </div>`
+                        : "";
+
+                    container.innerHTML += `<div style="background:rgba(255,255,255,0.05); padding:8px; border-radius:8px; margin-bottom:6px; font-size:12px; border-left:4px solid ${typeColor}; cursor:${isBug ? "pointer" : "default"};" ${isBug ? `onclick="if(event.target.closest('button'))return;toggleFeedbackDetail('${docId}')"` : ""}>
+                        <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start;flex-wrap:wrap;">
+                            <div>
+                                <b>${safeAuthor}</b> (${displayMail}) – <span style="color:${typeColor}; font-weight:bold;">${typeLabel}</span>
+                                ${isBug && safeCode ? `<span style="display:inline-block;margin-left:6px;padding:2px 6px;border-radius:6px;background:rgba(255,80,80,0.2);color:#ff8a80;font-size:10px;font-weight:700;">${safeCode}</span>` : ""}
+                            </div>
+                            <div style="display:flex;gap:4px;flex-wrap:wrap;">
+                                ${isBug ? `<button type="button" id="fb-toggle-${docId}" class="btn-blue" style="padding:2px 8px;font-size:10px;margin:0;width:auto;" onclick="event.stopPropagation();toggleFeedbackDetail('${docId}')">${currentLang === "de" ? "▼ Details / Analyse" : "▼ Details / Analysis"}</button>` : ""}
+                                ${canDelete ? `<button type="button" class="btn-danger" style="padding:2px 6px; font-size:10px; margin:0;width:auto;" onclick="event.stopPropagation();deleteFeedback('${docId}')">${deleteBtnText}</button>` : ""}
+                            </div>
+                        </div>
+                        <div style="margin-top:4px; color:#fff;">${safeText}</div>
+                        ${isBug ? `<div id="fb-detail-${docId}" class="hidden" style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.08);">${metaHtml}</div>` : ""}
                     </div>`;
                 });
             } catch (e) {
