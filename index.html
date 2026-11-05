@@ -110,72 +110,137 @@
                 <button type="button" class="shop-tab" id="shop-tab-themes" data-shop-tab="themes" onclick="switchShopTab('themes')">🎨 <span id="ui-shop-tab-themes">Themes</span></button>
             </div>
 
-            <div class="box-section shop-panel hidden" id="shop-panel-accessories" style="padding:8px;">
-                <h4 id="ui-accessories-head" style="margin: 0 0 6px 0; color: var(--accent-color); font-size: 13px;">🛍 Avatar Accessories</h4>
-                <div class="shop-grid">
-                    <div class="shop-item">
-                        <div>👑 <span id="ui-item-crown">Crown</span> (240C)</div>
-                        <button class="btn-blue shop-action-btn" style="padding:5px; font-size:11px; margin-top:4px;" onclick="buyItem('crown', 180, '👑')">Buy/Equip</button>
+                        <div class="box-section shop-panel hidden" id="shop-panel-accessories" style="padding:8px;">
+                <h4 id="ui-accessories-head" style="margin: 0 0 6px 0; color: var(--accent-color); font-size: 13px;">🛍 Accessoires</h4>
+                <p id="ui-accessories-desc" style="font-size:11px; color:#aaa; margin:0 0 8px 0;">Kaufe Accessoires und rüste sie an deinem Avatar aus.</p>
+                <div class="shop-grid shop-grid-emotes">
+                    <div class="shop-item shop-item-emote">
+                        <div class="shop-emote-preview">👑</div>
+                        <div class="shop-emote-meta">
+                            <span class="shop-emote-name" id="ui-item-crown">Crown</span>
+                            <span class="shop-emote-price">180C</span>
+                        </div>
+                        <button type="button" class="btn-blue shop-action-btn" style="padding:5px;font-size:11px;margin-top:4px;width:100%;" onclick="buyItem('crown', 180, '👑')">Kaufen</button>
                     </div>
-                    <div class="shop-item">
-                        <div>🕶️ <span id="ui-item-glasses">Sunglasses</span> (120C)</div>
-                        <button class="btn-blue shop-action-btn" style="padding:5px; font-size:11px; margin-top:4px;" onclick="buyItem('glasses', 120, '🕶️')">Buy/Equip</button>
+                    <div class="shop-item shop-item-emote">
+                        <div class="shop-emote-preview">🕶️</div>
+                        <div class="shop-emote-meta">
+                            <span class="shop-emote-name" id="ui-item-glasses">Sunglasses</span>
+                            <span class="shop-emote-price">120C</span>
+                        </div>
+                        <button type="button" class="btn-blue shop-action-btn" style="padding:5px;font-size:11px;margin-top:4px;width:100%;" onclick="buyItem('glasses', 120, '🕶️')">Kaufen</button>
                     </div>
-                    <div class="shop-item">
-                        <div>✨ <span id="ui-item-sparkles">Sparkles</span> (75C)</div>
-                        <button class="btn-blue shop-action-btn" style="padding:5px; font-size:11px; margin-top:4px;" onclick="buyItem('sparkles', 75, '✨')">Buy/Equip</button>
+                    <div class="shop-item shop-item-emote">
+                        <div class="shop-emote-preview">✨</div>
+                        <div class="shop-emote-meta">
+                            <span class="shop-emote-name" id="ui-item-sparkles">Sparkles</span>
+                            <span class="shop-emote-price">75C</span>
+                        </div>
+                        <button type="button" class="btn-blue shop-action-btn" style="padding:5px;font-size:11px;margin-top:4px;width:100%;" onclick="buyItem('sparkles', 75, '✨')">Kaufen</button>
                     </div>
-                    <div class="shop-item">
-                        <div>🎧 <span id="ui-item-headphones">Headphones</span> (110C)</div>
-                        <button class="btn-blue shop-action-btn" style="padding:5px; font-size:11px; margin-top:4px;" onclick="buyItem('headphones', 110, '🎧')">Buy/Equip</button>
+                    <div class="shop-item shop-item-emote">
+                        <div class="shop-emote-preview">🎧</div>
+                        <div class="shop-emote-meta">
+                            <span class="shop-emote-name" id="ui-item-headphones">Headphones</span>
+                            <span class="shop-emote-price">110C</span>
+                        </div>
+                        <button type="button" class="btn-blue shop-action-btn" style="padding:5px;font-size:11px;margin-top:4px;width:100%;" onclick="buyItem('headphones', 110, '🎧')">Kaufen</button>
                     </div>
-                    <div class="shop-item">
-                        <div>🎩 <span id="ui-item-hat">Party Hat</span> (145C)</div>
-                        <button class="btn-blue shop-action-btn" style="padding:5px; font-size:11px; margin-top:4px;" onclick="buyItem('hat', 145, '🎩')">Buy/Equip</button>
+                    <div class="shop-item shop-item-emote">
+                        <div class="shop-emote-preview">🎩</div>
+                        <div class="shop-emote-meta">
+                            <span class="shop-emote-name" id="ui-item-hat">Party Hat</span>
+                            <span class="shop-emote-price">145C</span>
+                        </div>
+                        <button type="button" class="btn-blue shop-action-btn" style="padding:5px;font-size:11px;margin-top:4px;width:100%;" onclick="buyItem('hat', 145, '🎩')">Kaufen</button>
                     </div>
-                    <div class="shop-item">
-                        <div>🧔 <span id="ui-item-beard">Mustache</span> (95C)</div>
-                        <button class="btn-blue shop-action-btn" style="padding:5px; font-size:11px; margin-top:4px;" onclick="buyItem('beard', 95, '🧔')">Buy/Equip</button>
+                    <div class="shop-item shop-item-emote">
+                        <div class="shop-emote-preview">🧔</div>
+                        <div class="shop-emote-meta">
+                            <span class="shop-emote-name" id="ui-item-beard">Mustache</span>
+                            <span class="shop-emote-price">95C</span>
+                        </div>
+                        <button type="button" class="btn-blue shop-action-btn" style="padding:5px;font-size:11px;margin-top:4px;width:100%;" onclick="buyItem('beard', 95, '🧔')">Kaufen</button>
                     </div>
-                    <div class="shop-item">
-                        <div>🦄 <span id="ui-item-unicorn">Unicorn</span> (170C)</div>
-                        <button class="btn-blue shop-action-btn" style="padding:5px; font-size:11px; margin-top:4px;" onclick="buyItem('unicorn', 170, '🦄')">Buy/Equip</button>
+                    <div class="shop-item shop-item-emote">
+                        <div class="shop-emote-preview">🦄</div>
+                        <div class="shop-emote-meta">
+                            <span class="shop-emote-name" id="ui-item-unicorn">Unicorn</span>
+                            <span class="shop-emote-price">170C</span>
+                        </div>
+                        <button type="button" class="btn-blue shop-action-btn" style="padding:5px;font-size:11px;margin-top:4px;width:100%;" onclick="buyItem('unicorn', 170, '🦄')">Kaufen</button>
                     </div>
-                    <div class="shop-item">
-                        <div>🧢 <span id="ui-item-cap">Cap</span> (70C)</div>
-                        <button class="btn-blue shop-action-btn" style="padding:5px; font-size:11px; margin-top:4px;" onclick="buyItem('cap', 70, '🧢')">Buy/Equip</button>
+                    <div class="shop-item shop-item-emote">
+                        <div class="shop-emote-preview">🧢</div>
+                        <div class="shop-emote-meta">
+                            <span class="shop-emote-name" id="ui-item-cap">Cap</span>
+                            <span class="shop-emote-price">70C</span>
+                        </div>
+                        <button type="button" class="btn-blue shop-action-btn" style="padding:5px;font-size:11px;margin-top:4px;width:100%;" onclick="buyItem('cap', 70, '🧢')">Kaufen</button>
                     </div>
-                    <div class="shop-item">
-                        <div>🦋 <span id="ui-item-butterfly">Butterfly</span> (85C)</div>
-                        <button class="btn-blue shop-action-btn" style="padding:5px; font-size:11px; margin-top:4px;" onclick="buyItem('butterfly', 85, '🦋')">Buy/Equip</button>
+                    <div class="shop-item shop-item-emote">
+                        <div class="shop-emote-preview">🦋</div>
+                        <div class="shop-emote-meta">
+                            <span class="shop-emote-name" id="ui-item-butterfly">Butterfly</span>
+                            <span class="shop-emote-price">85C</span>
+                        </div>
+                        <button type="button" class="btn-blue shop-action-btn" style="padding:5px;font-size:11px;margin-top:4px;width:100%;" onclick="buyItem('butterfly', 85, '🦋')">Kaufen</button>
                     </div>
-                    <div class="shop-item">
-                        <div>💎 <span id="ui-item-diamond">Diamond</span> (200C)</div>
-                        <button class="btn-blue shop-action-btn" style="padding:5px; font-size:11px; margin-top:4px;" onclick="buyItem('diamond', 200, '💎')">Buy/Equip</button>
+                    <div class="shop-item shop-item-emote">
+                        <div class="shop-emote-preview">💎</div>
+                        <div class="shop-emote-meta">
+                            <span class="shop-emote-name" id="ui-item-diamond">Diamond</span>
+                            <span class="shop-emote-price">200C</span>
+                        </div>
+                        <button type="button" class="btn-blue shop-action-btn" style="padding:5px;font-size:11px;margin-top:4px;width:100%;" onclick="buyItem('diamond', 200, '💎')">Kaufen</button>
                     </div>
-                    <div class="shop-item">
-                        <div>🌈 <span id="ui-item-rainbow">Rainbow</span> (110C)</div>
-                        <button class="btn-blue shop-action-btn" style="padding:5px; font-size:11px; margin-top:4px;" onclick="buyItem('rainbow', 110, '🌈')">Buy/Equip</button>
+                    <div class="shop-item shop-item-emote">
+                        <div class="shop-emote-preview">🌈</div>
+                        <div class="shop-emote-meta">
+                            <span class="shop-emote-name" id="ui-item-rainbow">Rainbow</span>
+                            <span class="shop-emote-price">110C</span>
+                        </div>
+                        <button type="button" class="btn-blue shop-action-btn" style="padding:5px;font-size:11px;margin-top:4px;width:100%;" onclick="buyItem('rainbow', 110, '🌈')">Kaufen</button>
                     </div>
-                    <div class="shop-item">
-                        <div>⭐ <span id="ui-item-star">Star</span> (75C)</div>
-                        <button class="btn-blue shop-action-btn" style="padding:5px; font-size:11px; margin-top:4px;" onclick="buyItem('star', 75, '⭐')">Buy/Equip</button>
+                    <div class="shop-item shop-item-emote">
+                        <div class="shop-emote-preview">⭐</div>
+                        <div class="shop-emote-meta">
+                            <span class="shop-emote-name" id="ui-item-star">Star</span>
+                            <span class="shop-emote-price">75C</span>
+                        </div>
+                        <button type="button" class="btn-blue shop-action-btn" style="padding:5px;font-size:11px;margin-top:4px;width:100%;" onclick="buyItem('star', 75, '⭐')">Kaufen</button>
                     </div>
-                    <div class="shop-item">
-                        <div>🎭 <span id="ui-item-mask">Mask</span> (95C)</div>
-                        <button class="btn-blue shop-action-btn" style="padding:5px; font-size:11px; margin-top:4px;" onclick="buyItem('mask', 95, '🎭')">Buy/Equip</button>
+                    <div class="shop-item shop-item-emote">
+                        <div class="shop-emote-preview">🎭</div>
+                        <div class="shop-emote-meta">
+                            <span class="shop-emote-name" id="ui-item-mask">Mask</span>
+                            <span class="shop-emote-price">95C</span>
+                        </div>
+                        <button type="button" class="btn-blue shop-action-btn" style="padding:5px;font-size:11px;margin-top:4px;width:100%;" onclick="buyItem('mask', 95, '🎭')">Kaufen</button>
                     </div>
-                    <div class="shop-item">
-                        <div>🌸 <span id="ui-item-flower">Flower</span> (65C)</div>
-                        <button class="btn-blue shop-action-btn" style="padding:5px; font-size:11px; margin-top:4px;" onclick="buyItem('flower', 65, '🌸')">Buy/Equip</button>
+                    <div class="shop-item shop-item-emote">
+                        <div class="shop-emote-preview">🌸</div>
+                        <div class="shop-emote-meta">
+                            <span class="shop-emote-name" id="ui-item-flower">Flower</span>
+                            <span class="shop-emote-price">65C</span>
+                        </div>
+                        <button type="button" class="btn-blue shop-action-btn" style="padding:5px;font-size:11px;margin-top:4px;width:100%;" onclick="buyItem('flower', 65, '🌸')">Kaufen</button>
                     </div>
-                    <div class="shop-item">
-                        <div>🔥 <span id="ui-item-flame">Flame</span> (155C)</div>
-                        <button class="btn-blue shop-action-btn" style="padding:5px; font-size:11px; margin-top:4px;" onclick="buyItem('flame', 155, '🔥')">Buy/Equip</button>
+                    <div class="shop-item shop-item-emote">
+                        <div class="shop-emote-preview">🔥</div>
+                        <div class="shop-emote-meta">
+                            <span class="shop-emote-name" id="ui-item-flame">Flame</span>
+                            <span class="shop-emote-price">155C</span>
+                        </div>
+                        <button type="button" class="btn-blue shop-action-btn" style="padding:5px;font-size:11px;margin-top:4px;width:100%;" onclick="buyItem('flame', 155, '🔥')">Kaufen</button>
                     </div>
-                    <div class="shop-item">
-                        <div>👓 <span id="ui-item-cool">Brille</span> (140C)</div>
-                        <button class="btn-blue shop-action-btn" style="padding:5px; font-size:11px; margin-top:4px;" onclick="buyItem('cool', 140, '👓')">Buy/Equip</button>
+                    <div class="shop-item shop-item-emote">
+                        <div class="shop-emote-preview">👓</div>
+                        <div class="shop-emote-meta">
+                            <span class="shop-emote-name" id="ui-item-cool">Brille</span>
+                            <span class="shop-emote-price">140C</span>
+                        </div>
+                        <button type="button" class="btn-blue shop-action-btn" style="padding:5px;font-size:11px;margin-top:4px;width:100%;" onclick="buyItem('cool', 140, '👓')">Kaufen</button>
                     </div>
                 </div>
             </div>
@@ -187,91 +252,153 @@
                 <div class="shop-grid shop-grid-emotes" id="shop-emotes-grid"></div>
             </div>
 
-            <!-- JOKER SHOP -->
-            <!-- JOKER SHOP -->
-            <div class="box-section shop-panel hidden" id="shop-panel-jokers" style="padding:8px;">
+                        <div class="box-section shop-panel hidden" id="shop-panel-jokers" style="padding:8px;">
                 <h4 id="ui-jokers-head" style="margin: 0 0 6px 0; color: #ffcc00; font-size: 13px;">🃏 Joker</h4>
-                <p id="ui-jokers-desc" style="font-size:11px; color:#aaa; margin:0 0 8px 0;">Kaufe Joker, um Aufgaben zu überspringen oder andere Spieler auszusetzen. Verbrauchsgut – nach Nutzung weg!</p>
-                <div style="font-size:12px; margin-bottom:8px; text-align:center;">
+                <p id="ui-jokers-desc" style="font-size:11px; color:#aaa; margin:0 0 8px 0;">Kaufe Joker, um Aufgaben zu überspringen oder andere Spieler auszusetzen.</p>
+                <div style="font-size:12px; margin-bottom:10px; text-align:center; color:#ccc;">
                     🃏 Skip: <strong id="shop-joker-skip-count" style="color:#ffcc00;">0</strong>
                     &nbsp;|&nbsp;
                     🚫 Force: <strong id="shop-joker-force-count" style="color:#ff795e;">0</strong>
                 </div>
-                <div class="shop-grid">
-                    <div class="shop-item">
-                        <div>🃏 <span id="ui-joker-skip-name">Skip-Joker</span> (95C)</div>
-                        <p id="ui-joker-skip-desc" style="font-size:10px;color:#999;margin:4px 0;">Eigene Aufgabe überspringen</p>
-                        <button class="btn-green shop-action-btn joker-buy-btn" data-joker-amount="1" style="padding:5px; font-size:11px; margin-top:4px;" onclick="buyJoker('skip', 95)">Kaufen (+1)</button>
+                <div class="shop-grid shop-grid-emotes">
+                    <div class="shop-item shop-item-emote">
+                        <div class="shop-emote-preview">🃏</div>
+                        <div class="shop-emote-meta">
+                            <span class="shop-emote-name" id="ui-joker-skip-name">Skip-Joker</span>
+                            <span class="shop-emote-price">95C</span>
+                        </div>
+                        <p id="ui-joker-skip-desc" style="font-size:10px;color:#999;margin:0 0 4px 0;">Eigene Aufgabe überspringen</p>
+                        <button type="button" class="btn-green shop-action-btn joker-buy-btn" data-joker-amount="1" style="padding:5px;font-size:11px;margin-top:4px;width:100%;" onclick="buyJoker('skip', 95)">Kaufen (+1)</button>
                     </div>
-                    <div class="shop-item">
-                        <div>🚫 <span id="ui-joker-force-name">Force-Skip-Joker</span> (145C)</div>
-                        <p id="ui-joker-force-desc" style="font-size:10px;color:#999;margin:4px 0;">Aktuellen Spieler aussetzen</p>
-                        <button class="btn-green shop-action-btn joker-buy-btn" data-joker-amount="1" style="padding:5px; font-size:11px; margin-top:4px;" onclick="buyJoker('force', 145)">Kaufen (+1)</button>
+                    <div class="shop-item shop-item-emote">
+                        <div class="shop-emote-preview">🚫</div>
+                        <div class="shop-emote-meta">
+                            <span class="shop-emote-name" id="ui-joker-force-name">Force-Skip</span>
+                            <span class="shop-emote-price">145C</span>
+                        </div>
+                        <p id="ui-joker-force-desc" style="font-size:10px;color:#999;margin:0 0 4px 0;">Aktuellen Spieler aussetzen</p>
+                        <button type="button" class="btn-green shop-action-btn joker-buy-btn" data-joker-amount="1" style="padding:5px;font-size:11px;margin-top:4px;width:100%;" onclick="buyJoker('force', 145)">Kaufen (+1)</button>
                     </div>
-                    <div class="shop-item">
-                        <div>🃏×3 <span id="ui-joker-skip-pack-name">Skip-Pack</span> (240C)</div>
-                        <p id="ui-joker-skip-pack-desc" style="font-size:10px;color:#999;margin:4px 0;">3 Skip-Joker (günstiger)</p>
-                        <button class="btn-green shop-action-btn joker-buy-btn" data-joker-amount="3" style="padding:5px; font-size:11px; margin-top:4px;" onclick="buyJoker('skip', 240, 3)">Kaufen (+3)</button>
+                    <div class="shop-item shop-item-emote">
+                        <div class="shop-emote-preview">🃏×3</div>
+                        <div class="shop-emote-meta">
+                            <span class="shop-emote-name" id="ui-joker-skip-pack-name">Skip-Pack</span>
+                            <span class="shop-emote-price">240C</span>
+                        </div>
+                        <p id="ui-joker-skip-pack-desc" style="font-size:10px;color:#999;margin:0 0 4px 0;">3 Skip-Joker</p>
+                        <button type="button" class="btn-green shop-action-btn joker-buy-btn" data-joker-amount="3" style="padding:5px;font-size:11px;margin-top:4px;width:100%;" onclick="buyJoker('skip', 240, 3)">Kaufen (+3)</button>
                     </div>
-                    <div class="shop-item">
-                        <div>🚫×2 <span id="ui-joker-force-pack-name">Force-Pack</span> (240C)</div>
-                        <p id="ui-joker-force-pack-desc" style="font-size:10px;color:#999;margin:4px 0;">2 Force-Skip-Joker</p>
-                        <button class="btn-green shop-action-btn joker-buy-btn" data-joker-amount="2" style="padding:5px; font-size:11px; margin-top:4px;" onclick="buyJoker('force', 240, 2)">Kaufen (+2)</button>
+                    <div class="shop-item shop-item-emote">
+                        <div class="shop-emote-preview">🚫×2</div>
+                        <div class="shop-emote-meta">
+                            <span class="shop-emote-name" id="ui-joker-force-pack-name">Force-Pack</span>
+                            <span class="shop-emote-price">240C</span>
+                        </div>
+                        <p id="ui-joker-force-pack-desc" style="font-size:10px;color:#999;margin:0 0 4px 0;">2 Force-Skip-Joker</p>
+                        <button type="button" class="btn-green shop-action-btn joker-buy-btn" data-joker-amount="2" style="padding:5px;font-size:11px;margin-top:4px;width:100%;" onclick="buyJoker('force', 240, 2)">Kaufen (+2)</button>
                     </div>
                 </div>
             </div>
 
-            <div class="box-section shop-panel hidden" id="shop-panel-themes" style="padding:8px;">
-                <h4 id="ui-themes-head" style="margin: 0 0 6px 0; color: var(--primary-color); font-size: 13px;">🎨 Color Themes</h4>
-                <div class="shop-grid">
-                    <div class="shop-item">
-                        <div><span id="ui-theme-cyberpunk">Cyberpunk</span> (200C)</div>
-                        <button class="btn-green theme-action-btn" style="padding:5px; font-size:11px; margin-top:4px;" onclick="buyTheme('theme-cyberpunk', 240)">Unlock</button>
+                        <div class="box-section shop-panel hidden" id="shop-panel-themes" style="padding:8px;">
+                <h4 id="ui-themes-head" style="margin: 0 0 6px 0; color: var(--primary-color); font-size: 13px;">🎨 Themes</h4>
+                <p id="ui-themes-desc" style="font-size:11px; color:#aaa; margin:0 0 8px 0;">Schalte Farb-Themes frei und wechsle den Look der App.</p>
+                <div class="shop-grid shop-grid-emotes">
+                    <div class="shop-item shop-item-emote">
+                        <div class="shop-emote-preview">💜</div>
+                        <div class="shop-emote-meta">
+                            <span class="shop-emote-name" id="ui-theme-cyberpunk">Cyberpunk</span>
+                            <span class="shop-emote-price">240C</span>
+                        </div>
+                        <button type="button" class="btn-green theme-action-btn" style="padding:5px;font-size:11px;margin-top:4px;width:100%;" onclick="buyTheme('theme-cyberpunk', 240)">Freischalten</button>
                     </div>
-                    <div class="shop-item">
-                        <div><span id="ui-theme-retro">Retro-Pixel</span> (240C)</div>
-                        <button class="btn-green theme-action-btn" style="padding:5px; font-size:11px; margin-top:4px;" onclick="buyTheme('theme-retro', 240)">Unlock</button>
+                    <div class="shop-item shop-item-emote">
+                        <div class="shop-emote-preview">👾</div>
+                        <div class="shop-emote-meta">
+                            <span class="shop-emote-name" id="ui-theme-retro">Retro-Pixel</span>
+                            <span class="shop-emote-price">240C</span>
+                        </div>
+                        <button type="button" class="btn-green theme-action-btn" style="padding:5px;font-size:11px;margin-top:4px;width:100%;" onclick="buyTheme('theme-retro', 240)">Freischalten</button>
                     </div>
-                    <div class="shop-item">
-                        <div><span id="ui-theme-party">Party Neon</span> (215C)</div>
-                        <button class="btn-green theme-action-btn" style="padding:5px; font-size:11px; margin-top:4px;" onclick="buyTheme('theme-party', 215)">Unlock</button>
+                    <div class="shop-item shop-item-emote">
+                        <div class="shop-emote-preview">🎉</div>
+                        <div class="shop-emote-meta">
+                            <span class="shop-emote-name" id="ui-theme-party">Party Neon</span>
+                            <span class="shop-emote-price">215C</span>
+                        </div>
+                        <button type="button" class="btn-green theme-action-btn" style="padding:5px;font-size:11px;margin-top:4px;width:100%;" onclick="buyTheme('theme-party', 215)">Freischalten</button>
                     </div>
-                    <div class="shop-item">
-                        <div><span id="ui-theme-ocean">Ocean Wave</span> (215C)</div>
-                        <button class="btn-green theme-action-btn" style="padding:5px; font-size:11px; margin-top:4px;" onclick="buyTheme('theme-ocean', 215)">Unlock</button>
+                    <div class="shop-item shop-item-emote">
+                        <div class="shop-emote-preview">🌊</div>
+                        <div class="shop-emote-meta">
+                            <span class="shop-emote-name" id="ui-theme-ocean">Ocean Wave</span>
+                            <span class="shop-emote-price">215C</span>
+                        </div>
+                        <button type="button" class="btn-green theme-action-btn" style="padding:5px;font-size:11px;margin-top:4px;width:100%;" onclick="buyTheme('theme-ocean', 215)">Freischalten</button>
                     </div>
-                    <div class="shop-item">
-                        <div><span id="ui-theme-sunset">Sunset Glow</span> (190C)</div>
-                        <button class="btn-green theme-action-btn" style="padding:5px; font-size:11px; margin-top:4px;" onclick="buyTheme('theme-sunset', 190)">Unlock</button>
+                    <div class="shop-item shop-item-emote">
+                        <div class="shop-emote-preview">🌅</div>
+                        <div class="shop-emote-meta">
+                            <span class="shop-emote-name" id="ui-theme-sunset">Sunset Glow</span>
+                            <span class="shop-emote-price">190C</span>
+                        </div>
+                        <button type="button" class="btn-green theme-action-btn" style="padding:5px;font-size:11px;margin-top:4px;width:100%;" onclick="buyTheme('theme-sunset', 190)">Freischalten</button>
                     </div>
-                    <div class="shop-item">
-                        <div><span id="ui-theme-forest">Forest Green</span> (190C)</div>
-                        <button class="btn-green theme-action-btn" style="padding:5px; font-size:11px; margin-top:4px;" onclick="buyTheme('theme-forest', 190)">Unlock</button>
+                    <div class="shop-item shop-item-emote">
+                        <div class="shop-emote-preview">🌲</div>
+                        <div class="shop-emote-meta">
+                            <span class="shop-emote-name" id="ui-theme-forest">Forest Green</span>
+                            <span class="shop-emote-price">190C</span>
+                        </div>
+                        <button type="button" class="btn-green theme-action-btn" style="padding:5px;font-size:11px;margin-top:4px;width:100%;" onclick="buyTheme('theme-forest', 190)">Freischalten</button>
                     </div>
-                    <div class="shop-item">
-                        <div><span id="ui-theme-galaxy">Galaxy Night</span> (265C)</div>
-                        <button class="btn-green theme-action-btn" style="padding:5px; font-size:11px; margin-top:4px;" onclick="buyTheme('theme-galaxy', 265)">Unlock</button>
+                    <div class="shop-item shop-item-emote">
+                        <div class="shop-emote-preview">🌌</div>
+                        <div class="shop-emote-meta">
+                            <span class="shop-emote-name" id="ui-theme-galaxy">Galaxy Night</span>
+                            <span class="shop-emote-price">265C</span>
+                        </div>
+                        <button type="button" class="btn-green theme-action-btn" style="padding:5px;font-size:11px;margin-top:4px;width:100%;" onclick="buyTheme('theme-galaxy', 265)">Freischalten</button>
                     </div>
-                    <div class="shop-item">
-                        <div><span id="ui-theme-candy">Candy Pop</span> (180C)</div>
-                        <button class="btn-green theme-action-btn" style="padding:5px; font-size:11px; margin-top:4px;" onclick="buyTheme('theme-candy', 180)">Unlock</button>
+                    <div class="shop-item shop-item-emote">
+                        <div class="shop-emote-preview">🍬</div>
+                        <div class="shop-emote-meta">
+                            <span class="shop-emote-name" id="ui-theme-candy">Candy Pop</span>
+                            <span class="shop-emote-price">180C</span>
+                        </div>
+                        <button type="button" class="btn-green theme-action-btn" style="padding:5px;font-size:11px;margin-top:4px;width:100%;" onclick="buyTheme('theme-candy', 180)">Freischalten</button>
                     </div>
-                    <div class="shop-item">
-                        <div><span id="ui-theme-midnight">Midnight</span> (230C)</div>
-                        <button class="btn-green theme-action-btn" style="padding:5px; font-size:11px; margin-top:4px;" onclick="buyTheme('theme-midnight', 230)">Unlock</button>
+                    <div class="shop-item shop-item-emote">
+                        <div class="shop-emote-preview">🌙</div>
+                        <div class="shop-emote-meta">
+                            <span class="shop-emote-name" id="ui-theme-midnight">Midnight</span>
+                            <span class="shop-emote-price">230C</span>
+                        </div>
+                        <button type="button" class="btn-green theme-action-btn" style="padding:5px;font-size:11px;margin-top:4px;width:100%;" onclick="buyTheme('theme-midnight', 230)">Freischalten</button>
                     </div>
-                    <div class="shop-item">
-                        <div><span id="ui-theme-gold">Golden Hour</span> (300C)</div>
-                        <button class="btn-green theme-action-btn" style="padding:5px; font-size:11px; margin-top:4px;" onclick="buyTheme('theme-gold', 300)">Unlock</button>
+                    <div class="shop-item shop-item-emote">
+                        <div class="shop-emote-preview">✨</div>
+                        <div class="shop-emote-meta">
+                            <span class="shop-emote-name" id="ui-theme-gold">Gold Lux</span>
+                            <span class="shop-emote-price">300C</span>
+                        </div>
+                        <button type="button" class="btn-green theme-action-btn" style="padding:5px;font-size:11px;margin-top:4px;width:100%;" onclick="buyTheme('theme-gold', 300)">Freischalten</button>
                     </div>
-
-                    <div class="shop-item">
-                        <div><span id="ui-theme-pikachu-warm">Pikachu & Ash (Warm)</span> (480C)</div>
-                        <button class="btn-green theme-action-btn" style="padding:5px; font-size:11px; margin-top:4px;" onclick="buyTheme('theme-pikachu-warm', 480)">Unlock</button>
+                    <div class="shop-item shop-item-emote">
+                        <div class="shop-emote-preview">⚡</div>
+                        <div class="shop-emote-meta">
+                            <span class="shop-emote-name" id="ui-theme-pikachu-warm">Pikachu Warm</span>
+                            <span class="shop-emote-price">480C</span>
+                        </div>
+                        <button type="button" class="btn-green theme-action-btn" style="padding:5px;font-size:11px;margin-top:4px;width:100%;" onclick="buyTheme('theme-pikachu-warm', 480)">Freischalten</button>
                     </div>
-                    <div class="shop-item">
-                        <div><span id="ui-theme-pikachu-rain">Pikachu & Ash (Rain)</span> (480C)</div>
-                        <button class="btn-green theme-action-btn" style="padding:5px; font-size:11px; margin-top:4px;" onclick="buyTheme('theme-pikachu-rain', 480)">Unlock</button>
+                    <div class="shop-item shop-item-emote">
+                        <div class="shop-emote-preview">🌧️</div>
+                        <div class="shop-emote-meta">
+                            <span class="shop-emote-name" id="ui-theme-pikachu-rain">Pikachu Rain</span>
+                            <span class="shop-emote-price">480C</span>
+                        </div>
+                        <button type="button" class="btn-green theme-action-btn" style="padding:5px;font-size:11px;margin-top:4px;width:100%;" onclick="buyTheme('theme-pikachu-rain', 480)">Freischalten</button>
                     </div>
                 </div>
             </div>
