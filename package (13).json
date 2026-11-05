@@ -1,0 +1,41 @@
+{
+  "name": "wahrheit-oder-pflicht-partyspiel",
+  "version": "2.0.14",
+  "description": "Wahrheit oder Pflicht Partyspiel mit Themes und Echtzeit-Multiplayer",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "build:sileo": "esbuild src/sileo-entry.js --bundle --minify --format=iife --outfile=js/sileo-bundle.js",
+    "migrate:firebase": "node scripts/migrate-from-firebase.js"
+  },
+  "keywords": [
+    "truth-or-dare",
+    "party-game",
+    "websocket",
+    "socket.io",
+    "sqlite",
+    "multiplayer"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "socket.io": "^4.8.1",
+    "sqlite3": "^6.0.1",
+    "web-push": "^3.6.7"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "sileo": "^0.1.6",
+    "socket.io-client": "^4.8.4"
+  },
+  "allowScripts": {
+    "sqlite3": true
+  }
+}
