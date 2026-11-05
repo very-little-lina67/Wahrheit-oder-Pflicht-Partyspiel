@@ -320,11 +320,32 @@ export async function searchUsers(query, limit = 40) {
 
 export async function getAllUsers() {
     const rows = await dbAll(`
-        SELECT email, name, role, xp, coins, streak, truthCount, dareCount,
+        SELECT email, name, role, xp, coins, monthlyCoins, monthlyCoinsMonth,
+               streak, truthCount, dareCount, accessory, avatarEmote,
                isOnline, currentLobby, lastActive, createdAt
         FROM users ORDER BY createdAt DESC
     `);
     return rows.map(r => ({ ...r, isOnline: Boolean(r.isOnline) }));
+}
+
+/** Öffentliche Rangliste – ohne sensible Felder (Passwort etc.) */
+export async function getLeaderboardUsers() {
+    const rows = await dbAll(`
+        SELECT email, name, xp, coins, monthlyCoins, monthlyCoinsMonth,
+               streak, accessory, avatarEmote
+        FROM users
+    `);
+    return rows.map(r => ({
+        email: r.email,
+        name: r.name,
+        xp: Number(r.xp) || 0,
+        coins: Number(r.coins) || 0,
+        monthlyCoins: Number(r.monthlyCoins) || 0,
+        monthlyCoinsMonth: r.monthlyCoinsMonth || '',
+        streak: Number(r.streak) || 0,
+        accessory: r.accessory || '',
+        avatarEmote: r.avatarEmote || '😊'
+    }));
 }
 
 export async function updateUserRole(email, newRole) {
