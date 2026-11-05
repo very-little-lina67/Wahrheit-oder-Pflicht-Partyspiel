@@ -4,6 +4,17 @@ Alle wesentlichen Änderungen am Projekt werden in dieser Datei präzise und tec
 
 ---
 
+## [2.0.6] - 2026-11-05 (Branch: `feat/ws-server`)
+
+### New Features
+- **Sileo Toast (React-basierte In-App Benachrichtigungen) (`src/sileo-entry.js`, `js/sileo-bundle.js`, `js/app.js`):**
+  - Vollständige Integration der fluiden React-Toast-Komponente `sileo` mit federbasierten Spring-Physics-Animationen und dunklem Glassmorphism-Design.
+  - Vorkompiliertes, autarkes Bundle (`js/sileo-bundle.js` & `js/sileo-bundle.css`) ohne CDN-Latenzen für 100% Offline-Fähigkeit in der PWA.
+  - Eingehende Direktnachrichten blenden bei aktiver App sofort eine interaktive Sileo-Action-Pill am oberen Bildschirmrand ein (`💬 Name: Text...`) mit direktem „Öffnen“-Button, der nahtlos in den Chat wechselt.
+  - Service Worker Precache um das Sileo-Bundle erweitert.
+
+---
+
 ## [2.0.5] - 2026-11-05 (Branch: `feat/ws-server`)
 
 ### New Features

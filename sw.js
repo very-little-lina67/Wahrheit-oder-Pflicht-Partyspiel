@@ -1,10 +1,13 @@
 /* Service Worker – macht die App in Chrome installierbar (PWA) */
-const CACHE_NAME = "wop-party-v3";
+const CACHE_NAME = "wop-party-v4";
 const PRECACHE = [
   "./",
   "./index.html",
   "./css/style.css",
   "./js/app.js",
+  "./js/wop-socket-client.js",
+  "./js/sileo-bundle.js",
+  "./js/sileo-bundle.css",
   "./manifest.webmanifest",
   "./icon-192.png",
   "./icon-512.png",

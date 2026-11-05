@@ -4339,27 +4339,53 @@
         }
 
         function showDmToast(fromName, text, fromEmail) {
-            let el = document.getElementById("dm-toast");
-            if (!el) {
-                el = document.createElement("div");
-                el.id = "dm-toast";
-                el.className = "dm-toast";
-                document.body.appendChild(el);
-            }
-            const preview = String(text || "").slice(0, 80);
-            el.innerText = "💬 " + (fromName || "…") + ": " + preview;
-            el.onclick = () => {
-                try { el.remove(); } catch (e) {}
-                openDirectMessage(fromEmail, fromName);
-            };
-            clearTimeout(el._t);
-            el._t = setTimeout(() => { try { el.remove(); } catch (e) {} }, 8000);
+            const preview = String(text || "").slice(0, 100);
+            const title = `💬 ${fromName || (currentLang === "de" ? "Neue Nachricht" : "New message")}`;
 
-            // System-Benachrichtigung (Hintergrund / außerhalb der App-Ansicht)
+            // 1. In-App Benachrichtigung via Sileo Toast (React-Komponente mit Fluid Physics)
+            if (typeof window.showSileoToast === "function") {
+                window.showSileoToast(
+                    title,
+                    preview,
+                    () => openDirectMessage(fromEmail, fromName),
+                    currentLang === "de" ? "Öffnen" : "Open"
+                );
+            } else if (window.sileo && typeof window.sileo.action === "function") {
+                try {
+                    window.sileo.action({
+                        title: title,
+                        description: preview,
+                        button: {
+                            title: currentLang === "de" ? "Öffnen" : "Open",
+                            onClick: () => openDirectMessage(fromEmail, fromName)
+                        }
+                    });
+                } catch (e) {
+                    console.warn("sileo.action error:", e);
+                }
+            } else {
+                // Fallback falls Sileo-Bundle noch nicht geladen ist
+                let el = document.getElementById("dm-toast");
+                if (!el) {
+                    el = document.createElement("div");
+                    el.id = "dm-toast";
+                    el.className = "dm-toast";
+                    document.body.appendChild(el);
+                }
+                el.innerText = `${title}: ${preview}`;
+                el.onclick = () => {
+                    try { el.remove(); } catch (e) {}
+                    openDirectMessage(fromEmail, fromName);
+                };
+                clearTimeout(el._t);
+                el._t = setTimeout(() => { try { el.remove(); } catch (e) {} }, 8000);
+            }
+
+            // 2. System-Benachrichtigung (Hintergrund / außerhalb der App-Ansicht)
             try {
-                const title = currentLang === "de" ? "Neue Nachricht" : "New message";
+                const notifTitle = currentLang === "de" ? "Neue Nachricht" : "New message";
                 const body = (fromName || "…") + ": " + preview;
-                showAppNotification(title, body, {
+                showAppNotification(notifTitle, body, {
                     tag: "wop-dm-" + String(fromEmail || "x"),
                     fromEmail: fromEmail,
                     fromName: fromName
