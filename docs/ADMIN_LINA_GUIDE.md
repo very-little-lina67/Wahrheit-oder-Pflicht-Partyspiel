@@ -31,7 +31,8 @@ cd /var/www/wop && git pull && sudo -u admin_ch pm2 restart wop-server
 
 ## 💾 2. Datenbank & Benutzer-Statistiken aus Backup wiederherstellen
 
-Falls jemals Daten verloren gehen oder der Stand auf ein früheres Backup zurückgesetzt werden soll:
+> **Hinweis zu Anmeldedaten & Statistiken:**  
+> Da die gesamte Datenbank (`omoflow.sqlite`) in einem Backup gesichert wird, werden beim Einspielen eines früheren Backups **sowohl die Benutzer-Statistiken (Coins, Level, Streaks) als auch die Konten/Passwörter** auf exakt den Zeitpunkt des Backups zurückgesetzt. Konten, die erst danach erstellt wurden, existieren im alten Backup noch nicht und müssten sich neu registrieren.
 
 ### A. Verfügbare Backups ansehen
 ```bash

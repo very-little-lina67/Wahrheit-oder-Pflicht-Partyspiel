@@ -39,13 +39,10 @@ customStyles.textContent = `
         line-height: 1 !important;
     }
 
-    /* Header exakt vertikal zentriert (verhindert Verschiebung nach unten auf Android/Mobile) */
+    /* Header sauber vertikal zentriert (verhindert Verschiebung nach unten auf Android/Mobile) */
     [data-sileo-header] {
         box-sizing: border-box !important;
-        height: var(--sileo-height, 40px) !important;
-        top: 0 !important;
-        bottom: auto !important;
-        padding: 0 14px !important;
+        padding: 0 12px !important;
         display: flex !important;
         align-items: center !important;
         justify-content: flex-start !important;
@@ -170,31 +167,19 @@ function initSileo() {
         window.sileo = sileo;
 
         window.showSileoToast = function(titleText, description, actionCallback, actionLabel = 'Antworten') {
+            window._lastSileoAction = actionCallback;
             try {
-                // React-Element: Name + direkter "Antworten"-Button in der Pill
-                const titleNode = React.createElement('div', {
-                    style: { display: 'inline-flex', alignItems: 'center', gap: '6px' }
-                }, [
-                    React.createElement('span', { key: 'txt' }, titleText || '💬 Neue Nachricht'),
-                    React.createElement('button', {
-                        key: 'btn',
-                        type: 'button',
-                        className: 'sileo-reply-btn',
-                        onClick: (e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            if (typeof actionCallback === 'function') actionCallback();
-                        }
-                    }, actionLabel || 'Antworten')
-                ]);
+                const titleStr = typeof titleText === 'string' ? titleText : '💬 Neue Nachricht';
+                const labelStr = actionLabel || 'Antworten';
+                const pillTitle = `${titleStr}  ➔  ${labelStr}`;
 
                 return sileo.action({
-                    title: titleNode,
+                    title: pillTitle,
                     description: description || '',
                     fill: '#000000',
-                    duration: 7000,
+                    duration: 6500,
                     button: {
-                        title: actionLabel || 'Antworten',
+                        title: labelStr,
                         onClick: () => {
                             if (typeof actionCallback === 'function') actionCallback();
                         }
@@ -203,7 +188,7 @@ function initSileo() {
             } catch (err) {
                 console.warn('Sileo action error:', err);
                 try {
-                    return sileo.info({ title: titleText, description, fill: '#000000', duration: 7000 });
+                    return sileo.info({ title: titleText, description, fill: '#000000', duration: 6500 });
                 } catch (e2) {}
             }
         };

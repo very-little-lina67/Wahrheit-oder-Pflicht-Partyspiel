@@ -36,13 +36,16 @@
             });
 
             // Sichtbarkeitsstatus an Server übermitteln (unterdrückt System-Push wenn App im Vordergrund ist)
-            document.addEventListener("visibilitychange", () => {
+            const reportVisibility = () => {
                 if (socket && socket.connected) {
                     socket.emit("user:visibility", {
                         isVisible: document.visibilityState === "visible"
                     });
                 }
-            });
+            };
+            document.addEventListener("visibilitychange", reportVisibility);
+            window.addEventListener("focus", reportVisibility);
+            window.addEventListener("pageshow", reportVisibility);
 
             socket.on("disconnect", (reason) => {
                 console.warn("⚠️ WebSocket getrennt:", reason);
@@ -156,12 +159,16 @@
         });
 
         socket.on("lobby:players_updated", ({ players }) => {
+            if (typeof window.handleIncomingData === "function") {
+                window.handleIncomingData({ type: "UPDATE_PLAYERS", players });
+            }
             listeners.lobbyUsers.forEach(cb => {
                 try {
                     const docs = (players || []).map(p => ({
                         id: p.email || p.name,
                         data: () => ({
                             name: p.name,
+                            displayName: p.name,
                             accessory: p.accessory,
                             eliminated: p.eliminated,
                             isSpectator: p.isSpectator,
@@ -259,12 +266,18 @@
             }
 
             if (this.name === "invites") {
+                if (!cleanData.fromEmail) {
+                    cleanData.fromEmail = localStorage.getItem("wop_user_email_v6") || "";
+                }
                 const res = await fetch("/api/social/invite", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(cleanData)
                 });
-                const resData = await res.json();
+                const resData = await res.json().catch(() => ({}));
+                if (!res.ok) {
+                    throw new Error(resData.error || "Fehler beim Senden der Einladung");
+                }
                 return { id: resData.invite?.id || "inv_" + Date.now() };
             }
 
@@ -302,6 +315,56 @@
 
         async get() {
             if (this.name === "users") {
+                const currentLobbyFilter = this.queryFilters.find(f => f.field === "currentLobby");
+                if (currentLobbyFilter) {
+                    const lobbyCode = String(currentLobbyFilter.value || "").trim().toLowerCase();
+                    try {
+                        const res = await fetch(`/api/lobby/${encodeURIComponent(lobbyCode)}`);
+                        if (res.ok) {
+                            const data = await res.json();
+                            const lobby = data.lobby;
+                            if (lobby) {
+                                const docs = [];
+                                if (lobby.hostEmail) {
+                                    docs.push({
+                                        id: lobby.hostEmail,
+                                        data: () => ({
+                                            email: lobby.hostEmail,
+                                            name: lobby.hostName || "Host",
+                                            displayName: lobby.hostName || "Host",
+                                            lobbyRole: "host",
+                                            currentLobby: lobbyCode,
+                                            lobbyHostEmail: lobby.hostEmail,
+                                            isOnline: true
+                                        })
+                                    });
+                                }
+                                (lobby.players || []).forEach(p => {
+                                    if (p.email && p.email.toLowerCase() === (lobby.hostEmail || "").toLowerCase()) {
+                                        return;
+                                    }
+                                    docs.push({
+                                        id: p.email || p.name,
+                                        data: () => ({
+                                            ...p,
+                                            name: p.name,
+                                            displayName: p.name,
+                                            lobbyRole: p.isSpectator ? "spectator" : "player",
+                                            currentLobby: lobbyCode,
+                                            lobbyHostEmail: lobby.hostEmail,
+                                            isOnline: true
+                                        })
+                                    });
+                                });
+                                return createSnapshot(docs);
+                            }
+                        }
+                    } catch (e) {
+                        console.warn("Fehler beim Abruf von Lobby-Nutzern:", e);
+                    }
+                    return createSnapshot([]);
+                }
+
                 const isOnlineFilter = this.queryFilters.find(f => f.field === "isOnline");
                 if (isOnlineFilter) {
                     const res = await fetch("/api/users/online");
@@ -433,7 +496,8 @@
             if (this.name === "invites") {
                 listeners.invites.add(callback);
                 // Initialer Abruf
-                const email = localStorage.getItem("wop_user_email_v6");
+                const toEmailFilter = this.queryFilters.find(f => f.field === "toEmail");
+                const email = toEmailFilter ? toEmailFilter.value : (localStorage.getItem("wop_user_email_v6") || "");
                 if (email) {
                     fetch(`/api/social/invites?email=${encodeURIComponent(email)}`)
                         .then(r => r.json())
@@ -495,10 +559,16 @@
                 const res = await fetch(`/api/lobby/${encodeURIComponent(this.id)}`);
                 if (res.ok) {
                     const data = await res.json();
+                    const l = data.lobby || {};
                     return {
                         exists: true,
                         id: this.id,
-                        data: () => data.lobby?.state || data.lobby || {}
+                        data: () => ({
+                            ...(l.state || {}),
+                            ...l,
+                            code: this.id,
+                            hostEmail: l.hostEmail || ""
+                        })
                     };
                 }
                 return { exists: false, id: this.id, data: () => null };

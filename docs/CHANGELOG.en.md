@@ -4,6 +4,34 @@ All notable changes to this project are documented in this file in a precise, te
 
 ---
 
+## [2.0.19] - 2026-11-05
+
+### Bug Fixes
+- **Lobby Invitations (`server.js`, `js/app.js`, `js/wop-socket-client.js`):**
+  - Fixed missing sender email (`fromEmail`) in `sendGameInvite`, which previously caused the server endpoint `/api/social/invite` to fail with HTTP 400.
+  - Client adapter now throws controlled errors instead of faking invite IDs.
+  - Server now only filters out users with `dnd` (Do Not Disturb) and no longer blocks invites during brief socket reconnections.
+  - Incoming invitations now trigger both the invite modal and an interactive Sileo toast with a direct "Join" button.
+  - When the recipient is not active in the foreground, Web Push with tag `invite-{id}` is dispatched.
+- **Lobby Join via Code & Host Lookup (`js/app.js`, `js/wop-socket-client.js`):**
+  - Integrated direct query to `/api/lobby/:code` in `joinGame`, resolving host email directly from server/SQLite state.
+  - `CollectionReference.prototype.get` in socket client now supports queries by `currentLobby` and returns document snapshots for host and players.
+  - `DocumentReference.prototype.get` for `lobbies` merges game state (`state`) with lobby metadata (`hostEmail`, `players`).
+  - `socket.on("lobby:players_updated")` immediately updates the active game player list via `handleIncomingData({ type: "UPDATE_PLAYERS" })`.
+- **Email Verification & SMTP Delivery (`server.js`, `package.json`):**
+  - Added and registered `nodemailer` dependency in `package.json`.
+  - Automatic SSL activation (`secure: true`) for port 465.
+  - Full support for Netcup SMTP (`mxe8db.netcup.net:465`) with TLS configuration and formatted sender address.
+- **Notifications & Sileo Toast UX (`src/sileo-entry.js`, `server.js`, `js/wop-socket-client.js`):**
+  - Fixed duplicate notifications on iOS by suppressing server-side Web Push while an active WebSocket connection exists.
+  - Sileo Toast title computation fixed with string titles, preventing clipping and vertical shift on high-DPI Android devices.
+  - Automatic chat opening when tapping either the toast bubble or the action button.
+
+### Misc
+- Version and cache-busting query parameters raised to **2.0.19**.
+
+---
+
 ## [2.0.18] - 2026-11-05
 
 ### Fixes

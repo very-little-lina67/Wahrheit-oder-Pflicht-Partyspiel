@@ -143,18 +143,24 @@ async function sendVerificationEmail(toEmail, code) {
     const host = process.env.SMTP_HOST || '';
     const user = process.env.SMTP_USER || '';
     const pass = process.env.SMTP_PASS || '';
-    const from = process.env.SMTP_FROM || user || 'noreply@omoflow.de';
+    const from = process.env.SMTP_FROM || `"Wahrheit oder Pflicht" <${user || 'no-reply@omoflow.de'}>`;
     if (!host || !user || !pass) {
         console.error('[VERIFY] SMTP nicht konfiguriert (SMTP_HOST / SMTP_USER / SMTP_PASS).');
         return { sent: false, reason: 'no_smtp' };
     }
+    const port = parseInt(process.env.SMTP_PORT || '587', 10);
+    const secure = process.env.SMTP_SECURE === '1' || process.env.SMTP_SECURE === 'true' || port === 465;
+
     try {
         const nodemailer = await import('nodemailer');
         const transporter = nodemailer.createTransport({
             host,
-            port: parseInt(process.env.SMTP_PORT || '587', 10),
-            secure: process.env.SMTP_SECURE === '1' || process.env.SMTP_SECURE === 'true',
-            auth: { user, pass }
+            port,
+            secure,
+            auth: { user, pass },
+            tls: {
+                rejectUnauthorized: false
+            }
         });
         await transporter.sendMail({
             from,
@@ -266,10 +272,10 @@ function isUserActiveInApp(email) {
     const cleanEmail = String(email).trim().toLowerCase();
     const sockets = getSocketsForEmail(cleanEmail);
     if (!sockets || !sockets.length) return false;
-    // Prüfen, ob mindestens ein Socket für diese E-Mail aktuell sichtbar/im Vordergrund ist
+    // Wenn mindestens ein Socket aktiv verbunden ist und nicht explizit im Hintergrund ist
     return sockets.some(sId => {
         const u = socketUsers.get(sId);
-        return u && u.isVisible !== false;
+        return !u || u.isVisible !== false;
     });
 }
 
@@ -709,24 +715,38 @@ app.post('/api/social/invite', async (req, res) => {
         const { fromEmail, fromName, toEmail, lobbyCode } = req.body;
         if (!fromEmail || !toEmail || !lobbyCode) return res.status(400).json({ error: 'Parameter unvollständig.' });
 
-        // Einladungen nur an online / away – nicht an dnd oder offline
-        const target = await getUserByEmail(toEmail);
+        const cleanFrom = String(fromEmail).trim().toLowerCase();
+        const cleanTo = String(toEmail).trim().toLowerCase();
+        const target = await getUserByEmail(cleanTo);
         if (!target) return res.status(404).json({ error: 'Zielbenutzer nicht gefunden.' });
-        const liveOnline = userSockets.has(String(toEmail).trim().toLowerCase());
+
         const status = normalizePresenceStatus(target.presenceStatus);
-        const effective = (!liveOnline || status === 'offline') ? 'offline' : status;
-        if (effective !== 'online' && effective !== 'away') {
+        if (status === 'dnd') {
             return res.status(403).json({
-                error: effective === 'dnd'
-                    ? 'Dieser Spieler möchte nicht gestört werden (Bitte nicht stören).'
-                    : 'Dieser Spieler ist offline und kann keine Einladung empfangen.'
+                error: 'Dieser Spieler möchte nicht gestört werden (Bitte nicht stören).'
             });
         }
 
-        const inv = await createInvite(fromEmail, fromName, toEmail, lobbyCode);
+        const inv = await createInvite(cleanFrom, fromName, cleanTo, lobbyCode);
 
-        // Push via WebSocket
-        emitToUser(toEmail, 'social:invite_received', inv);
+        // 1. Push via WebSocket (Echtzeit-Zustellung falls online)
+        emitToUser(cleanTo, 'social:invite_received', inv);
+
+        // 2. Web Push an Empfänger, falls nicht aktiv im Vordergrund der App
+        if (!isUserActiveInApp(cleanTo)) {
+            sendWebPushNotification(cleanTo, {
+                title: 'Lobby-Einladung 🎮',
+                body: `${fromName || 'Ein Spieler'} hat dich in die Lobby ${String(lobbyCode).toUpperCase()} eingeladen!`,
+                icon: './icon-192.png',
+                badge: './favicon-48.png',
+                tag: `invite-${inv.id}`,
+                data: {
+                    url: './',
+                    type: 'lobby_invite',
+                    lobbyCode: String(lobbyCode).toUpperCase()
+                }
+            }).catch(() => {});
+        }
 
         res.json({ success: true, invite: inv });
     } catch (err) {

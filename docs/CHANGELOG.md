@@ -4,6 +4,34 @@ Alle wesentlichen Änderungen am Projekt werden in dieser Datei präzise und tec
 
 ---
 
+## [2.0.19] - 2026-11-05
+
+### Bug Fixes
+- **Lobby-Einladungen (`server.js`, `js/app.js`, `js/wop-socket-client.js`):**
+  - Fehlende Absender-E-Mail (`fromEmail`) in `sendGameInvite` behoben, wodurch der Server-Endpoint `/api/social/invite` zuvor mit HTTP 400 abbrach.
+  - Client-Adapter wirft nun bei Fehlern kontrollierte Exceptions, statt ungültige Einladungs-IDs zu fingieren.
+  - Server prüft nun gezielt auf den Status `dnd` (Bitte nicht stören) und blockiert Einladungen nicht mehr fälschlicherweise bei kurzzeitigen Socket-Neuverbindungen.
+  - Eingehende Einladungen lösen nun sowohl das Einladungs-Modal als auch einen interaktiven Sileo-Toast mit direktem „Beitreten“-Button aus.
+  - Wenn der Empfänger nicht im Vordergrund aktiv ist, wird zusätzlich ein Web-Push mit Tag `invite-{id}` ausgelöst.
+- **Lobby-Beitritt per Code & Host-Ermittlung (`js/app.js`, `js/wop-socket-client.js`):**
+  - Direkte Abfrage des Endpoints `/api/lobby/:code` in `joinGame` integriert, wodurch die Host-E-Mail zuverlässig aus dem Server-/SQLite-Zustand bezogen wird.
+  - `CollectionReference.prototype.get` im Socket-Client unterstützt nun Filterabfragen nach `currentLobby` und liefert korrekte Dokumentenschnappschüsse für Host und Mitspieler.
+  - `DocumentReference.prototype.get` für `lobbies` führt Spielzustand (`state`) und Metadaten (`hostEmail`, `players`) zusammen.
+  - `socket.on("lobby:players_updated")` aktualisiert nun sofort die Spielerliste im laufenden Spiel über `handleIncomingData({ type: "UPDATE_PLAYERS" })`.
+- **E-Mail-Verifikation & SMTP-Zustellung (`server.js`, `package.json`):**
+  - Abhängigkeit `nodemailer` in `package.json` ergänzt und registriert.
+  - Automatische SSL-Aktivierung (`secure: true`) für Port 465 implementiert.
+  - Unterstützung für Netcup SMTP (`mxe8db.netcup.net:465`) mit TLS-Konfiguration und formatierter Absenderadresse.
+- **Benachrichtigungen & Sileo Toast UX (`src/sileo-entry.js`, `server.js`, `js/wop-socket-client.js`):**
+  - Doppelte Benachrichtigungen auf iOS behoben: Web-Push wird vom Server unterdrückt, solange eine aktive WebSocket-Verbindung für den Nutzer besteht.
+  - Sileo Toast Titel-Berechnung korrigiert: String-basierte Titel verhindern das fehlerhafte Abschneiden und die Verschiebung der schwarzen Toast-Pill auf hochauflösenden Android-Displays.
+  - Automatisches Öffnen des Chats beim Antippen des Sileo Toasts oder des Antwort-Buttons.
+
+### Misc
+- Versionsnummer und Cache-Busting-Query-Parameter auf **2.0.19** angehoben.
+
+---
+
 ## [2.0.18] - 2026-11-05
 
 ### Fixes

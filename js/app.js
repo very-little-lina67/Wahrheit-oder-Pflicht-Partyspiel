@@ -2423,6 +2423,7 @@
                 }
 
                 await db.collection("invites").add({
+                    fromEmail: myEmail,
                     toEmail: targetEmail,
                     fromName: myName,
                     lobbyCode: activeLobbyCode,
@@ -2467,6 +2468,19 @@
                                     : `${data.fromName || "Player"} invited you to lobby ${String(incomingInviteLobby).toUpperCase()}!`;
                             }
                             document.getElementById("invite-modal").classList.remove("hidden");
+
+                            if (typeof window.showSileoToast === "function") {
+                                const toastTitle = currentLang === "de"
+                                    ? `🎮 Einladung: ${data.fromName || "Spieler"}`
+                                    : `🎮 Invite: ${data.fromName || "Player"}`;
+                                const toastDesc = currentLang === "de"
+                                    ? `Lobby ${String(incomingInviteLobby).toUpperCase()} beitreten`
+                                    : `Join lobby ${String(incomingInviteLobby).toUpperCase()}`;
+                                const actionText = currentLang === "de" ? "Beitreten" : "Join";
+                                window.showSileoToast(toastTitle, toastDesc, () => {
+                                    acceptInvitation();
+                                }, actionText);
+                            }
                         }
                     });
                 }, error => {
@@ -6643,17 +6657,29 @@
             stopFirestoreLobbyTransport();
 
             try {
-                const snap = await db.collection("users")
-                    .where("currentLobby", "==", code)
-                    .get();
-
                 let hostEmail = "";
-                snap.forEach(doc => {
-                    const d = doc.data() || {};
-                    if (!hostEmail && (d.lobbyRole === "host" || doc.id === d.lobbyHostEmail)) {
-                        hostEmail = doc.id;
+                try {
+                    const lRes = await fetch(`/api/lobby/${encodeURIComponent(code)}`);
+                    if (lRes.ok) {
+                        const lData = await lRes.json();
+                        if (lData && lData.lobby) {
+                            hostEmail = lData.lobby.hostEmail || "";
+                        }
                     }
-                });
+                } catch (_) {}
+
+                if (!hostEmail) {
+                    const snap = await db.collection("users")
+                        .where("currentLobby", "==", code)
+                        .get();
+
+                    snap.forEach(doc => {
+                        const d = doc.data() || {};
+                        if (!hostEmail && (d.lobbyRole === "host" || doc.id === d.lobbyHostEmail)) {
+                            hostEmail = doc.id;
+                        }
+                    });
+                }
 
                 if (!hostEmail) {
                     if (!restoring) {
