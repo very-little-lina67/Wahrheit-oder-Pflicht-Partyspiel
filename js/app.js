@@ -3939,14 +3939,24 @@
                             <span style="color:#00bfff;">${roleLabel}${displayRole}</span> · ${statusHtml}
                         </div>`;
                     
-                    let canModify = (myRole === "master" || (myRole === "admin" && !isMaster && u.role !== "admin"));
+                    // Feste Master-E-Mails sind unveränderlich.
+                    // Vergebene Master-Rollen (nicht in MASTER_EMAILS) dürfen nur vom Master wieder geändert werden.
+                    const isFixedMaster = isMasterAccount(email);
+                    let canModify = (
+                        (myRole === "master" && !isFixedMaster) ||
+                        (myRole === "admin" && !isMaster && u.role !== "admin")
+                    );
 
-                    if (canModify && !isMaster) {
+                    if (canModify) {
+                        const masterOption = (myRole === "master")
+                            ? `<option value="master" ${displayRole==='master'?'selected':''}>Master</option>`
+                            : "";
                         html += `<div>
                             <select onchange="changeUserRole('${email}', this.value)" style="padding:3px; font-size:11px; width:auto; margin:0;">
                                 <option value="user" ${displayRole==='user'?'selected':''}>User</option>
                                 <option value="moderator" ${displayRole==='moderator'?'selected':''}>Mod</option>
                                 <option value="admin" ${displayRole==='admin'?'selected':''}>Admin</option>
+                                ${masterOption}
                             </select>
                             <button class="btn-danger" style="padding:3px 6px; font-size:10px; margin:0;" onclick="deleteUser('${email}')">X</button>
                         </div>`;
@@ -4072,9 +4082,13 @@
         async function changeUserRole(email, newRole) {
             if (myRole !== "master" && myRole !== "admin") return;
             const clean = String(email || "").trim().toLowerCase();
-            // Master-Accounts (feste E-Mails + role=master in DB) sind unveränderlich
+            // Feste Master-Accounts (MASTER_EMAILS) sind unveränderlich
             if (isMasterAccount(clean)) return;
-            if (newRole === "master") return; // master-Rolle kann nicht vergeben werden
+            // master-Rolle darf nur der Master vergeben/entziehen; Admin/Mod bleiben wie bisher
+            const allowedRoles = ["user", "moderator", "admin"];
+            if (myRole === "master") allowedRoles.push("master");
+            if (!allowedRoles.includes(String(newRole || "").toLowerCase())) return;
+            if (newRole === "master" && myRole !== "master") return;
             adminUserListCache = null;
             try {
                 const requester = String(myEmail || "").trim().toLowerCase();
