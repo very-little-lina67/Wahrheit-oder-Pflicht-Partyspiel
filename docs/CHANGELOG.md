@@ -4,6 +4,22 @@ Alle wesentlichen Änderungen am Projekt werden in dieser Datei präzise und tec
 
 ---
 
+## [2.0.9] - 2026-11-05 (Branch: `feat/ws-server`)
+
+### New Features
+- **Master kann Master-Rollen vergeben (`js/app.js`, `server.js`):**
+  - Im Admin-Panel erscheint für Accounts mit Rolle `master` im Rollen-Dropdown zusätzlich die Option **Master** (neben User, Mod und Admin).
+  - `changeUserRole` erlaubt das Setzen von `role: "master"` ausschließlich, wenn der ausführende Nutzer selbst `master` ist; Admin und Moderator behalten ihre bisherigen Rechte unverändert (nur User / Mod / Admin).
+  - Feste Master-Accounts aus `MASTER_EMAILS` (z. B. `master@vibe.party`, `christian.heinrich@omoflow.de`) bleiben unveränderlich und können weder herabgestuft noch gelöscht werden.
+  - Vom Master vergebene Master-Rollen an andere E-Mails können vom Master später wieder geändert oder entzogen werden.
+
+### Bug Fixes
+- **Server-seitige Absicherung der Rollenvergabe (`server.js`):**
+  - `PUT /api/admin/user/role` prüft nun strikt: feste Master-E-Mails sind gesperrt; nur ein Master-Requester darf `master` setzen; Admins sind auf `user` / `moderator` / `admin` beschränkt.
+  - Verhindert, dass über den API-Fallback eine Master-Rolle von Nicht-Masters vergeben werden konnte.
+
+---
+
 ## [2.0.8] - 2026-11-05 (Branch: `feat/ws-server`)
 
 ### New Features
