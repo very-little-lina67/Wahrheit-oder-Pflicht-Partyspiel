@@ -50,7 +50,15 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const PORT = parseInt(process.env.PORT, 10) || 3002;
-const MASTER_EMAIL = (process.env.MASTER_EMAIL || 'christian.heinrich@omoflow.de').toLowerCase();
+const MASTER_EMAIL_LIST = (
+    process.env.MASTER_EMAILS ||
+    process.env.MASTER_EMAIL ||
+    'master@vibe.party,christian.heinrich@omoflow.de'
+).split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+const MASTER_EMAIL = MASTER_EMAIL_LIST[0] || 'master@vibe.party';
+function isMasterEmail(email) {
+    return MASTER_EMAIL_LIST.includes(String(email || '').trim().toLowerCase());
+}
 
 const app = express();
 app.set('trust proxy', true);
@@ -146,7 +154,7 @@ function isUserActiveInApp(email) {
 // Master / Admin Prüfung
 function isAdminOrMaster(role, email) {
     const cleanEmail = String(email || '').trim().toLowerCase();
-    return cleanEmail === MASTER_EMAIL || role === 'admin' || role === 'master';
+    return isMasterEmail(cleanEmail) || role === 'admin' || role === 'master';
 }
 
 // ==============================================================================
@@ -196,7 +204,7 @@ app.post('/api/auth/register', async (req, res) => {
             return res.status(409).json({ error: 'Ein Account mit dieser E-Mail existiert bereits.' });
         }
 
-        const role = cleanEmail === MASTER_EMAIL ? 'master' : 'user';
+        const role = isMasterEmail(cleanEmail) ? 'master' : 'user';
         const finalHash = passHash || password; // Unterstützt Client-Hash
 
         const user = await createUser({
@@ -234,7 +242,7 @@ app.post('/api/auth/login', async (req, res) => {
         }
 
         // Master-Account Absicherung
-        if (cleanEmail === MASTER_EMAIL && user.role !== 'master') {
+        if (isMasterEmail(cleanEmail) && user.role !== 'master') {
             await updateUserRole(cleanEmail, 'master');
             user.role = 'master';
         }
@@ -277,7 +285,7 @@ app.put('/api/user/profile', async (req, res) => {
                 email: cleanEmail,
                 name: data.name || 'Spieler',
                 passHash: data.passHash || 'auth_pass_placeholder',
-                role: cleanEmail === MASTER_EMAIL ? 'master' : (data.role || 'user')
+                role: isMasterEmail(cleanEmail) ? 'master' : (data.role || 'user')
             });
         }
         const updated = await updateUserProfile(cleanEmail, data);
@@ -588,10 +596,21 @@ app.get('/api/admin/users', async (req, res) => {
             return res.status(403).json({ error: 'Zugriff verweigert.' });
         }
         const users = await getAllUsers();
-        const enriched = users.map(user => ({
-            ...user,
-            isOnline: userSockets.has(user.email) || Boolean(user.isOnline)
-        }));
+        const enriched = users.map(user => {
+            const email = String(user.email || '').trim().toLowerCase();
+            const liveOnline = userSockets.has(email);
+            return {
+                ...user,
+                email,
+                isOnline: liveOnline || Boolean(user.isOnline),
+                // lastActive als ISO-String für den Client
+                lastActive: user.lastActive
+                    ? (typeof user.lastActive === 'string'
+                        ? user.lastActive
+                        : new Date(user.lastActive).toISOString())
+                    : null
+            };
+        });
         res.json(enriched);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -616,7 +635,7 @@ app.delete('/api/admin/user', async (req, res) => {
     try {
         const { requester, email } = req.body;
         const u = await getUserByEmail(requester);
-        if (!u || String(requester).toLowerCase() !== MASTER_EMAIL) {
+        if (!u || !isMasterEmail(requester)) {
             return res.status(403).json({ error: 'Nur der Master-Account darf Konten löschen.' });
         }
         await deleteUser(email);
