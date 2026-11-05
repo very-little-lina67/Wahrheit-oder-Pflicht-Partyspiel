@@ -12,6 +12,8 @@ Alle wesentlichen Änderungen am Projekt werden in dieser Datei präzise und tec
   - Vorkompiliertes, autarkes Bundle (`js/sileo-bundle.js` & `js/sileo-bundle.css`) ohne CDN-Latenzen für 100% Offline-Fähigkeit in der PWA.
   - Eingehende Direktnachrichten blenden bei aktiver App sofort eine interaktive Sileo-Action-Pill am oberen Bildschirmrand ein (`💬 Name: Text...`) mit direktem „Öffnen“-Button, der nahtlos in den Chat wechselt.
   - Service Worker Precache um das Sileo-Bundle erweitert.
+- **Automatisiertes SQLite-Backup-Skript (`scripts/backup-db.sh`):**
+  - Konsistentes Online-Backup für SQLite im WAL-Modus (`.backup` bzw. `VACUUM INTO`) mit automatischer Gzip-Komprimierung und Rotation alter Backups (> 14 Tage).
 
 ---
 
