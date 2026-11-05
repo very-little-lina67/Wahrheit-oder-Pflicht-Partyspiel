@@ -297,12 +297,24 @@
                     return createSnapshot(docs);
                 }
 
-                // Vollständige User-Liste (Admin / Master)
-                const requester = localStorage.getItem("wop_user_email_v6") || "";
-                const res = await fetch(`/api/admin/users?requester=${encodeURIComponent(requester)}`);
-                if (res.ok) {
-                    const list = await res.json();
-                    const docs = (list || []).map(u => ({
+                // Rangliste / User-Liste: öffentlicher Endpoint (inkl. monthlyCoins)
+                // Fallback auf Admin-Endpoint falls vorhanden
+                let list = null;
+                try {
+                    const lbRes = await fetch("/api/leaderboard");
+                    if (lbRes.ok) {
+                        list = await lbRes.json();
+                    }
+                } catch (e) {}
+                if (!list) {
+                    const requester = localStorage.getItem("wop_user_email_v6") || "";
+                    const res = await fetch(`/api/admin/users?requester=${encodeURIComponent(requester)}`);
+                    if (res.ok) {
+                        list = await res.json();
+                    }
+                }
+                if (list && Array.isArray(list)) {
+                    const docs = list.map(u => ({
                         id: u.email,
                         data: () => u
                     }));
