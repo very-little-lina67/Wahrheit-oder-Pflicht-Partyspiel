@@ -203,6 +203,12 @@
             return new CollectionReference(this.name, [...this.queryFilters, { field, op, value }]);
         }
 
+        orderBy(field, direction = "asc") {
+            this.orderByField = field;
+            this.orderDirection = direction;
+            return this;
+        }
+
         limit(n) {
             this.limitVal = n;
             return this;

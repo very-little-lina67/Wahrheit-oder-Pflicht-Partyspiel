@@ -1,6 +1,7 @@
 import sqlite3Pkg from 'sqlite3';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import webpush from 'web-push';
 
 const sqlite3 = sqlite3Pkg.verbose();
 const __filename = fileURLToPath(import.meta.url);
@@ -159,12 +160,33 @@ export async function initializeDatabase() {
                 )
             `);
 
+            // 8. Server-Settings (z. B. persistente VAPID Web-Push Keys)
+            db.run(`
+                CREATE TABLE IF NOT EXISTS server_settings (
+                    key TEXT PRIMARY KEY,
+                    value TEXT NOT NULL
+                )
+            `);
+
+            // 9. Web Push Subscriptions (für mobile Hintergrund-Benachrichtigungen)
+            db.run(`
+                CREATE TABLE IF NOT EXISTS push_subscriptions (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    email TEXT NOT NULL,
+                    endpoint TEXT NOT NULL UNIQUE,
+                    p256dh TEXT NOT NULL,
+                    auth TEXT NOT NULL,
+                    createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
+                )
+            `);
+
             // Indizes für schnelle Abfragen
             db.run(`CREATE INDEX IF NOT EXISTS idx_dm_emails ON direct_messages(fromEmail, toEmail)`);
             db.run(`CREATE INDEX IF NOT EXISTS idx_dm_unread ON direct_messages(toEmail, read)`);
             db.run(`CREATE INDEX IF NOT EXISTS idx_invites_to ON invites(toEmail)`);
             db.run(`CREATE INDEX IF NOT EXISTS idx_requests_to ON friend_requests(toEmail)`);
             db.run(`CREATE INDEX IF NOT EXISTS idx_friends_user ON friends(userEmail)`);
+            db.run(`CREATE INDEX IF NOT EXISTS idx_push_email ON push_subscriptions(email)`);
 
             console.log('✅ SQLite-Tabellen & Indizes erfolgreich angelegt/geprüft.');
             resolve();
@@ -535,6 +557,77 @@ export async function getLobbyState(code) {
 export async function deleteLobbyState(code) {
     const cleanCode = String(code).trim().toLowerCase();
     await dbRun('DELETE FROM lobbies WHERE code = ?', [cleanCode]);
+}
+
+// ==============================================================================
+// Web Push Notifications & VAPID Management
+// ==============================================================================
+
+export async function getOrInitVapidKeys() {
+    const pubRow = await dbGet('SELECT value FROM server_settings WHERE key = ?', ['vapid_public_key']);
+    const privRow = await dbGet('SELECT value FROM server_settings WHERE key = ?', ['vapid_private_key']);
+    if (pubRow && privRow && pubRow.value && privRow.value) {
+        return { publicKey: pubRow.value, privateKey: privRow.value };
+    }
+    const newKeys = webpush.generateVAPIDKeys();
+    await dbRun('INSERT OR REPLACE INTO server_settings (key, value) VALUES (?, ?)', ['vapid_public_key', newKeys.publicKey]);
+    await dbRun('INSERT OR REPLACE INTO server_settings (key, value) VALUES (?, ?)', ['vapid_private_key', newKeys.privateKey]);
+    return newKeys;
+}
+
+export async function savePushSubscription(email, subscription) {
+    if (!email || !subscription || !subscription.endpoint) return;
+    const cleanEmail = String(email).trim().toLowerCase();
+    const endpoint = subscription.endpoint;
+    const keys = subscription.keys || {};
+    const p256dh = keys.p256dh || '';
+    const auth = keys.auth || '';
+    await dbRun(
+        `INSERT INTO push_subscriptions (email, endpoint, p256dh, auth)
+         VALUES (?, ?, ?, ?)
+         ON CONFLICT(endpoint) DO UPDATE SET
+            email = excluded.email,
+            p256dh = excluded.p256dh,
+            auth = excluded.auth`,
+        [cleanEmail, endpoint, p256dh, auth]
+    );
+}
+
+export async function deletePushSubscription(endpoint) {
+    if (!endpoint) return;
+    await dbRun('DELETE FROM push_subscriptions WHERE endpoint = ?', [endpoint]);
+}
+
+export async function getPushSubscriptionsForUser(email) {
+    if (!email) return [];
+    const cleanEmail = String(email).trim().toLowerCase();
+    return dbAll('SELECT * FROM push_subscriptions WHERE email = ?', [cleanEmail]);
+}
+
+export async function sendWebPushNotification(email, payload) {
+    if (!email) return;
+    const subs = await getPushSubscriptionsForUser(email);
+    if (!subs || !subs.length) return;
+    const jsonPayload = JSON.stringify(payload);
+    for (const sub of subs) {
+        const pushSubscription = {
+            endpoint: sub.endpoint,
+            keys: {
+                p256dh: sub.p256dh,
+                auth: sub.auth
+            }
+        };
+        try {
+            await webpush.sendNotification(pushSubscription, jsonPayload);
+        } catch (err) {
+            // 410 Gone / 404 Not Found: Subscription ist ungültig oder abgelaufen
+            if (err.statusCode === 410 || err.statusCode === 404) {
+                await deletePushSubscription(sub.endpoint);
+            } else {
+                console.warn('WebPush Zustellwarnung:', sub.endpoint, err.message);
+            }
+        }
+    }
 }
 
 // ==============================================================================

@@ -4,6 +4,23 @@ Alle wesentlichen Änderungen am Projekt werden in dieser Datei präzise und tec
 
 ---
 
+## [2.0.5] - 2026-11-05 (Branch: `feat/ws-server`)
+
+### New Features
+- **Echte Web-Push-Benachrichtigungen (`server.js`, `database.js`, `sw.js` & `app.js`):**
+  - Vollständige Integration des standardkonformen W3C Web-Push-Protokolls mit automatischer VAPID-Schlüsselverwaltung in SQLite (`server_settings`).
+  - Neue Tabelle `push_subscriptions` zur Speicherung von Browser-Endpunkten und Verschlüsselungsschlüsseln (`p256dh`, `auth`).
+  - Eingehende Direktnachrichten werden über `sendWebPushNotification` nun auch dann zuverlässig auf dem Smartphone zugestellt, wenn die App komplett geschlossen ist oder das Gerät im Standby ist.
+  - Klick auf die System-Push-Benachrichtigung öffnet die PWA und navigiert direkt in den betreffenden Chat.
+
+### Bug Fixes
+- **Echtzeit-Aktualisierung von Chat-Badge & Posteingang behoben (`js/wop-socket-client.js`, `js/app.js` & `server.js`):**
+  - `CollectionReference` um die fehlende Methode `orderBy` ergänzt, deren Fehlen zuvor einen `TypeError` geworfen und die Registrierung des Echtzeit-Listeners verhindert hatte.
+  - Direkten WebSocket-Event-Hook auf `dm:incoming` hinzugefügt, sodass das Ungelesen-Badge (`#hud-dm-badge`) und die Liste der Konversationen sofort live aktualisiert werden, ohne dass zuvor auf das Icon geklickt werden muss.
+  - `socket.join('user:<email>')` auf dem Server hinzugefügt für zuverlässige Adressierung der Benutzer-Räume.
+
+---
+
 ## [2.0.4] - 2026-11-04 (Branch: `feat/ws-server`)
 
 ### Bug Fixes

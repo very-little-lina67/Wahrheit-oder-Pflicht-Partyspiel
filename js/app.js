@@ -2459,6 +2459,52 @@
             }
         }
 
+        function urlBase64ToUint8Array(base64String) {
+            const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+            const base64 = (base64String + padding).replace(/\-/g, "+").replace(/_/g, "/");
+            const rawData = window.atob(base64);
+            const outputArray = new Uint8Array(rawData.length);
+            for (let i = 0; i < rawData.length; ++i) {
+                outputArray[i] = rawData.charCodeAt(i);
+            }
+            return outputArray;
+        }
+
+        async function registerPushSubscription() {
+            if (!myEmail || !("serviceWorker" in navigator) || !("PushManager" in window)) return;
+            try {
+                if (Notification.permission !== "granted") return;
+                const reg = await navigator.serviceWorker.ready;
+                if (!reg || !reg.pushManager) return;
+
+                const keyRes = await fetch("/api/push/public-key");
+                if (!keyRes.ok) return;
+                const { publicKey } = await keyRes.json();
+                if (!publicKey) return;
+
+                let sub = await reg.pushManager.getSubscription();
+                if (!sub) {
+                    sub = await reg.pushManager.subscribe({
+                        userVisibleOnly: true,
+                        applicationServerKey: urlBase64ToUint8Array(publicKey)
+                    });
+                }
+
+                await fetch("/api/push/subscribe", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        email: String(myEmail).trim().toLowerCase(),
+                        subscription: sub.toJSON()
+                    })
+                });
+                console.log("✅ Web-Push auf Server registriert");
+            } catch (err) {
+                console.warn("Web-Push Registrierung:", err);
+            }
+        }
+        window.registerPushSubscription = registerPushSubscription;
+
         async function setAppNotificationsEnabled(enabled) {
             if (!isAppNotificationsSupported()) {
                 updateNotifSettingsUI();
@@ -2484,17 +2530,36 @@
                 }
                 appNotificationsEnabled = true;
                 try { localStorage.setItem("wop_notifications_v1", "1"); } catch (e) {}
+
+                // Web-Push für mobile Hintergrund-Benachrichtigungen registrieren
+                registerPushSubscription();
+
                 // Test-Benachrichtigung
                 showAppNotification(
                     currentLang === "de" ? "Benachrichtigungen aktiv" : "Notifications enabled",
                     currentLang === "de"
-                        ? "Du wirst über neue Privatnachrichten informiert."
-                        : "You will be notified about new private messages.",
+                        ? "Du wirst über neue Privatnachrichten informiert (auch im Hintergrund)."
+                        : "You will be notified about new private messages (also in background).",
                     { tag: "wop-notif-test" }
                 );
             } else {
                 appNotificationsEnabled = false;
                 try { localStorage.setItem("wop_notifications_v1", "0"); } catch (e) {}
+                // Bei Deaktivierung Subscription auflösen
+                try {
+                    if ("serviceWorker" in navigator) {
+                        const reg = await navigator.serviceWorker.ready;
+                        const sub = await reg.pushManager.getSubscription();
+                        if (sub) {
+                            await fetch("/api/push/unsubscribe", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ endpoint: sub.endpoint })
+                            });
+                            await sub.unsubscribe();
+                        }
+                    }
+                } catch (e) {}
             }
             updateNotifSettingsUI();
         }
@@ -3419,6 +3484,9 @@
                 try {
                     window.wopSocket.emit("auth:identify", { email: myEmail, name: myName });
                 } catch (e) {}
+            }
+            if (typeof registerPushSubscription === "function" && typeof Notification !== "undefined" && Notification.permission === "granted") {
+                registerPushSubscription();
             }
             document.getElementById("auth-modal").classList.add("hidden");
             document.getElementById("account-modal")?.classList.add("hidden");
@@ -4390,6 +4458,19 @@
             } catch (e) {
                 console.warn("DM listener start failed", e);
             }
+
+            // Direkter WebSocket-Event-Hook für verzögerungsfreie Badge- & Inbox-Updates
+            if (window.wopSocket) {
+                try {
+                    window.wopSocket.off("dm:incoming:direct_sync");
+                    window.wopSocket.on("dm:incoming", () => {
+                        refreshDmUnreadCount();
+                        const inboxOpen = document.getElementById("dm-inbox-modal") && !document.getElementById("dm-inbox-modal").classList.contains("hidden");
+                        if (inboxOpen) renderDmInbox();
+                    });
+                } catch (e) {}
+            }
+
             refreshDmUnreadCount();
         }
 

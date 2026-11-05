@@ -5,6 +5,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { Server } from 'socket.io';
+import webpush from 'web-push';
 
 import {
     initializeDatabase,
@@ -35,7 +36,11 @@ import {
     deleteFeedback,
     saveLobbyState,
     getLobbyState,
-    deleteLobbyState
+    deleteLobbyState,
+    getOrInitVapidKeys,
+    savePushSubscription,
+    deletePushSubscription,
+    sendWebPushNotification
 } from './database.js';
 
 dotenv.config();
@@ -116,7 +121,10 @@ function getSocketsForEmail(email) {
 }
 
 function emitToUser(email, event, data) {
-    const sockets = getSocketsForEmail(email);
+    if (!email) return;
+    const cleanEmail = String(email).trim().toLowerCase();
+    io.to(`user:${cleanEmail}`).emit(event, data);
+    const sockets = getSocketsForEmail(cleanEmail);
     sockets.forEach(sId => {
         io.to(sId).emit(event, data);
     });
@@ -437,9 +445,23 @@ app.post('/api/dm/send', async (req, res) => {
         if (!fromEmail || !toEmail || !text) return res.status(400).json({ error: 'Parameter unvollständig.' });
         const msg = await saveDirectMessage(fromEmail, fromName, toEmail, text);
 
-        // Sofortige Auslieferung an Empfänger & Absender
+        // 1. Sofortige Echtzeit-Auslieferung via WebSocket
         emitToUser(toEmail, 'dm:incoming', msg);
         emitToUser(fromEmail, 'dm:incoming', msg);
+
+        // 2. Web Push an Empfänger senden (weckt Smartphone im Standby/Hintergrund auf)
+        sendWebPushNotification(toEmail, {
+            title: `💬 ${fromName || 'Neue Nachricht'}`,
+            body: String(text).slice(0, 100),
+            icon: './icon-192.png',
+            badge: './favicon-48.png',
+            tag: `dm-${String(fromEmail).toLowerCase()}`,
+            data: {
+                url: './',
+                fromEmail: String(fromEmail).toLowerCase(),
+                fromName: fromName || 'Spieler'
+            }
+        }).catch(e => console.warn('Push-Benachrichtigung fehlgeschlagen:', e.message));
 
         res.json({ success: true, message: msg });
     } catch (err) {
@@ -478,6 +500,39 @@ app.get('/api/dm/unread-count', async (req, res) => {
         if (!email) return res.status(400).json({ error: 'E-Mail erforderlich.' });
         const count = await getUnreadDmCount(email);
         res.json({ unread: count });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// 5. Web Push Notifications
+app.get('/api/push/public-key', async (req, res) => {
+    try {
+        const keys = await getOrInitVapidKeys();
+        res.json({ publicKey: keys.publicKey });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/api/push/subscribe', async (req, res) => {
+    try {
+        const { email, subscription } = req.body;
+        if (!email || !subscription || !subscription.endpoint) {
+            return res.status(400).json({ error: 'Ungültige Subscription-Daten.' });
+        }
+        await savePushSubscription(email, subscription);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/api/push/unsubscribe', async (req, res) => {
+    try {
+        const { endpoint } = req.body;
+        if (endpoint) await deletePushSubscription(endpoint);
+        res.json({ success: true });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -587,6 +642,7 @@ io.on('connection', (socket) => {
             userSockets.set(email, new Set());
         }
         userSockets.get(email).add(socket.id);
+        socket.join(`user:${email}`);
 
         await setOnlineStatus(email, true, currentLobby);
         io.emit('social:presence', { email, isOnline: true, currentLobby });
@@ -601,6 +657,7 @@ io.on('connection', (socket) => {
             userSockets.set(email, new Set());
         }
         userSockets.get(email).add(socket.id);
+        socket.join(`user:${email}`);
 
         await setOnlineStatus(email, true, currentLobby);
     });
@@ -770,7 +827,19 @@ io.on('connection', (socket) => {
 });
 
 // Initialisierung von Datenbank und Serverstart
-initializeDatabase().then(() => {
+initializeDatabase().then(async () => {
+    try {
+        const vapidKeys = await getOrInitVapidKeys();
+        webpush.setVapidDetails(
+            process.env.VAPID_SUBJECT || 'mailto:admin@omoflow.de',
+            vapidKeys.publicKey,
+            vapidKeys.privateKey
+        );
+        console.log('🔔 Web-Push VAPID Initialisierung erfolgreich.');
+    } catch (pushErr) {
+        console.warn('⚠️ Web-Push VAPID Initialisierung fehlgeschlagen:', pushErr.message);
+    }
+
     server.listen(PORT, '0.0.0.0', () => {
         console.log('====================================================');
         console.log(`🚀 Wahrheit-oder-Pflicht Backend läuft auf Port: ${PORT}`);
