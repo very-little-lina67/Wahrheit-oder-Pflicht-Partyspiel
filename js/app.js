@@ -2830,6 +2830,9 @@
             calculateLevel();
             checkBadges();
             updateHUD();
+            // Rangliste-Cache leeren, damit Monatscoins sofort sichtbar werden
+            leaderboardCache = null;
+            leaderboardCacheTime = 0;
             saveUserDataToCloud();
         }
 
@@ -7140,6 +7143,8 @@
                     calculateLevel();
                     updateHUD();
                     updateProfileModal();
+                    leaderboardCache = null;
+                    leaderboardCacheTime = 0;
                     saveUserDataToCloud();
                 }
             }, 3000);
