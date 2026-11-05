@@ -2814,10 +2814,11 @@
 // ==============================================================================
         function addRewards(isDare) {
             // Spiel-Streak: +1 pro erfolgreiche Runde (ohne Leak)
+            // Coins fest: Wahrheit +4, Pflicht +8 (kein Multiplikator)
             gameStreak = (Number(gameStreak) || 0) + 1;
             let mult = gameStreak >= 5 ? 2 : 1;
-            let xpGain = isDare ? 20 : 10;
-            let coinGain = (isDare ? 8 : 4) * mult;
+            let xpGain = (isDare ? 20 : 10) * mult;
+            let coinGain = isDare ? 8 : 4;
 
             userXP += xpGain;
             userCoins += coinGain;
@@ -4210,9 +4211,12 @@
             document.getElementById("dm-modal")?.classList.add("hidden");
             dmTargetEmail = "";
             dmTargetName = "";
-            // Zurück zur Inbox wenn offen, sonst Nav zurücksetzen
+            // Zurück-Pfeil: immer zur Nachrichten-Übersicht (Konversationsliste),
+            // nicht komplett aus dem Chat raus – man muss nicht erneut auf den Chat-Button tippen.
             const inbox = document.getElementById("dm-inbox-modal");
-            if (inbox && !inbox.classList.contains("hidden")) {
+            if (inbox) {
+                try { closeAppPagesExcept("dm-inbox-modal"); } catch (e) {}
+                inbox.classList.remove("hidden");
                 setBottomNavActive("ui-btn-messages");
                 renderDmInbox();
             } else {
@@ -7137,14 +7141,11 @@
                 const nextRoundBtn = document.getElementById("next-round-btn");
                 if (nextRoundBtn) nextRoundBtn.disabled = isSpectator ? true : false;
                 if (!isSpectator) {
+                    // Nur XP fürs Rad – keine Coins mehr (Coins nur noch über Wahrheit/Pflicht)
                     userXP += 25;
-                    userCoins += 12;
-                    addMonthlyCoins(12);
                     calculateLevel();
                     updateHUD();
                     updateProfileModal();
-                    leaderboardCache = null;
-                    leaderboardCacheTime = 0;
                     saveUserDataToCloud();
                 }
             }, 3000);
