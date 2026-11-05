@@ -138,23 +138,18 @@ function verificationExpiryIso() {
     return new Date(Date.now() + 30 * 60 * 1000).toISOString(); // 30 Minuten
 }
 
-/** Optionaler SMTP-Versand (wenn SMTP_* Env gesetzt) – sonst nur Server-Log */
+/** Bestätigungscode nur per E-Mail senden – nie an den Client zurückgeben */
 async function sendVerificationEmail(toEmail, code) {
     const host = process.env.SMTP_HOST || '';
     const user = process.env.SMTP_USER || '';
     const pass = process.env.SMTP_PASS || '';
     const from = process.env.SMTP_FROM || user || 'noreply@omoflow.de';
     if (!host || !user || !pass) {
-        console.log(`[VERIFY] Kein SMTP konfiguriert. Code für ${toEmail}: ${code}`);
+        console.error('[VERIFY] SMTP nicht konfiguriert (SMTP_HOST / SMTP_USER / SMTP_PASS).');
         return { sent: false, reason: 'no_smtp' };
     }
     try {
-        // Dynamischer Import nur wenn SMTP da ist – nodemailer ist optional
-        const nodemailer = await import('nodemailer').catch(() => null);
-        if (!nodemailer) {
-            console.log(`[VERIFY] nodemailer nicht installiert. Code für ${toEmail}: ${code}`);
-            return { sent: false, reason: 'no_nodemailer' };
-        }
+        const nodemailer = await import('nodemailer');
         const transporter = nodemailer.createTransport({
             host,
             port: parseInt(process.env.SMTP_PORT || '587', 10),
@@ -165,14 +160,25 @@ async function sendVerificationEmail(toEmail, code) {
             from,
             to: toEmail,
             subject: 'Dein Bestätigungscode – Wahrheit oder Pflicht',
-            text: `Dein Bestätigungscode lautet: ${code}\n\nGültig für 30 Minuten.\nFalls du dich nicht registriert hast, ignoriere diese Mail.`,
-            html: `<p>Dein Bestätigungscode lautet:</p><p style="font-size:24px;font-weight:bold;letter-spacing:4px">${code}</p><p>Gültig für 30 Minuten.</p>`
+            text:
+                `Hallo!\n\n` +
+                `Dein Bestätigungscode für Wahrheit oder Pflicht lautet: ${code}\n\n` +
+                `Der Code ist 30 Minuten gültig.\n` +
+                `Falls du dich nicht registriert hast, kannst du diese E-Mail ignorieren.\n\n` +
+                `— WOP / omoflow`,
+            html:
+                `<div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;padding:24px;background:#0f172a;color:#e2e8f0;border-radius:12px">` +
+                `<h2 style="margin:0 0 12px;color:#34d399">E-Mail bestätigen</h2>` +
+                `<p style="margin:0 0 16px">Dein Bestätigungscode für <strong>Wahrheit oder Pflicht</strong>:</p>` +
+                `<p style="font-size:28px;font-weight:700;letter-spacing:6px;text-align:center;padding:16px;background:#1e293b;border-radius:10px;margin:0 0 16px">${code}</p>` +
+                `<p style="font-size:13px;color:#94a3b8;margin:0">Gültig für 30 Minuten. Wenn du dich nicht registriert hast, ignoriere diese Nachricht.</p>` +
+                `</div>`
         });
+        console.log(`[VERIFY] Bestätigungscode per E-Mail an ${toEmail} gesendet.`);
         return { sent: true };
     } catch (e) {
         console.error('[VERIFY] SMTP-Fehler:', e.message);
-        console.log(`[VERIFY] Fallback-Code für ${toEmail}: ${code}`);
-        return { sent: false, reason: e.message };
+        return { sent: false, reason: e.message || 'smtp_error' };
     }
 }
 
@@ -344,23 +350,29 @@ app.post('/api/auth/register', async (req, res) => {
             verificationExpires: emailVerified ? '' : expires
         });
 
-        let mailResult = { sent: true };
         if (!emailVerified) {
-            mailResult = await sendVerificationEmail(cleanEmail, code);
+            const mailResult = await sendVerificationEmail(cleanEmail, code);
+            if (!mailResult.sent) {
+                // Account wieder entfernen, damit keine „halben“ Konten ohne erreichbaren Code bleiben
+                try {
+                    await deleteUser(cleanEmail);
+                } catch (delErr) {
+                    console.warn('[VERIFY] Rollback nach Mail-Fehler:', delErr.message);
+                }
+                return res.status(503).json({
+                    error: 'Bestätigungscode konnte nicht per E-Mail gesendet werden. Bitte später erneut versuchen oder den Admin informieren (SMTP).'
+                });
+            }
         }
 
-        const payload = {
+        res.status(201).json({
             success: true,
             needsVerification: !emailVerified,
+            message: emailVerified
+                ? 'Registrierung erfolgreich.'
+                : 'Registrierung erfolgreich. Bitte den Code aus deiner E-Mail eingeben.',
             user: { ...user, verificationCode: undefined, passHash: undefined }
-        };
-        // Nur ohne SMTP den Code zurückgeben, damit Tests möglich bleiben (Produktion: SMTP setzen)
-        if (!emailVerified && !mailResult.sent) {
-            payload.devCode = code;
-            payload.mailHint = 'Kein SMTP konfiguriert – Code nur für Entwicklung sichtbar.';
-        }
-
-        res.status(201).json(payload);
+        });
     } catch (err) {
         console.error('Register-Fehler:', err);
         res.status(500).json({ error: 'Interner Serverfehler bei der Registrierung.' });
@@ -416,12 +428,16 @@ app.post('/api/auth/resend-code', async (req, res) => {
         const expires = verificationExpiryIso();
         await setVerificationCode(cleanEmail, code, expires);
         const mailResult = await sendVerificationEmail(cleanEmail, code);
-        const payload = { success: true, sent: mailResult.sent };
         if (!mailResult.sent) {
-            payload.devCode = code;
-            payload.mailHint = 'Kein SMTP konfiguriert – Code nur für Entwicklung sichtbar.';
+            return res.status(503).json({
+                error: 'Code konnte nicht per E-Mail gesendet werden. Bitte später erneut versuchen.'
+            });
         }
-        res.json(payload);
+        res.json({
+            success: true,
+            sent: true,
+            message: 'Neuer Bestätigungscode wurde an deine E-Mail gesendet.'
+        });
     } catch (err) {
         console.error('Resend-Fehler:', err);
         res.status(500).json({ error: 'Interner Serverfehler.' });
