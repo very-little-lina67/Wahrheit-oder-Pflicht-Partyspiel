@@ -11,11 +11,16 @@ import webpush from 'web-push';
 import dns from 'dns/promises';
 import {
     initializeDatabase,
+    dbRun,
+    dbGet,
+    dbAll,
     getUserByEmail,
     createUser,
     updateUserProfile,
     setOnlineStatus,
     setPresenceStatus,
+    setUserCurrentLobby,
+    clearLobbyForUsers,
     normalizePresenceStatus,
     generateVerificationCode,
     setVerificationCode,
@@ -1303,7 +1308,7 @@ io.on('connection', (socket) => {
 
         if (hostPlayer && hostPlayer.email) {
             const hEmail = String(hostPlayer.email).trim().toLowerCase();
-            await dbRun('UPDATE users SET currentLobby = ? WHERE email = ?', [cleanCode, hEmail]).catch(() => {});
+            await setUserCurrentLobby(hEmail, cleanCode).catch(() => {});
             io.emit('social:presence', { email: hEmail, isOnline: true, currentLobby: cleanCode });
         }
 
@@ -1363,7 +1368,7 @@ io.on('connection', (socket) => {
 
         if (player && player.email) {
             const pEmail = String(player.email).trim().toLowerCase();
-            await dbRun('UPDATE users SET currentLobby = ? WHERE email = ?', [cleanCode, pEmail]).catch(() => {});
+            await setUserCurrentLobby(pEmail, cleanCode).catch(() => {});
             io.emit('social:presence', { email: pEmail, isOnline: true, currentLobby: cleanCode });
         }
         await saveLobbyState(cleanCode, lobby.hostEmail, lobby.settings, { ...lobby.state, players: lobby.players }).catch(() => {});
@@ -1387,7 +1392,7 @@ io.on('connection', (socket) => {
         const userEmail = String(userInfo?.email || '').trim().toLowerCase();
 
         if (userEmail) {
-            await dbRun('UPDATE users SET currentLobby = "" WHERE email = ?', [userEmail]).catch(() => {});
+            await setUserCurrentLobby(userEmail, '').catch(() => {});
             io.emit('social:presence', { email: userEmail, isOnline: true, currentLobby: '' });
         }
 
@@ -1406,7 +1411,7 @@ io.on('connection', (socket) => {
                 io.in(roomName).socketsLeave(roomName);
                 activeLobbies.delete(cleanCode);
                 deleteLobbyState(cleanCode).catch(() => {});
-                await dbRun('UPDATE users SET currentLobby = "" WHERE currentLobby = ?', [cleanCode]).catch(() => {});
+                await clearLobbyForUsers(cleanCode).catch(() => {});
                 return;
             }
 
@@ -1420,7 +1425,7 @@ io.on('connection', (socket) => {
             if (lobby.players.length === 0) {
                 activeLobbies.delete(cleanCode);
                 deleteLobbyState(cleanCode).catch(() => {});
-                await dbRun('UPDATE users SET currentLobby = "" WHERE currentLobby = ?', [cleanCode]).catch(() => {});
+                await clearLobbyForUsers(cleanCode).catch(() => {});
             } else {
                 saveLobbyState(cleanCode, lobby.hostEmail, lobby.settings, { ...lobby.state, players: lobby.players }).catch(() => {});
             }

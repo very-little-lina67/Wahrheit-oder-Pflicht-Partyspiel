@@ -4,6 +4,19 @@ Alle wesentlichen Änderungen am Projekt werden in dieser Datei präzise und tec
 
 ---
 
+## [2.0.25] - 2026-11-05
+
+### Bug Fixes
+- **ReferenceError `dbRun is not defined` bei Lobby-Operationen behoben (`server.js`, `database.js`):**
+  - Fehlende Importe behoben: `dbRun`, `dbGet` und `dbAll` wurden aus `./database.js` in `server.js` importiert, wodurch der Laufzeitfehler `ReferenceError: dbRun is not defined` bei `lobby:create` (Host-Initialisierung), `lobby:join` (Mitspieler-Beitritt) und `lobby:leave` (Lobby-Verlassen/Schließen) vollständig behoben wurde.
+  - Saubere Datenkapselung (DRY & Modulare Architektur): Dedizierte Datenbank-Hilfsfunktionen `setUserCurrentLobby(email, lobbyCode)` und `clearLobbyForUsers(lobbyCode)` in `database.js` implementiert und in den Socket.io-Lobby-Handlern von `server.js` angebunden.
+  - Automatisierte Socket- und SQLite-Integrationstests verifizieren den fehlerfreien Lifecycle von Lobbies (Erstellen, Beitreten, Verlassen, Host-Exit).
+
+### Misc
+- Versionsnummer auf **2.0.25** angehoben und alle Cache-Busting-Parameter aktualisiert.
+
+---
+
 ## [2.0.24] - 2026-11-05
 
 ### Bug Fixes

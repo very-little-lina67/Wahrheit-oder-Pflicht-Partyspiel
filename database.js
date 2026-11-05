@@ -403,6 +403,19 @@ export async function setPresenceStatus(email, presenceStatus) {
     return getUserByEmail(cleanEmail);
 }
 
+export async function setUserCurrentLobby(email, lobbyCode = '') {
+    if (!email) return;
+    const cleanEmail = String(email).trim().toLowerCase();
+    const cleanCode = String(lobbyCode || '').trim().toLowerCase();
+    await dbRun('UPDATE users SET currentLobby = ? WHERE email = ?', [cleanCode, cleanEmail]);
+}
+
+export async function clearLobbyForUsers(lobbyCode) {
+    if (!lobbyCode) return;
+    const cleanCode = String(lobbyCode || '').trim().toLowerCase();
+    await dbRun('UPDATE users SET currentLobby = "" WHERE currentLobby = ?', [cleanCode]);
+}
+
 export async function searchUsers(query, limit = 40) {
     const q = String(query || '').trim().toLowerCase();
     if (!q) {
