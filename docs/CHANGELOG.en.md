@@ -4,6 +4,25 @@ All notable changes to this project are documented in this file in a precise, te
 
 ---
 
+## [2.0.24] - 2026-11-05
+
+### Bug Fixes
+- **Sileo Toast Vertical Alignment on Android & iOS Resolved (`src/sileo-entry.js`, `js/sileo-bundle.js`, `js/sileo-bundle.css`):**
+  - Completely eliminated downward vertical displacement ("forehead gap") on Android devices: using strict CSS rules (`height: var(--sileo-height, 40px) !important; top: 0 !important; bottom: auto !important; line-height: 1 !important; display: flex !important; align-items: center !important`), the header, badge, and title are mathematically locked to the exact Y=20px centerline of the SVG pill.
+  - Fixed SVG baseline descent shift: `[data-sileo-canvas]` with `line-height: 0` and `<svg data-sileo-svg>` with `display: block; vertical-align: top` prevent engine baseline descent on Chromium and WebKit.
+  - Integrated "Reply" button pill (`.sileo-reply-pill`): reply button is rendered as a rounded violet pill badge directly within the header alongside the sender's name and is properly included in dynamic pill width measurement.
+  - Retained deep black background (`#000000`) for all shapes with subtle drop-shadow styling.
+  - Universal click handler: tapping the reply pill or anywhere on the toast opens the direct message conversation immediately.
+- **Suppression of Duplicate iOS System Push Notifications in Foreground (`server.js`, `sw.js`, `js/wop-socket-client.js`):**
+  - Server-side activity check in `isUserActiveInApp` verifies via socket connection instance (`io.sockets.sockets.get(sId)?.connected`) whether the recipient currently has the app open in foreground.
+  - If active in app, Web Push via Apple APNs is skipped completely, allowing only the fluid in-app Sileo toast to display without an intrusive OS system banner on iOS.
+  - Automated client heartbeat (`user:heartbeat` every 25 seconds) keeps presence state updated continuously on the server.
+
+### Misc
+- Version bumped to **2.0.24** with updated cache-busting query strings.
+
+---
+
 ## [2.0.23] - 2026-11-05
 
 ### Bug Fixes

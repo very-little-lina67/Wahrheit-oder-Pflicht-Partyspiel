@@ -118,8 +118,8 @@ self.addEventListener("push", (event) => {
   }
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
-      // Prüfen, ob die App aktuell geöffnet und im Vordergrund (visible) ist:
-      const isAppVisible = clientList.some((client) => client.visibilityState === "visible");
+      // Prüfen, ob die App aktuell geöffnet und im Vordergrund (visible oder focused) ist:
+      const isAppVisible = clientList.some((client) => client.visibilityState === "visible" || client.focused === true);
       if (isAppVisible) {
         // App ist im Vordergrund geöffnet: Nur In-App-Benachrichtigung (Sileo Toast), KEINE System-Benachrichtigung!
         return;

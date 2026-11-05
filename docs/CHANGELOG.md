@@ -4,6 +4,25 @@ Alle wesentlichen Änderungen am Projekt werden in dieser Datei präzise und tec
 
 ---
 
+## [2.0.24] - 2026-11-05
+
+### Bug Fixes
+- **Sileo Toast vertikale Ausrichtung auf Android & iOS behoben (`src/sileo-entry.js`, `js/sileo-bundle.js`, `js/sileo-bundle.css`):**
+  - Vertikaler Versatz nach unten ("Forehead Gap") auf Android-Geräten restlos beseitigt: Durch strikte CSS-Regeln (`height: var(--sileo-height, 40px) !important; top: 0 !important; bottom: auto !important; line-height: 1 !important; display: flex !important; align-items: center !important`) sind Header, Badge und Titel mathematisch exakt auf der Y=20px Mittellinie des SVG-Pills zentriert.
+  - SVG-Baseline-Descent Shift behoben: `[data-sileo-canvas]` mit `line-height: 0` und `<svg data-sileo-svg>` mit `display: block; vertical-align: top` verhindern Browser-Baseline-Verschiebungen in Chromium- und WebKit-Engines.
+  - Integrierter "Antworten"-Button (`.sileo-reply-pill`): Der Antworten-Button wird als abgerundetes violettes Pill-Badge direkt im Header neben dem Namen gerendert und berechnet dynamisch die Toast-Pill-Breite mit.
+  - Tiefschwarzer Hintergrund (`#000000`) für alle Shapes beibehalten mit edlem Drop-Shadow.
+  - Universeller Klick-Handler: Klicks auf den Antworten-Button oder den gesamten Toast öffnen sofort den privaten Chat mit dem Absender.
+- **Unterdrückung doppelter System-Benachrichtigungen auf iOS (`server.js`, `sw.js`, `js/wop-socket-client.js`):**
+  - Serverseitiger Aktivitäts-Check in `isUserActiveInApp` verifiziert via Socket-Instanz (`io.sockets.sockets.get(sId)?.connected`), ob der Empfänger die App im Vordergrund geöffnet hat.
+  - Ist der Empfänger in der App aktiv, wird der Web-Push via Apple APNs vollständig unterdrückt, sodass ausschließlich der flüssige Sileo-In-App-Toast angezeigt wird und kein störendes OS-System-Banner über der App erscheint.
+  - Automatischer Heartbeat im WebSocket-Client (`user:heartbeat` alle 25 Sekunden) stellt sicher, dass der Aktivitätsstatus des Nutzers auf dem Server unterbrechungsfrei aktuell bleibt.
+
+### Misc
+- Versionsnummer auf **2.0.24** angehoben und alle Cache-Busting-Parameter aktualisiert.
+
+---
+
 ## [2.0.23] - 2026-11-05
 
 ### Bug Fixes

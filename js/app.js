@@ -2486,16 +2486,14 @@
                             document.getElementById("invite-modal").classList.remove("hidden");
 
                             if (typeof window.showSileoToast === "function") {
-                                const toastTitle = currentLang === "de"
-                                    ? `🎮 Einladung: ${data.fromName || "Spieler"}`
-                                    : `🎮 Invite: ${data.fromName || "Player"}`;
+                                const toastTitle = data.fromName || (currentLang === "de" ? "Spieler" : "Player");
                                 const toastDesc = currentLang === "de"
                                     ? `Lobby ${String(incomingInviteLobby).toUpperCase()} beitreten`
                                     : `Join lobby ${String(incomingInviteLobby).toUpperCase()}`;
                                 const actionText = currentLang === "de" ? "Beitreten" : "Join";
                                 window.showSileoToast(toastTitle, toastDesc, () => {
                                     acceptInvitation();
-                                }, actionText);
+                                }, actionText, "🎮");
                             }
                         }
                     });
@@ -5231,7 +5229,7 @@
 
         function showDmToast(fromName, text, fromEmail) {
             const preview = String(text || "").slice(0, 100);
-            const title = `💬 ${fromName || (currentLang === "de" ? "Neue Nachricht" : "New message")}`;
+            const title = fromName || (currentLang === "de" ? "Neue Nachricht" : "New message");
             const actionLabel = currentLang === "de" ? "Antworten" : "Reply";
 
             // Letzte Callback-Aktion für Toast-Klick speichern
@@ -5243,7 +5241,8 @@
                     title,
                     preview,
                     () => openDirectMessage(fromEmail, fromName),
-                    actionLabel
+                    actionLabel,
+                    "💬"
                 );
             } else if (window.sileo && typeof window.sileo.action === "function") {
                 try {

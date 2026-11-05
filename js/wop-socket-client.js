@@ -22,11 +22,13 @@
                 timeout: 20000
             });
 
+            let pendingIdentify = null;
+
             socket.on("connect", () => {
                 console.log("✅ WebSocket verbunden mit WOP-Server [ID:", socket.id + "]");
-                const email = localStorage.getItem("wop_user_email_v6");
-                const name = localStorage.getItem("wop_user_name_v6");
-                const currentLobby = window.activeLobbyCode || "";
+                const email = (pendingIdentify && pendingIdentify.email) || localStorage.getItem("wop_user_email_v6");
+                const name = (pendingIdentify && pendingIdentify.name) || localStorage.getItem("wop_user_name_v6");
+                const currentLobby = (pendingIdentify && pendingIdentify.currentLobby) || window.activeLobbyCode || "";
                 const savedPresence = localStorage.getItem("wop_presence_status_v1");
                 const presenceStatus = savedPresence === "dnd" ? "dnd" : "online";
                 if (email) {
@@ -38,6 +40,7 @@
                         isVisible: document.visibilityState === "visible"
                     });
                 }
+                pendingIdentify = null;
                 // Falls der Spieler in einer aktiven Lobby war: Sofort Raum wieder beitreten
                 if (currentLobby) {
                     const savedLobby = (typeof window.getSavedLobbySession === "function") ? window.getSavedLobbySession() : null;
@@ -89,8 +92,24 @@
                 currentLobby,
                 isVisible: document.visibilityState === "visible"
             });
+        } else {
+            pendingIdentify = { email, name, currentLobby };
         }
     };
+
+    // Periodischer Heartbeat hält Socket-Status und In-App-Aktivität auf dem Server synchron
+    setInterval(() => {
+        if (socket && socket.connected) {
+            const email = (typeof myEmail !== "undefined" && myEmail) || localStorage.getItem("wop_user_email_v6");
+            if (email) {
+                socket.emit("user:heartbeat", {
+                    email,
+                    currentLobby: window.activeLobbyCode || "",
+                    isVisible: document.visibilityState === "visible"
+                });
+            }
+        }
+    }, 25000);
 
     // 2. Firebase FieldValue Kompatibilität
     window.firebase = {
