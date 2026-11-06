@@ -4,6 +4,23 @@ Alle wesentlichen Änderungen am Projekt werden in dieser Datei präzise und tec
 
 ---
 
+## [2.0.33] - 2026-11-06
+
+### New Features / Improvements
+- **Kick-Texte klar von Leak getrennt (`js/app.js`):**
+  - System-Chat bei Admin/Master-Kick: „wurde von Admin/Master/Moderation wegen eines Regelverstoßes aus der Runde entfernt (kein Leak)“.
+  - Runden-Statistik und Alert für den betroffenen Spieler: Entfernung wegen Regelverstoß, **kein** Leak-Ausscheiden; Tages-Streak bleibt erhalten.
+  - Leak-Formulierungen unverändert für den echten Leak-Flow.
+- **Admin/Master-Zuschauer bei laufender Runde (`js/app.js`, `server.js`):**
+  - Beitritt als Zuschauer nutzt Socket-`lobby:join` mit Callback sowie `/api/lobby/:code` mit einheitlichem `hostEmail`.
+  - Kein pauschales „Lobbycode nicht gefunden“, wenn die Lobby auf dem Server oder per Socket aktiv ist – auch mitten in der Runde.
+  - Host-E-Mail-Fallbacks (API, Socket, Firestore) und Platzhalter nur für Zuschauer, damit State geladen werden kann.
+
+### Misc
+- Versionsnummer auf **2.0.33** angehoben; Cache-Busting `?v=2.0.33`; Service-Worker-Cache **`wop-party-v9`**.
+
+---
+
 ## [2.0.32] - 2026-11-06
 
 ### Bug Fixes

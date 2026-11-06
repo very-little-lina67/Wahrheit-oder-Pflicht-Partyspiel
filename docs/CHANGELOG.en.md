@@ -4,6 +4,23 @@ All notable changes to this project are documented in this file in a precise, te
 
 ---
 
+## [2.0.33] - 2026-11-06
+
+### New Features / Improvements
+- **Kick copy clearly separated from leak (`js/app.js`):**
+  - System chat on Admin/Master kick: removed by Admin/Master/moderation for a rule violation (not a leak).
+  - Round stats and alert for the affected player: removal for a rule violation, **not** a leak elimination; daily streak stays.
+  - Leak wording unchanged for the real leak flow.
+- **Admin/Master spectators joining an in-progress round (`js/app.js`, `server.js`):**
+  - Spectator join uses socket `lobby:join` with callback plus `/api/lobby/:code` with a consistent `hostEmail`.
+  - No blanket “Lobby code not found” when the lobby is active on the server or via socket – including mid-round.
+  - Host-email fallbacks (API, socket, Firestore) and a spectator-only placeholder so state can load.
+
+### Misc
+- Version bumped to **2.0.33**; cache-busting `?v=2.0.33`; Service Worker cache **`wop-party-v9`**.
+
+---
+
 ## [2.0.32] - 2026-11-06
 
 ### Bug Fixes
