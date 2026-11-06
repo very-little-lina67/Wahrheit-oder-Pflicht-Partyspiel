@@ -25,12 +25,12 @@
     
     <!-- Socket.io Client für latenzfreie WebSocket-Kommunikation -->
     <script src="/socket.io/socket.io.js"></script>
-    <script src="js/wop-socket-client.js?v=2.0.28"></script>
+    <script src="js/wop-socket-client.js?v=2.0.30"></script>
 
     <!-- Ausgelagertes Stylesheet für Themes, Layout & Komponenten -->
-    <link rel="stylesheet" href="css/style.css?v=2.0.28">
+    <link rel="stylesheet" href="css/style.css?v=2.0.30">
     <!-- Sileo Toast (React) Fluid Spring Notification Styles -->
-    <link rel="stylesheet" href="js/sileo-bundle.css?v=2.0.28">
+    <link rel="stylesheet" href="js/sileo-bundle.css?v=2.0.30">
     <style id="wop-early-auth-hide">
       /* Verhindert Login-Flash beim Reload wenn Session vorhanden */
       body.wop-authed #auth-modal { display: none !important; visibility: hidden !important; }
@@ -572,7 +572,7 @@
                 <!-- Wird dynamisch gefüllt -->
             </div>
 
-            <button id="ui-lb-close-btn" class="btn-blue" onclick="document.getElementById('leaderboard-modal').classList.add('hidden')" style="width: 100%; padding: 8px; font-size: 13px;">Schließen</button>
+            <button id="ui-lb-close-btn" class="btn-blue" onclick="closeLeaderboardModal()" style="width: 100%; padding: 8px; font-size: 13px;">Schließen</button>
         </div>
     </div>
 
@@ -637,7 +637,7 @@
 
             <div style="display: flex; gap: 8px; margin-top: 10px; justify-content: space-between;">
                 <button class="btn-green" onclick="submitFeedback()" id="ui-fb-send-btn" style="flex:1; padding: 8px; font-size: 13px;">Absenden</button>
-                <button class="btn-blue" onclick="document.getElementById('feedback-modal').classList.add('hidden')" id="ui-fb-close-btn" style="flex:1; padding: 8px; font-size: 13px;">Schließen</button>
+                <button class="btn-blue" onclick="closeFeedbackModal()" id="ui-fb-close-btn" style="flex:1; padding: 8px; font-size: 13px;">Schließen</button>
             </div>
         </div>
     </div>
@@ -677,7 +677,7 @@
             </div>
 
             <div style="margin-top: 10px;">
-                <button id="ui-admin-close-btn" class="btn-blue" onclick="document.getElementById('admin-modal').classList.add('hidden')" style="width:100%; padding: 8px; font-size: 13px;">Schließen</button>
+                <button id="ui-admin-close-btn" class="btn-blue" onclick="closeAdminModal()" style="width:100%; padding: 8px; font-size: 13px;">Schließen</button>
             </div>
         </div>
     </div>
@@ -718,7 +718,7 @@
                 <div id="friend-search-results" style="max-height: 180px; overflow-y: auto;"></div>
             </div>
 
-            <button id="ui-friends-close-btn" class="btn-blue" onclick="document.getElementById('friends-modal').classList.add('hidden');try{setBottomNavActive(null)}catch(e){}" style="width:100%; padding:8px; font-size:13px;">Schließen</button>
+            <button id="ui-friends-close-btn" class="btn-blue" onclick="closeFriendsModal()" style="width:100%; padding:8px; font-size:13px;">Schließen</button>
         </div>
     </div>
 
@@ -727,7 +727,7 @@
     <div id="dm-inbox-modal" class="dm-page hidden">
         <div class="dm-page-inner">
             <header class="dm-page-header">
-                <button type="button" class="dm-page-back" id="ui-dm-inbox-close" onclick="document.getElementById('dm-inbox-modal').classList.add('hidden');try{setBottomNavActive(null)}catch(e){}try{refreshDmUnreadCount()}catch(e){}" aria-label="Zurück">←</button>
+                <button type="button" class="dm-page-back" id="ui-dm-inbox-close" onclick="closeDmInbox()" aria-label="Zurück">←</button>
                 <div class="dm-page-header-text">
                     <h2 id="ui-dm-inbox-title">💬 Nachrichten</h2>
                     <p id="ui-dm-inbox-desc">Private Chats – auch ohne Lobby. Tippe auf eine Person, um zu antworten.</p>
@@ -1017,9 +1017,9 @@
     </div>
 
     <!-- Sileo Toast (React-basierte flüssige In-App Benachrichtigungskomponente) -->
-    <script src="js/sileo-bundle.js?v=2.0.28"></script>
+    <script src="js/sileo-bundle.js?v=2.0.30"></script>
     <!-- Ausgelagerte Spiellogik, Socket-Sync & Client-Interaktionen -->
-    <script src="js/app.js?v=2.0.28"></script>
+    <script src="js/app.js?v=2.0.30"></script>
     <script>
       // Service Worker registrieren → Chrome zeigt „App installieren“ statt nur Verknüpfung
       if ("serviceWorker" in navigator) {

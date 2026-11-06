@@ -380,12 +380,10 @@ function isUserActiveInApp(email) {
     const cleanEmail = String(email).trim().toLowerCase();
     const sockets = getSocketsForEmail(cleanEmail);
     if (!sockets || !sockets.length) return false;
-    // Wenn mindestens ein Socket aktiv verbunden ist und nicht explizit im Hintergrund ist
+    // Wenn mindestens ein Socket aktiv verbunden ist: User befindet sich live in der App!
     return sockets.some(sId => {
         const s = io.sockets.sockets.get(sId);
-        if (!s || !s.connected) return false;
-        const u = socketUsers.get(sId);
-        return !u || u.isVisible !== false;
+        return Boolean(s && s.connected);
     });
 }
 

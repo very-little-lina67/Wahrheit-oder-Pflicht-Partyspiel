@@ -1,5 +1,5 @@
 /* Service Worker – macht die App in Chrome installierbar (PWA) */
-const CACHE_NAME = "wop-party-v6";
+const CACHE_NAME = "wop-party-v7";
 const PRECACHE = [
   "./",
   "./index.html",
@@ -80,8 +80,24 @@ self.addEventListener("notificationclick", (event) => {
   );
 });
 
+let lastClientVisibleAt = 0;
+
+try {
+  const visChannel = new BroadcastChannel("wop_visibility_channel");
+  visChannel.onmessage = (event) => {
+    const msg = event.data || {};
+    if (msg.type === "CLIENT_VISIBILITY") {
+      lastClientVisibleAt = msg.visible ? (msg.timestamp || Date.now()) : 0;
+    }
+  };
+} catch (e) {}
+
 self.addEventListener("message", (event) => {
   const msg = event.data || {};
+  if (msg.type === "CLIENT_VISIBILITY") {
+    lastClientVisibleAt = msg.visible ? (msg.timestamp || Date.now()) : 0;
+    return;
+  }
   if (msg.type === "SHOW_NOTIFICATION") {
     event.waitUntil(
       self.registration.showNotification(msg.title || "Wahrheit oder Pflicht", {
@@ -119,9 +135,13 @@ self.addEventListener("push", (event) => {
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
       // Prüfen, ob die App aktuell geöffnet und im Vordergrund (visible oder focused) ist:
-      const isAppVisible = clientList.some((client) => client.visibilityState === "visible" || client.focused === true);
+      const hasVisibleClient = clientList && clientList.some((client) => client.visibilityState === "visible" || client.focused === true);
+      const isRecentlyVisible = (Date.now() - lastClientVisibleAt) < 15000;
+      const isAppVisible = Boolean(hasVisibleClient || isRecentlyVisible);
+
       if (isAppVisible) {
         // App ist im Vordergrund geöffnet: Nur In-App-Benachrichtigung (Sileo Toast), KEINE System-Benachrichtigung!
+        console.log("[SW] Push-Event empfangen, aber App ist im Vordergrund aktiv. System-Benachrichtigung wird unterdrückt.");
         return;
       }
 

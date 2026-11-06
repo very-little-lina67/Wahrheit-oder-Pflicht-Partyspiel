@@ -2222,6 +2222,7 @@
             ensureMonthlyCoinReset();
             container.innerHTML = t.lbLoading || "Lade Ranglisten...";
             document.getElementById("leaderboard-modal").classList.remove("hidden");
+            saveActivePage({ page: "leaderboard" });
 
             // Tab styling
             const globalBtn = document.getElementById("lb-tab-global");
@@ -2343,6 +2344,18 @@
                 container.innerHTML = t.lbError || "Fehler beim Laden der Ranglisten.";
             }
         }
+
+        function closeLeaderboardModal() {
+            document.getElementById("leaderboard-modal")?.classList.add("hidden");
+            clearActivePage();
+        }
+        window.closeLeaderboardModal = closeLeaderboardModal;
+
+        function closeOnlinePlayersModal() {
+            document.getElementById("online-players-modal")?.classList.add("hidden");
+            clearActivePage();
+        }
+        window.closeOnlinePlayersModal = closeOnlinePlayersModal;
 
 
         async function openOnlinePlayersModal() {
@@ -2945,6 +2958,31 @@
             });
         }
 
+        // Meldet dem Service Worker via BroadcastChannel und postMessage, ob die App im Vordergrund aktiv ist (unterdrückt iOS Doppel-Push)
+        let visBroadcast = null;
+        try { visBroadcast = new BroadcastChannel("wop_visibility_channel"); } catch (e) {}
+
+        function reportAppVisibilityToSw() {
+            const isVis = document.visibilityState === "visible";
+            const now = Date.now();
+            const msg = { type: "CLIENT_VISIBILITY", visible: isVis, timestamp: now };
+            if (visBroadcast) {
+                try { visBroadcast.postMessage(msg); } catch (e) {}
+            }
+            if ("serviceWorker" in navigator && navigator.serviceWorker.controller) {
+                try { navigator.serviceWorker.controller.postMessage(msg); } catch (e) {}
+            }
+        }
+        document.addEventListener("visibilitychange", reportAppVisibilityToSw);
+        window.addEventListener("focus", reportAppVisibilityToSw);
+        window.addEventListener("blur", reportAppVisibilityToSw);
+        setInterval(() => {
+            if (document.visibilityState === "visible") {
+                reportAppVisibilityToSw();
+            }
+        }, 8000);
+        reportAppVisibilityToSw();
+
 
         function openProfileModal() {
             closeAppPagesExcept("profile-modal");
@@ -2954,13 +2992,16 @@
             try { updatePresenceButtonsUI(); } catch (e) {}
             const modal = document.getElementById("profile-modal");
             if (modal) modal.classList.remove("hidden");
+            saveActivePage({ page: "profile" });
         }
 
         function closeProfileModal() {
             const modal = document.getElementById("profile-modal");
             if (modal) modal.classList.add("hidden");
             setBottomNavActive(null);
+            clearActivePage();
         }
+        window.closeProfileModal = closeProfileModal;
 
 
         /** Badge-Katalog für die Showcase-Anzeige (Kategorien wie im Profil) */
@@ -3632,6 +3673,13 @@
                     try { restoreLobbyChat(activeLobbyCode); } catch (_) {}
                     setTimeout(() => reconnectLobby(), 250);
                 }
+
+                // Vorherige aktive Seite nach Reload verlässlich wiederherstellen!
+                try {
+                    restoreActivePage();
+                } catch (e) {
+                    console.warn("restoreActivePage Fehler:", e);
+                }
             }
 
             changeLanguage(currentLang);
@@ -3937,6 +3985,9 @@
             }
             incomingInviteLobby = "";
             incomingInviteId = "";
+            clearActivePage();
+            try { closeAppPagesExcept(null); } catch (e) {}
+            try { setBottomNavActive(null); } catch (e) {}
             localStorage.removeItem("wop_user_email_v6");
             localStorage.removeItem("wop_user_name_v6");
             myEmail = ""; myName = ""; myRole = "user";
@@ -3982,22 +4033,26 @@
                 if (panel) panel.classList.toggle("hidden", id !== tabId);
                 if (tab) tab.classList.toggle("active", id === tabId);
             });
+            saveActivePage({ page: "shop", tab: tabId });
         }
 
-        function openAccountModal() {
+        function openAccountModal(initialTab = "emotes") {
             closeAppPagesExcept("account-modal");
             setBottomNavActive("ui-btn-shop");
 
             updateProfileModal();
             updateHUD();
-            switchShopTab("emotes");
+            const tabToOpen = initialTab || "emotes";
+            switchShopTab(tabToOpen);
             document.getElementById("account-modal").classList.remove("hidden");
+            saveActivePage({ page: "shop", tab: tabToOpen });
         }
         function closeAccountModal() {
             try { setBottomNavActive(null); } catch (e) {}
-
-            document.getElementById("account-modal").classList.add("hidden");
+            document.getElementById("account-modal")?.classList.add("hidden");
+            clearActivePage();
         }
+        window.closeAccountModal = closeAccountModal;
 
         // Letzte Laufzeitfehler für Bug-Reports sammeln
         window.__wopLastError = window.__wopLastError || null;
@@ -4119,7 +4174,14 @@
         function openFeedbackModal() {
             document.getElementById("feedback-text-input").value = "";
             document.getElementById("feedback-modal").classList.remove("hidden");
+            saveActivePage({ page: "feedback" });
         }
+
+        function closeFeedbackModal() {
+            document.getElementById("feedback-modal")?.classList.add("hidden");
+            clearActivePage();
+        }
+        window.closeFeedbackModal = closeFeedbackModal;
 
         async function submitFeedback() {
             let type = document.getElementById("feedback-type").value;
@@ -4326,6 +4388,7 @@
                     modal.classList.remove("hidden");
                     modal.style.zIndex = "10060";
                     modal.style.display = "flex";
+                    saveActivePage({ page: "admin" });
                 } else {
                     alert(currentLang === "de" ? "Admin-Panel nicht gefunden." : "Admin panel not found.");
                 }
@@ -4335,6 +4398,16 @@
             }
         }
         window.openAdminModal = openAdminModal;
+
+        function closeAdminModal() {
+            const modal = document.getElementById("admin-modal");
+            if (modal) {
+                modal.classList.add("hidden");
+                modal.style.display = "none";
+            }
+            clearActivePage();
+        }
+        window.closeAdminModal = closeAdminModal;
                 window.adminSetChatFilterEnabled = adminSetChatFilterEnabled;
         if (typeof setAdminFeedbackFilter === "function") window.setAdminFeedbackFilter = setAdminFeedbackFilter;
 
@@ -4901,9 +4974,18 @@
             setBottomNavActive("ui-btn-messages");
             const modal = document.getElementById("dm-inbox-modal");
             if (modal) modal.classList.remove("hidden");
+            saveActivePage({ page: "messages" });
             await renderDmInbox();
             await refreshDmUnreadCount();
         }
+
+        function closeDmInbox() {
+            document.getElementById("dm-inbox-modal")?.classList.add("hidden");
+            setBottomNavActive(null);
+            try { refreshDmUnreadCount(); } catch (e) {}
+            clearActivePage();
+        }
+        window.closeDmInbox = closeDmInbox;
 
         async function renderDmInbox() {
             const list = document.getElementById("dm-inbox-list");
@@ -5014,6 +5096,8 @@
             try { document.getElementById("friends-modal")?.classList.add("hidden"); } catch (e) {}
             try { document.getElementById("online-players-modal")?.classList.add("hidden"); } catch (e) {}
             try { document.getElementById("dm-inbox-modal")?.classList.add("hidden"); } catch (e) {}
+            setBottomNavActive("ui-btn-messages");
+            saveActivePage({ page: "chat", targetEmail: targetEmail, targetName: dmTargetName });
             loadDmThread();
             markDmsReadFrom(dmTargetEmail).then(() => {
                 refreshDmUnreadCount();
@@ -5429,6 +5513,95 @@
             refreshDmUnreadCount();
         }
 
+        // ==============================================================================
+        // PAGE STATE ROUTER & PERSISTENCE (Merkt sich geöffnete Seiten bei Reload)
+        // ==============================================================================
+        const ACTIVE_PAGE_STORAGE_KEY = "wop_active_page_v2";
+
+        function saveActivePage(pageData) {
+            if (!pageData || !pageData.page || pageData.page === "home") {
+                clearActivePage();
+                return;
+            }
+            try {
+                const json = JSON.stringify(pageData);
+                sessionStorage.setItem(ACTIVE_PAGE_STORAGE_KEY, json);
+                localStorage.setItem(ACTIVE_PAGE_STORAGE_KEY, json);
+            } catch (_) {}
+        }
+
+        function getSavedActivePage() {
+            try {
+                const raw = sessionStorage.getItem(ACTIVE_PAGE_STORAGE_KEY) || localStorage.getItem(ACTIVE_PAGE_STORAGE_KEY);
+                if (!raw) return null;
+                const parsed = JSON.parse(raw);
+                if (parsed && typeof parsed === "object" && parsed.page) {
+                    return parsed;
+                }
+            } catch (_) {}
+            return null;
+        }
+
+        function clearActivePage() {
+            try {
+                sessionStorage.removeItem(ACTIVE_PAGE_STORAGE_KEY);
+                localStorage.removeItem(ACTIVE_PAGE_STORAGE_KEY);
+            } catch (_) {}
+        }
+
+        async function restoreActivePage() {
+            if (!myEmail) return;
+            const saved = getSavedActivePage();
+            if (!saved || !saved.page || saved.page === "home") return;
+
+            try {
+                switch (saved.page) {
+                    case "friends":
+                        openFriendsModal(saved.tab || "list");
+                        break;
+                    case "shop":
+                        openAccountModal(saved.tab || "emotes");
+                        break;
+                    case "profile":
+                        openProfileModal();
+                        break;
+                    case "messages":
+                        openDmInbox();
+                        break;
+                    case "chat":
+                        if (saved.targetEmail) {
+                            openDirectMessage(saved.targetEmail, saved.targetName || "");
+                        } else {
+                            openDmInbox();
+                        }
+                        break;
+                    case "leaderboard":
+                        openLeaderboard();
+                        break;
+                    case "feedback":
+                        openFeedbackModal();
+                        break;
+                    case "admin":
+                        if (myRole === "master" || myRole === "admin" || myRole === "moderator") {
+                            openAdminModal();
+                        } else {
+                            clearActivePage();
+                        }
+                        break;
+                    default:
+                        clearActivePage();
+                        break;
+                }
+            } catch (err) {
+                console.warn("Fehler beim Wiederherstellen der Seite:", err);
+            }
+        }
+
+        window.saveActivePage = saveActivePage;
+        window.getSavedActivePage = getSavedActivePage;
+        window.clearActivePage = clearActivePage;
+        window.restoreActivePage = restoreActivePage;
+
         // Global für onclick im HTML
         window.openDirectMessage = openDirectMessage;
         window.sendDirectMessage = sendDirectMessage;
@@ -5443,21 +5616,23 @@
             });
         }
         function closeAppPagesExcept(keepId) {
-            ["friends-modal", "profile-modal", "account-modal", "dm-inbox-modal", "dm-modal"].forEach(id => {
+            ["friends-modal", "profile-modal", "account-modal", "dm-inbox-modal", "dm-modal", "leaderboard-modal", "feedback-modal", "admin-modal"].forEach(id => {
                 if (id === keepId) return;
                 const el = document.getElementById(id);
                 if (el) el.classList.add("hidden");
             });
         }
-        function openFriendsModal() {
+        function openFriendsModal(initialTab = "list") {
             if (!myEmail) {
                 alert(msg("msgLoginFirst", "Bitte zuerst einloggen.", "Please log in first."));
                 return;
             }
             closeAppPagesExcept("friends-modal");
             setBottomNavActive("ui-btn-friends");
-            showFriendsTab("list");
+            const tabToOpen = initialTab || "list";
+            showFriendsTab(tabToOpen);
             document.getElementById("friends-modal").classList.remove("hidden");
+            saveActivePage({ page: "friends", tab: tabToOpen });
             // Online-Liste vorladen für schnelleren Tab-Wechsel
             try { loadOnlinePlayersInto(document.getElementById("friends-online-list")); } catch (e) {}
             // Immer frisch aus der Cloud laden, damit atomare arrayUnion-Updates
@@ -5468,7 +5643,16 @@
             });
         }
 
+        function closeFriendsModal() {
+            document.getElementById("friends-modal")?.classList.add("hidden");
+            setBottomNavActive(null);
+            clearActivePage();
+        }
+        window.openFriendsModal = openFriendsModal;
+        window.closeFriendsModal = closeFriendsModal;
+
         function showFriendsTab(tab) {
+            saveActivePage({ page: "friends", tab: tab });
             const listP = document.getElementById("friends-list-panel");
             const onlineP = document.getElementById("friends-online-panel");
             const reqP = document.getElementById("friends-requests-panel");

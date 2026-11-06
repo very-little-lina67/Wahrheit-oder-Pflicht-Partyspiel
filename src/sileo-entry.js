@@ -17,7 +17,7 @@ customStyles.textContent = `
 
     [data-sileo-viewport] {
         z-index: 100050 !important;
-        padding-top: max(12px, env(safe-area-inset-top, 12px)) !important;
+        padding-top: max(14px, env(safe-area-inset-top, 14px)) !important;
     }
 
     /* Tiefschwarzer Hintergrund für alle SVG-Pills und Shapes */
@@ -30,7 +30,7 @@ customStyles.textContent = `
     [data-sileo-canvas] {
         position: absolute !important;
         top: 0 !important;
-        bottom: auto !important;
+        bottom: 0 !important;
         left: 0 !important;
         right: 0 !important;
         line-height: 0 !important;
@@ -52,36 +52,37 @@ customStyles.textContent = `
         border: none !important;
         background: transparent !important;
         box-shadow: none !important;
-        filter: drop-shadow(0 12px 30px rgba(0, 0, 0, 0.95)) !important;
+        filter: drop-shadow(0 10px 25px rgba(0, 0, 0, 0.95)) drop-shadow(0 0 1px rgba(255, 255, 255, 0.2)) !important;
         cursor: pointer !important;
         line-height: 1 !important;
-        height: var(--_h, var(--sileo-height, 40px)) !important;
+        height: var(--_h, var(--sileo-height, 42px)) !important;
     }
 
-    /* Header exakt auf 40px Höhe, top: 0 und absolute vertikale Zentrierung (eliminiert Forehead-Gap auf Android) */
+    /* Header exakt auf 42px Höhe, top: 0 und absolute vertikale Zentrierung */
     [data-sileo-header] {
         position: absolute !important;
         top: 0 !important;
-        bottom: auto !important;
+        bottom: 0 !important;
         left: var(--_px, 0px) !important;
-        height: var(--sileo-height, 40px) !important;
-        max-height: var(--sileo-height, 40px) !important;
+        height: var(--sileo-height, 42px) !important;
+        max-height: var(--sileo-height, 42px) !important;
         box-sizing: border-box !important;
-        padding: 0 14px !important;
+        padding: 0 12px !important;
         margin: 0 !important;
         display: flex !important;
         align-items: center !important;
-        justify-content: flex-start !important;
+        justify-content: center !important;
         max-width: var(--_pw, 100%) !important;
         overflow: hidden !important;
         line-height: 1 !important;
-        transform: var(--_ht) !important;
+        transform: none !important;
     }
 
     [data-sileo-header-stack] {
         position: relative !important;
         display: inline-flex !important;
         align-items: center !important;
+        justify-content: center !important;
         height: 100% !important;
         padding: 0 !important;
         margin: 0 !important;
@@ -91,35 +92,18 @@ customStyles.textContent = `
     [data-sileo-header-inner] {
         display: inline-flex !important;
         align-items: center !important;
+        justify-content: center !important;
         height: 100% !important;
-        gap: 8px !important;
+        gap: 0 !important;
         padding: 0 !important;
         margin: 0 !important;
         white-space: nowrap !important;
         line-height: 1 !important;
     }
 
+    /* Standard-Badge ausblenden, da wir ein perfekt integriertes Icon im Title-Node rendern */
     [data-sileo-badge] {
-        box-sizing: border-box !important;
-        margin: 0 !important;
-        display: inline-flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        flex-shrink: 0 !important;
-        width: 24px !important;
-        height: 24px !important;
-        min-width: 24px !important;
-        min-height: 24px !important;
-        border-radius: 9999px !important;
-        background-color: rgba(139, 92, 246, 0.3) !important;
-        color: #c4b5fd !important;
-        line-height: 1 !important;
-    }
-
-    [data-sileo-badge] svg {
-        width: 14px !important;
-        height: 14px !important;
-        display: block !important;
+        display: none !important;
     }
 
     [data-sileo-title] {
@@ -128,9 +112,6 @@ customStyles.textContent = `
         padding: 0 !important;
         display: inline-flex !important;
         align-items: center !important;
-        color: #ffffff !important;
-        font-weight: 600 !important;
-        font-size: 0.85rem !important;
         line-height: 1 !important;
         text-transform: none !important;
     }
@@ -143,17 +124,18 @@ customStyles.textContent = `
         background: linear-gradient(135deg, #8b5cf6, #6d28d9) !important;
         color: #ffffff !important;
         font-size: 0.72rem !important;
-        font-weight: 650 !important;
+        font-weight: 700 !important;
         line-height: 1 !important;
-        padding: 3px 9px !important;
+        padding: 4px 10px !important;
         border-radius: 9999px !important;
         margin-left: 6px !important;
         cursor: pointer !important;
-        box-shadow: 0 2px 6px rgba(109, 40, 217, 0.45) !important;
+        box-shadow: 0 2px 8px rgba(109, 40, 217, 0.5) !important;
         transition: transform 0.15s ease, background 0.15s ease !important;
         user-select: none !important;
         -webkit-user-select: none !important;
         white-space: nowrap !important;
+        flex-shrink: 0 !important;
     }
     .sileo-reply-pill:hover,
     .sileo-reply-pill:active {
@@ -201,7 +183,8 @@ function initSileo() {
             position: 'top-center',
             theme: 'dark',
             options: {
-                fill: '#000000'
+                fill: '#000000',
+                roundness: 21
             }
         }));
 
@@ -213,28 +196,82 @@ function initSileo() {
                 const raw = typeof titleText === 'string' ? titleText : 'Neue Nachricht';
                 const cleanTitle = raw.replace(/^[💬🎮\s]+/, '').trim() || 'Neue Nachricht';
                 const label = actionLabel || 'Antworten';
+                const preview = typeof description === 'string' ? description.trim() : '';
+                const shortPreview = preview.length > 28 ? preview.slice(0, 26) + '…' : preview;
 
-                // React Node für den Titel mit integriertem Antworten-Pill-Button
-                const titleContent = React.createElement('div', {
+                // Vollständig integrierter Title-Node mit Icon, Absender, Preview & Antworten-Button
+                const toastContent = React.createElement('div', {
                     style: {
                         display: 'inline-flex',
                         alignItems: 'center',
                         gap: '8px',
-                        lineHeight: '1'
+                        lineHeight: '1',
+                        userSelect: 'none',
+                        WebkitUserSelect: 'none',
+                        height: '100%'
                     }
                 }, [
+                    // 1. Icon Badge links
                     React.createElement('span', {
-                        key: 'name',
+                        key: 'icon-badge',
                         style: {
-                            color: '#ffffff',
-                            fontWeight: '600',
-                            fontSize: '0.85rem',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: '24px',
+                            height: '24px',
+                            minWidth: '24px',
+                            minHeight: '24px',
+                            borderRadius: '9999px',
+                            background: 'rgba(139, 92, 246, 0.25)',
+                            border: '1px solid rgba(167, 139, 250, 0.4)',
+                            fontSize: '12px',
                             lineHeight: '1',
+                            flexShrink: 0
+                        }
+                    }, iconEmoji || '💬'),
+
+                    // 2. Sender Name + Preview
+                    React.createElement('div', {
+                        key: 'text-container',
+                        style: {
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            fontSize: '0.82rem',
+                            lineHeight: '1',
+                            maxWidth: '190px',
+                            overflow: 'hidden',
                             whiteSpace: 'nowrap'
                         }
-                    }, cleanTitle),
+                    }, [
+                        React.createElement('span', {
+                            key: 'sender-name',
+                            style: {
+                                fontWeight: '700',
+                                color: '#ffffff',
+                                whiteSpace: 'nowrap'
+                            }
+                        }, cleanTitle),
+                        shortPreview ? React.createElement('span', {
+                            key: 'preview-sep',
+                            style: { color: '#94a3b8' }
+                        }, ':') : null,
+                        shortPreview ? React.createElement('span', {
+                            key: 'preview-text',
+                            style: {
+                                color: '#cbd5e1',
+                                fontWeight: '400',
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis'
+                            }
+                        }, shortPreview) : null
+                    ]),
+
+                    // 3. Antworten-Button
                     React.createElement('span', {
-                        key: 'reply-btn',
+                        key: 'reply-pill',
                         className: 'sileo-reply-pill',
                         onClick: (e) => {
                             e.preventDefault();
@@ -244,33 +281,17 @@ function initSileo() {
                     }, `${label} ➔`)
                 ]);
 
-                const badgeIcon = React.createElement('span', {
-                    style: {
-                        fontSize: '13px',
-                        lineHeight: '1',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center'
-                    }
-                }, iconEmoji || '💬');
-
-                return sileo.action({
-                    title: titleContent,
-                    icon: badgeIcon,
-                    description: description || '',
+                return sileo.show({
+                    title: toastContent,
                     fill: '#000000',
                     duration: 6500,
-                    button: {
-                        title: label,
-                        onClick: () => {
-                            if (typeof actionCallback === 'function') actionCallback();
-                        }
-                    }
+                    roundness: 21,
+                    autopilot: false
                 });
             } catch (err) {
                 console.warn('Sileo action error:', err);
                 try {
-                    return sileo.info({ title: titleText, description, fill: '#000000', duration: 6500 });
+                    return sileo.info({ title: titleText, fill: '#000000', duration: 6500 });
                 } catch (e2) {}
             }
         };

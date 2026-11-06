@@ -4,6 +4,40 @@ Alle wesentlichen Änderungen am Projekt werden in dieser Datei präzise und tec
 
 ---
 
+## [2.0.30] - 2026-11-06
+
+### Bug Fixes
+- **Pixel-perfekte vertikale Zentrierung & kompaktes Pill-Layout für Sileo Toasts auf Android & Mobile (`src/sileo-entry.js`, `js/sileo-bundle.js`):**
+  - Problem behoben, bei dem der Inhalt der Toast-Benachrichtigung auf Android nach unten verschoben angezeigt wurde und oben eine störende Lücke ("Forehead-Gap") aufwies.
+  - Sileo Toaster auf 42px Höhe, `autopilot: false` und nahtlose Ein-Zeilen-Pill umgestellt: Vermeidet unvollständige oder verformte 90px-Accordion-Zustände.
+  - Der Toast kombiniert nun links ein elegantes lila Icon-Badge (`💬` oder `🎮`), in der Mitte Absendername in Weiß und Nachrichten-Vorschau in hellem Schiefergrau sowie rechts einen gut sichtbaren, abgerundeten „Antworten ➔“-Pill-Button.
+  - Verdecktes Standard-Badge von Sileo (`[data-sileo-badge] { display: none !important; }`), wodurch das blaue Pfeil-Icon und Konflikte mit dem Text vollständig eliminiert wurden.
+  - Reines Tiefschwarz (`#000000`) für Hintergrund und SVG-Canvas mit dezentem Schatten und Border (`rgba(255, 255, 255, 0.15)`).
+- **Unterdrückung doppelter System-Benachrichtigungen auf iOS bei geöffneter App (`server.js`, `sw.js`, `js/app.js`):**
+  - Problem behoben, bei dem auf iOS Safari / PWA beim Empfang einer Nachricht sowohl der In-App-Toast als auch ein iOS-System-Banner angezeigt wurden.
+  - **Server-seitige WebPush-Sperre (`server.js`):** `isUserActiveInApp` prüft, ob für den Empfänger mindestens ein Socket aktiv und verbunden ist. Ist der Nutzer in der App aktiv, wird die WebPush-Zustellung unterdrückt, da die Nachricht latenzfrei per WebSocket (`dm:incoming`) als In-App-Toast ausgeliefert wird.
+  - **Client-zu-Service-Worker Synchronisation (`js/app.js`, `sw.js`):** Kontinuierlicher Sichtbarkeits-Heartbeat via `BroadcastChannel("wop_visibility_channel")` und `postMessage`. `sw.js` unterdrückt eingehende Push-Events verlässlich, wenn der Client innerhalb der letzten 15 Sekunden aktiv war oder `clients.matchAll` sichtbare Fenster meldet.
+  - Service-Worker-Cache auf `wop-party-v7` angehoben.
+
+### Misc
+- Versionsnummer auf **2.0.30** angehoben und alle Cache-Busting-Parameter aktualisiert.
+
+---
+
+## [2.0.29] - 2026-11-06
+
+### New Features
+- **Persistenter Seiten-State & automatische View-Wiederherstellung bei Neuladen (`js/app.js`, `index.html`):**
+  - Wurde eine Unterseite (z. B. Freunde, Shop, Profil, Chat-Postfach, 1:1 Privatnachricht, Rangliste, Feedback oder Admin-Panel) geöffnet und die Seite neu geladen, wird ab sofort exakt diese Seite inklusive Unter-Tabs und Chat-Partner wiederhergestellt, anstatt immer zur Startseite zurückzufallen.
+  - Dedizierter Page-State-Manager (`wop_active_page_v2` in `sessionStorage` und `localStorage`) trackt aktive Screens (`home`, `friends`, `shop`, `profile`, `messages`, `chat`, `leaderboard`, `feedback`, `admin`) sowie aktive Tabs (`tab: "online"`, `tab: "jokers"`, etc.) und Chat-Partner (`targetEmail`).
+  - Schließen eines Modals oder Rückkehr per Zurück-Pfeil (`←`) setzt den Zustand sauber auf die übergeordnete Ansicht bzw. Startseite zurück.
+  - Nahtlose Koexistenz mit laufenden Lobbies: Befindet sich der Nutzer in einer aktiven Spielrunde, reconnectet die Lobby im Hintergrund, während die aktive Seite im Vordergrund angezeigt bleibt.
+
+### Misc
+- Versionsnummer auf **2.0.29** angehoben und alle Cache-Busting-Parameter aktualisiert.
+
+---
+
 ## [2.0.28] - 2026-11-06
 
 ### New Features

@@ -4,6 +4,40 @@ All notable changes to this project are documented in this file in a precise, te
 
 ---
 
+## [2.0.30] - 2026-11-06
+
+### Bug Fixes
+- **Pixel-Perfect Vertical Centering & Compact Pill Layout for Sileo Toasts on Android & Mobile (`src/sileo-entry.js`, `js/sileo-bundle.js`):**
+  - Resolved visual alignment defect on Android where toast content was pushed downwards creating an empty gap ("forehead gap") above the text.
+  - Refactored Sileo Toaster to a unified 42px single-row pill (`autopilot: false`), eliminating awkward 90px accordion states and deformed SVG blobs.
+  - Unified toast structure into a sleek black pill containing a circular badge on the left (`💬` or `🎮`), bold sender name with preview text, and an interactive "Reply ➔" ("Antworten ➔") button on the right.
+  - Suppressed Sileo's internal default action badge (`[data-sileo-badge] { display: none !important; }`) to eliminate the conflicting blue arrow circle.
+  - Pure deep black background (`#000000`) with subtle outer glow and high-contrast readable typography across all screen densities.
+- **Suppression of Duplicate System Push Notifications on iOS with App Open (`server.js`, `sw.js`, `js/app.js`):**
+  - Resolved an issue on iOS Safari / PWA where users received both the in-app toast and an iOS system banner notification simultaneously while using the app.
+  - **Backend WebPush Gatekeeper (`server.js`):** Updated `isUserActiveInApp` to check for active, connected WebSocket connections. If the user is actively connected to the server, system Web Push is bypassed since real-time WebSocket delivery (`dm:incoming`) triggers the in-app toast directly.
+  - **Client-to-Worker Visibility Heartbeat (`js/app.js`, `sw.js`):** Bi-directional visibility sync via `BroadcastChannel("wop_visibility_channel")` and `postMessage`. Service Worker push event listener suppresses system notification banners whenever the web application was visible within the last 15 seconds.
+  - Service Worker cache upgraded to `wop-party-v7`.
+
+### Misc
+- Version bumped to **2.0.30** with updated cache-busting query strings across assets.
+
+---
+
+## [2.0.29] - 2026-11-06
+
+### New Features
+- **Persistent Page State & Automatic View Restoration on Page Reload (`js/app.js`, `index.html`):**
+  - If a subpage (e.g. Friends, Shop, Profile, Message Inbox, 1:1 Direct Message chat, Leaderboard, Feedback, or Admin Panel) was open when reloading the browser, that exact screen—including active sub-tabs and current conversation partner—is now seamlessly restored instead of resetting to the home screen.
+  - Introduced a dedicated Page State Router (`wop_active_page_v2` across `sessionStorage` and `localStorage`) tracking active screens (`home`, `friends`, `shop`, `profile`, `messages`, `chat`, `leaderboard`, `feedback`, `admin`), active sub-tabs (`tab: "online"`, `tab: "jokers"`, etc.), and recipient emails (`targetEmail`).
+  - Closing a modal or tapping the back button (`←`) cleanly clears or steps back the active state to the parent view or home screen.
+  - Seamless coexistence with active game rooms: if the player is in an active game or lobby, background reconnection operates smoothly while keeping the foreground page view intact.
+
+### Misc
+- Version bumped to **2.0.29** with updated cache-busting query strings.
+
+---
+
 ## [2.0.28] - 2026-11-06
 
 ### New Features
