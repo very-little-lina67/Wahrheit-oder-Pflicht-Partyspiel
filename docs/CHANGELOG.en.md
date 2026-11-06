@@ -4,6 +4,22 @@ All notable changes to this project are documented in this file in a precise, te
 
 ---
 
+## [2.0.34] - 2026-11-06
+
+### Bug Fixes
+- **Kicked players returned to the start screen (`js/app.js`):**
+  - `closeRoundStatsModal` only handled `"leave"` and `"leak"` – **`"kick"`** was missing, so kicked players often stayed in the in-round UI after the stats dialog.
+  - Admin/Master kicks now set `_roundStatsPendingAction = "kick"` and after “OK” on round stats call `kickEliminatedPlayerToSetup()` (setup/start screen like leak).
+- **Admin/Master see all lobby players including Pass & Play (`js/app.js`):**
+  - Kick/leak picker lists active players **including local seats** (with device/owner hint).
+  - Name lookup strips optional `[…]` suffixes and matches display names.
+  - When applying lobby state, Admin/Master (including spectators) keep known `isLocal` seats so Pass & Play names do not disappear.
+
+### Misc
+- Version **2.0.34**; cache-busting `?v=2.0.34`; Service Worker **`wop-party-v10`**.
+
+---
+
 ## [2.0.33] - 2026-11-06
 
 ### New Features / Improvements
