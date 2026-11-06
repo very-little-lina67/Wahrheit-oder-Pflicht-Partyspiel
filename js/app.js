@@ -1443,7 +1443,7 @@
         let sessionCoins = 0;
         let sessionJokers = 0;
         let sessionPeakStreak = 0;
-        let _roundStatsPendingAction = null; // "leave" | "leak" | null
+        let _roundStatsPendingAction = null; // "leave" | "leak" | "kick" | null
         let jokersUsedSkip = 0;
         let jokersUsedForce = 0;
         let userLevel = 1;
@@ -6589,6 +6589,15 @@
                     const prev = prevList.find(p => namesEqual(p, ip));
                     return normalizePlayerEntry(ip, prev);
                 });
+                // Admin/Master (auch als Zuschauer): lokale Pass-&-Play-Sitze nie verwerfen,
+                // falls der Host-State sie mit isLocal liefert oder sie lokal noch bekannt sind
+                if (myRole === "admin" || myRole === "master") {
+                    prevList.forEach(p => {
+                        if (p && p.isLocal && !players.some(m => namesEqual(m, p))) {
+                            players.push(normalizePlayerEntry(p, p));
+                        }
+                    });
+                }
                 updatePlayerList();
             }
             if (data.playerStatuses && typeof data.playerStatuses === "object") {
@@ -7234,7 +7243,8 @@
             _roundStatsPendingAction = null;
             if (action === "leave") {
                 _doLeaveLobbyCleanup();
-            } else if (action === "leak") {
+            } else if (action === "leak" || action === "kick") {
+                // Leak und Admin/Master-Kick: zurück zum Startbildschirm / Lobby-Setup
                 kickEliminatedPlayerToSetup();
             }
         }
@@ -8648,13 +8658,22 @@
         }
 
         function findPlayerByNameInput(input) {
-            const q = String(input || "").trim().toLowerCase();
+            // Optionalen Pass-&-Play-Zusatz "[...]" aus dem Kick-Prompt entfernen
+            let q = String(input || "").trim();
+            q = q.replace(/\s*\[[^\]]*\]\s*$/, "").trim().toLowerCase();
             if (!q) return null;
             // 1) Exakter Match (ohne Groß/Klein)
             let target = players.find(p => String(p.name || "").trim().toLowerCase() === q);
             if (target) return target;
-            // 2) Enthält-Match (wenn eindeutig)
-            const partial = players.filter(p => String(p.name || "").trim().toLowerCase().includes(q));
+            // 2) Display-Name / getUserDisplayName
+            target = players.find(p => String(getUserDisplayName(p) || "").trim().toLowerCase() === q);
+            if (target) return target;
+            // 3) Enthält-Match (wenn eindeutig)
+            const partial = players.filter(p => {
+                const n = String(p.name || "").trim().toLowerCase();
+                const d = String(getUserDisplayName(p) || "").trim().toLowerCase();
+                return n.includes(q) || d.includes(q);
+            });
             if (partial.length === 1) return partial[0];
             return null;
         }
@@ -8901,10 +8920,17 @@
          */
         async function performPlayerElimination(options = {}) {
             const reason = options.reason || "leak";
-            const activeNames = players
-                .filter(p => !p.eliminated && !p.isSpectator)
-                .map(p => getUserDisplayName(p))
-                .filter(Boolean);
+            // Alle aktiven Spieler inkl. Pass-&-Play/lokale Sitze (wichtig für Admin/Master)
+            const activePlayersForAction = players.filter(p => !p.eliminated && !p.isSpectator);
+            const activeNames = activePlayersForAction.map(p => {
+                const n = getUserDisplayName(p);
+                if (!n) return "";
+                if (isLocalSeat(p)) {
+                    const owner = p.localOwner || (currentLang === "de" ? "Pass & Play" : "Pass & Play");
+                    return `${n} [${owner}]`;
+                }
+                return n;
+            }).filter(Boolean);
 
             if (!activeNames.length) {
                 alert(currentLang === "de" ? "Keine aktiven Spieler mehr." : "No active players left.");
