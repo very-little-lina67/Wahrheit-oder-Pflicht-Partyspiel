@@ -114,6 +114,18 @@
 
             socket.on("connect_error", (err) => {
                 console.warn("WebSocket Verbindungsfehler:", err.message);
+                if (window.__wopServerErrors) {
+                    window.__wopServerErrors.push({
+                        url: "ws://" + location.host + "/socket.io/",
+                        method: "WS",
+                        status: 0,
+                        statusText: "WebSocket Connect Error",
+                        error: err.message || "connect_error",
+                        at: new Date().toISOString(),
+                        timestamp: Date.now()
+                    });
+                    if (window.__wopServerErrors.length > 30) window.__wopServerErrors.shift();
+                }
             });
         } else {
             console.warn("⚠️ Socket.io Client-Bibliothek nicht verfügbar. Fallback auf REST.");

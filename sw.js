@@ -1,5 +1,5 @@
 /* Service Worker – macht die App in Chrome installierbar (PWA) */
-const CACHE_NAME = "wop-party-v9";
+const CACHE_NAME = "wop-party-v11";
 const PRECACHE = [
   "./",
   "./index.html",

@@ -108,7 +108,9 @@ Alle REST-Endpunkte laufen unter dem Präfix `/api`.
 
 ### 3.3 Administration & Feedback
 - **`POST /api/feedback`**
-  - Speichert Bug-Reports & Feedback.
+  - Speichert Bug-Reports & Feedback mit erweiterter Fehlertelemetrie.
+  - **Payload:** `{ email, name, type, text, errorCode, analysis, meta, author }`
+  - **Meta-Objekt:** Enthält automatisch erfasste Konsolenfehler (`consoleErrors`), HTTP-/Netzwerkfehler (`clientServerErrors`), Laufzeitfehler (`runtimeErrors`) sowie serverseitig korrelierte 4xx/5xx-Fehler (`serverErrors`).
 - **`GET /api/admin/users`** (Nur Admin / Master)
   - Ruft vollständige Nutzerliste ab.
 - **`PUT /api/admin/user/role`** (Nur Admin / Master)

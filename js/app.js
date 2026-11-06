@@ -1039,6 +1039,7 @@
             const jfpDesc = document.getElementById("ui-joker-force-pack-desc"); if (jfpDesc) jfpDesc.innerText = t.jokerForcePackDesc || "";
             const jsBtn = document.getElementById("ui-joker-skip-btn-text"); if (jsBtn) jsBtn.innerText = t.jokerSkipBtnText || "Aufgabe überspringen";
             const jfBtn = document.getElementById("ui-joker-force-btn-text"); if (jfBtn) jfBtn.innerText = t.jokerForceBtnText || "Spieler aussetzen";
+            const cjfBtn = document.getElementById("ui-creator-joker-force-text"); if (cjfBtn) cjfBtn.innerText = currentLang === "de" ? "Spieler vorab aussetzen" : "Force player skip";
             const themeIds = {
                 "ui-theme-cyberpunk": t.themeCyberpunk,
                 "ui-theme-retro": t.themeRetro,
@@ -1337,7 +1338,15 @@
                 wheelCont.innerText = t.wheelReady;
             }
             const spinBtn = document.getElementById("spin-btn"); if (spinBtn) spinBtn.innerText = t.spinBtn;
-            const nextRoundBtn = document.getElementById("next-round-btn"); if (nextRoundBtn) nextRoundBtn.innerText = t.nextRoundBtn;
+            const nextRoundBtn = document.getElementById("next-round-btn");
+            if (nextRoundBtn) {
+                const hasUnvoted = getNextControllableUnvotedName(nextRoundVotedPlayers);
+                if (!hasUnvoted && nextRoundVotedPlayers.length > 0) {
+                    nextRoundBtn.innerText = currentLang === 'de' ? "✅ Bestätigt (Warte auf Mitspieler…)" : "✅ Confirmed (Waiting for players…)";
+                } else {
+                    nextRoundBtn.innerText = t.nextRoundBtn;
+                }
+            }
             const waitOtherRound = document.getElementById("ui-waiting-other-round"); if (waitOtherRound) waitOtherRound.innerText = t.waitingOtherRound;
             const chatInp = document.getElementById("chat-input"); if (chatInp) chatInp.placeholder = t.chatPlaceholder;
             const chatSend = document.getElementById("ui-chat-send"); if (chatSend) chatSend.innerText = t.chatSend;
@@ -3574,7 +3583,8 @@
 
         /**
          * Force-Skip: den aktuell dran seienden Spieler aussetzen.
-         * Nur nutzbar, wenn man selbst nicht der aktuelle Spieler ist und eine Aufgabe läuft.
+         * Kann während des gesamten Zugs eingesetzt werden – vor der Aufgabenwahl
+         * oder während der Ausführung, damit Mitspieler keine Aufgabe umsonst stellen müssen.
          */
         async function useForceSkipJoker() {
             if (isSpectator) return;
@@ -3584,26 +3594,32 @@
                     : "No Force-Skip Jokers left! Buy some in the shop.");
                 return;
             }
+            if (gamePhase !== "wop" || !gameStarted || currentSharedResult) {
+                alert(currentLang === "de"
+                    ? "Force-Skip kann nur während eines laufenden Zugs genutzt werden."
+                    : "Force-Skip can only be used during an active turn.");
+                return;
+            }
             const currentP = players[currentPlayerIndex];
             if (!currentP || currentP.eliminated || currentP.isSpectator) return;
             const targetName = getUserDisplayName(currentP);
-            if (namesEqual(targetName, myName)) {
+            if (canControlPlayer(targetName)) {
                 alert(currentLang === "de"
                     ? "Du kannst dich nicht selbst aussetzen – nutze den Skip-Joker."
                     : "You cannot force-skip yourself – use the Skip Joker.");
                 return;
             }
-            // Nur sinnvoll, wenn eine Aufgabe aktiv ist oder der Spieler gewählt hat
-            if (!pendingChoice && !currentTaskText) {
-                alert(currentLang === "de"
-                    ? "Aktuell läuft keine Aufgabe zum Aussetzen."
-                    : "No active task to force-skip right now.");
-                return;
-            }
 
-            if (!await customConfirm(currentLang === "de"
-                ? `Force-Skip-Joker auf ${targetName} anwenden? Die Aufgabe wird übersprungen.`
-                : `Apply Force-Skip Joker on ${targetName}? The task will be skipped.`)) {
+            const isBeforeTask = !pendingChoice && !currentTaskText;
+            const confirmMsg = isBeforeTask
+                ? (currentLang === "de"
+                    ? `Force-Skip-Joker auf ${targetName} anwenden? Spieler wird vor Aufgabenwahl übersprungen.`
+                    : `Apply Force-Skip Joker on ${targetName}? Player will be skipped before task selection.`)
+                : (currentLang === "de"
+                    ? `Force-Skip-Joker auf ${targetName} anwenden? Die Aufgabe wird übersprungen.`
+                    : `Apply Force-Skip Joker on ${targetName}? The task will be skipped.`);
+
+            if (!await customConfirm(confirmMsg)) {
                 return;
             }
 
@@ -3630,6 +3646,34 @@
                 handleIncomingData(forceData);
             }
         }
+
+        function updateForceJokerUI(targetPlayer) {
+            const tp = targetPlayer || (players[currentPlayerIndex] ? getUserDisplayName(players[currentPlayerIndex]) : "");
+            const canUse = !isSpectator && (jokerForceCount > 0) && tp && !canControlPlayer(tp) && gamePhase === "wop" && !currentSharedResult;
+
+            const forceBox = document.getElementById("joker-force-box");
+            if (forceBox) {
+                if (canUse) {
+                    forceBox.classList.remove("hidden");
+                    const cnt = document.getElementById("joker-force-btn-count");
+                    if (cnt) cnt.innerText = String(jokerForceCount);
+                } else {
+                    forceBox.classList.add("hidden");
+                }
+            }
+
+            const creatorForceBox = document.getElementById("creator-joker-force-box");
+            if (creatorForceBox) {
+                if (canUse && currentTaskCreator && canControlPlayer(currentTaskCreator)) {
+                    creatorForceBox.classList.remove("hidden");
+                    const cnt = document.getElementById("creator-joker-force-count");
+                    if (cnt) cnt.innerText = String(jokerForceCount);
+                } else {
+                    creatorForceBox.classList.add("hidden");
+                }
+            }
+        }
+        window.updateForceJokerUI = updateForceJokerUI;
 
         async function buyTheme(themeName, cost) {
             const alreadyUnlocked = unlockedThemes.includes(themeName);
@@ -4067,9 +4111,86 @@
         }
         window.closeAccountModal = closeAccountModal;
 
-        // Letzte Laufzeitfehler für Bug-Reports sammeln
+        // Globales Logging für Fehlerdiagnose (Console-Errors, Server-Errors, Runtime-Errors)
         window.__wopLastError = window.__wopLastError || null;
         window.__wopErrorLog = window.__wopErrorLog || [];
+        window.__wopConsoleErrors = window.__wopConsoleErrors || [];
+        window.__wopServerErrors = window.__wopServerErrors || [];
+
+        if (!window.__wopConsoleErrorsBound) {
+            window.__wopConsoleErrorsBound = true;
+            const origConsoleError = console.error;
+            console.error = function(...args) {
+                try {
+                    const formatted = args.map(a => {
+                        if (a instanceof Error) return `${a.message}${a.stack ? '\n' + a.stack : ''}`;
+                        if (typeof a === 'object') {
+                            try { return JSON.stringify(a); } catch (_) { return String(a); }
+                        }
+                        return String(a);
+                    }).join(' ');
+                    const errObj = new Error();
+                    const stack = (errObj.stack ? String(errObj.stack) : "").slice(0, 800);
+                    const entry = {
+                        message: formatted.slice(0, 1000),
+                        stack,
+                        at: new Date().toISOString(),
+                        timestamp: Date.now()
+                    };
+                    window.__wopConsoleErrors.push(entry);
+                    if (window.__wopConsoleErrors.length > 30) window.__wopConsoleErrors.shift();
+                } catch (_) {}
+                origConsoleError.apply(console, args);
+            };
+        }
+
+        if (!window.__wopFetchInterceptBound) {
+            window.__wopFetchInterceptBound = true;
+            const origFetch = window.fetch;
+            window.fetch = async function(...args) {
+                const url = typeof args[0] === 'string' ? args[0] : (args[0] && args[0].url ? args[0].url : "");
+                const method = (args[1] && args[1].method) || (args[0] && args[0].method) || "GET";
+                try {
+                    const res = await origFetch.apply(this, args);
+                    if (!res.ok && res.status >= 400) {
+                        try {
+                            const clone = res.clone();
+                            clone.text().then(txt => {
+                                let errMsg = txt.slice(0, 300);
+                                try {
+                                    const parsed = JSON.parse(txt);
+                                    if (parsed.error) errMsg = parsed.error;
+                                } catch (_) {}
+                                window.__wopServerErrors.push({
+                                    url,
+                                    method,
+                                    status: res.status,
+                                    statusText: res.statusText || "",
+                                    error: errMsg,
+                                    at: new Date().toISOString(),
+                                    timestamp: Date.now()
+                                });
+                                if (window.__wopServerErrors.length > 30) window.__wopServerErrors.shift();
+                            }).catch(() => {});
+                        } catch (_) {}
+                    }
+                    return res;
+                } catch (networkErr) {
+                    window.__wopServerErrors.push({
+                        url,
+                        method,
+                        status: 0,
+                        statusText: "Network Error",
+                        error: networkErr ? (networkErr.message || String(networkErr)) : "Network failure",
+                        at: new Date().toISOString(),
+                        timestamp: Date.now()
+                    });
+                    if (window.__wopServerErrors.length > 30) window.__wopServerErrors.shift();
+                    throw networkErr;
+                }
+            };
+        }
+
         if (!window.__wopErrorListenersBound) {
             window.__wopErrorListenersBound = true;
             window.addEventListener("error", (ev) => {
@@ -4080,11 +4201,12 @@
                     line: ev.lineno || 0,
                     col: ev.colno || 0,
                     stack: ev.error && ev.error.stack ? String(ev.error.stack).slice(0, 800) : "",
-                    at: new Date().toISOString()
+                    at: new Date().toISOString(),
+                    timestamp: Date.now()
                 };
                 window.__wopLastError = entry;
                 window.__wopErrorLog.push(entry);
-                if (window.__wopErrorLog.length > 15) window.__wopErrorLog.shift();
+                if (window.__wopErrorLog.length > 20) window.__wopErrorLog.shift();
             });
             window.addEventListener("unhandledrejection", (ev) => {
                 const reason = ev.reason;
@@ -4095,98 +4217,219 @@
                     line: 0,
                     col: 0,
                     stack: reason && reason.stack ? String(reason.stack).slice(0, 800) : "",
-                    at: new Date().toISOString()
+                    at: new Date().toISOString(),
+                    timestamp: Date.now()
                 };
                 window.__wopLastError = entry;
                 window.__wopErrorLog.push(entry);
-                if (window.__wopErrorLog.length > 15) window.__wopErrorLog.shift();
+                if (window.__wopErrorLog.length > 20) window.__wopErrorLog.shift();
             });
         }
 
-        /** Analysiert Bug-Text + ggf. letzten JS-Fehler → Error-Code + Kurzanalyse */
-        function analyzeBugReport(text, runtimeError) {
+        /** Analysiert Bug-Text, Laufzeitfehler, Konsolenfehler & Serverfehler → Error-Code + detaillierte Analyse */
+        function analyzeBugReport(text, runtimeError, consoleErrors = [], serverErrors = []) {
             const t = String(text || "").toLowerCase();
             const rules = [
-                { code: "ERR-AUTH", area: "Login / Authentifizierung", keys: ["login", "einlogg", "anmeld", "passwort", "password", "registr", "auth", "konto", "account", "session"] },
-                { code: "ERR-LOBBY", area: "Lobby / Multiplayer", keys: ["lobby", "beitret", "host", "code", "spieler", "join", "room", "raum"] },
-                { code: "ERR-SOCKET", area: "Verbindung / WebSocket", keys: ["socket", "verbind", "disconnect", "timeout", "offline", "netzwerk", "network", "reconnect", "latency"] },
+                { code: "ERR-AUTH", area: "Login / Authentifizierung", keys: ["login", "einlogg", "anmeld", "passwort", "password", "registr", "auth", "konto", "account", "session", "verify"] },
+                { code: "ERR-LOBBY", area: "Lobby / Multiplayer", keys: ["lobby", "beitret", "host", "code", "spieler", "join", "room", "raum", "kick", "zuschauer", "spectat"] },
+                { code: "ERR-SOCKET", area: "Verbindung / WebSocket", keys: ["socket", "verbind", "disconnect", "timeout", "offline", "netzwerk", "network", "reconnect", "latency", "connect_error"] },
                 { code: "ERR-CHAT", area: "Chat / Nachrichten", keys: ["chat", "nachricht", "message", "dm", "inbox", "schreiben"] },
-                { code: "ERR-COINS", area: "Coins / Belohnungen", keys: ["coin", "münze", "belohnung", "reward", "xp ", "level"] },
+                { code: "ERR-COINS", area: "Coins / Belohnungen", keys: ["coin", "münze", "belohnung", "reward", "xp", "level"] },
                 { code: "ERR-RANKING", area: "Rangliste", keys: ["rangliste", "ranking", "leaderboard", "monat", "monthly"] },
                 { code: "ERR-SHOP", area: "Shop / Käufe", keys: ["shop", "kaufen", "emoji", "accessoire", "joker", "theme", "freischalt"] },
-                { code: "ERR-WHEEL", area: "Glücksrad", keys: ["rad", "wheel", "glücksrad", "spin"] },
+                { code: "ERR-WHEEL", area: "Glücksrad", keys: ["rad", "wheel", "glücksrad", "spin", "dreh", "ergebnis", "sektor", "nächste runde", "next round"] },
                 { code: "ERR-ONLINE", area: "Online-Status", keys: ["online", "offline", "status", "anwesend", "presence"] },
                 { code: "ERR-SOCIAL", area: "Freunde / Social", keys: ["freund", "friend", "anfrage", "invite", "einlad"] },
                 { code: "ERR-UI", area: "Anzeige / UI", keys: ["anzeig", "layout", "button", "knopf", "design", "weiß", "schwarz", "scroll", "darstell"] },
                 { code: "ERR-CRASH", area: "Absturz / Freeze", keys: ["crash", "absturz", "hängt", "freeze", "lädt nicht", "loading", "stuck", "kaputt", "fehler"] }
             ];
 
-            let best = null;
-            let bestScore = 0;
+            const scores = {};
+            rules.forEach(r => { scores[r.code] = 0; });
+
+            // 1. Text-Schlüsselwörter bewerten
             rules.forEach(r => {
-                let score = 0;
-                r.keys.forEach(k => { if (t.includes(k)) score += 1; });
-                if (score > bestScore) { bestScore = score; best = r; }
+                r.keys.forEach(k => {
+                    if (t.includes(k)) scores[r.code] += 1;
+                });
             });
 
+            // 2. Konsolenfehler auswerten
+            const cList = Array.isArray(consoleErrors) ? consoleErrors : [];
+            let matchedConsoleError = null;
+            cList.forEach(ce => {
+                const blob = `${ce.message || ""} ${ce.stack || ""}`.toLowerCase();
+                rules.forEach(r => {
+                    const hits = r.keys.filter(k => blob.includes(k)).length;
+                    if (hits > 0) {
+                        scores[r.code] += (hits * 3);
+                        if (!matchedConsoleError) matchedConsoleError = ce;
+                    }
+                });
+            });
+
+            // 3. Serverfehler / HTTP-Fehler auswerten
+            const sList = Array.isArray(serverErrors) ? serverErrors : [];
+            let matchedServerError = null;
+            sList.forEach(se => {
+                const blob = `${se.url || ""} ${se.error || ""} ${se.statusText || ""}`.toLowerCase();
+                rules.forEach(r => {
+                    const hits = r.keys.filter(k => blob.includes(k)).length;
+                    if (hits > 0) {
+                        scores[r.code] += (hits * 3);
+                        if (!matchedServerError) matchedServerError = se;
+                    }
+                });
+                if (/auth|login|register|user|verify/.test(blob)) scores["ERR-AUTH"] += 3;
+                if (/lobby|room/.test(blob)) scores["ERR-LOBBY"] += 3;
+                if (/socket|disconnect/.test(blob)) scores["ERR-SOCKET"] += 3;
+            });
+
+            // 4. Runtime-Fehler (window.onerror / unhandledrejection)
             const rtMsg = runtimeError ? String(runtimeError.message || "").toLowerCase() : "";
             const rtSrc = runtimeError ? String(runtimeError.source || "").toLowerCase() : "";
             if (rtMsg || rtSrc) {
                 const blob = rtMsg + " " + rtSrc;
-                if (/firebase|permission|auth|login/.test(blob) && (!best || bestScore < 2)) {
-                    best = rules.find(r => r.code === "ERR-AUTH"); bestScore = Math.max(bestScore, 2);
-                } else if (/socket|websocket|network|fetch|failed to fetch/.test(blob) && (!best || bestScore < 2)) {
-                    best = rules.find(r => r.code === "ERR-SOCKET"); bestScore = Math.max(bestScore, 2);
-                } else if (/lobby|room/.test(blob) && (!best || bestScore < 2)) {
-                    best = rules.find(r => r.code === "ERR-LOBBY"); bestScore = Math.max(bestScore, 2);
-                }
+                rules.forEach(r => {
+                    const hits = r.keys.filter(k => blob.includes(k)).length;
+                    if (hits > 0) scores[r.code] += (hits * 3);
+                });
+                if (/firebase|permission|auth|login/.test(blob)) scores["ERR-AUTH"] += 3;
+                if (/socket|websocket|network|fetch/.test(blob)) scores["ERR-SOCKET"] += 3;
+                if (/wheel|spin|rotate/.test(blob)) scores["ERR-WHEEL"] += 3;
             }
+
+            let best = null;
+            let bestScore = 0;
+            rules.forEach(r => {
+                if (scores[r.code] > bestScore) {
+                    bestScore = scores[r.code];
+                    best = r;
+                }
+            });
 
             if (!best) {
                 best = { code: "ERR-GENERAL", area: currentLang === "de" ? "Allgemein / unklar" : "General / unclear" };
             }
 
             let hash = 0;
-            const src = String(text || "") + (runtimeError ? runtimeError.message : "");
+            const src = String(text || "") + (runtimeError ? runtimeError.message : "") + (matchedConsoleError ? matchedConsoleError.message : "") + (matchedServerError ? matchedServerError.error : "");
             for (let i = 0; i < src.length; i++) hash = ((hash << 5) - hash) + src.charCodeAt(i) | 0;
             const short = Math.abs(hash).toString(16).toUpperCase().slice(0, 4).padStart(4, "0");
             const errorCode = `WOP-${best.code}-${short}`;
 
             const de = currentLang === "de";
-            let analysis = de
+            let analysisParts = [];
+            analysisParts.push(de
                 ? `Vermuteter Bereich: ${best.area}. Fehlercode: ${errorCode}.`
-                : `Suspected area: ${best.area}. Error code: ${errorCode}.`;
-            if (runtimeError && runtimeError.message) {
-                analysis += de
-                    ? ` Erkannter Laufzeitfehler: „${runtimeError.message}“`
-                    : ` Detected runtime error: "${runtimeError.message}"`;
-                if (runtimeError.source) {
-                    analysis += ` in ${runtimeError.source}${runtimeError.line ? ":" + runtimeError.line : ""}.`;
-                } else {
-                    analysis += ".";
-                }
-            } else if (bestScore === 0) {
-                analysis += de
-                    ? " Keine klaren Schlüsselwörter – bitte mehr Details (wo genau, was geklickt?)."
-                    : " No clear keywords – please add more details (where, what was clicked?).";
-            } else {
-                analysis += de
-                    ? ` Erkannt anhand der Beschreibung (Treffer: ${bestScore}).`
-                    : ` Detected from description (matches: ${bestScore}).`;
+                : `Suspected area: ${best.area}. Error code: ${errorCode}.`);
+
+            if (matchedConsoleError && matchedConsoleError.message) {
+                const snippet = matchedConsoleError.message.slice(0, 140).replace(/\n/g, " ");
+                analysisParts.push(de
+                    ? `Erkannter Konsolenfehler: „${snippet}“`
+                    : `Detected console error: "${snippet}"`);
+            }
+
+            if (matchedServerError && matchedServerError.error) {
+                const sUrl = matchedServerError.url ? ` (${matchedServerError.url})` : "";
+                const sCode = matchedServerError.status ? `HTTP ${matchedServerError.status}` : "Netzwerk";
+                const snippet = String(matchedServerError.error).slice(0, 140).replace(/\n/g, " ");
+                analysisParts.push(de
+                    ? `Erkannter Serverfehler: ${sCode}${sUrl} – „${snippet}“`
+                    : `Detected server error: ${sCode}${sUrl} – "${snippet}"`);
+            }
+
+            if (runtimeError && runtimeError.message && (!matchedConsoleError || matchedConsoleError.message !== runtimeError.message)) {
+                analysisParts.push(de
+                    ? `Erkannter Laufzeitfehler: „${runtimeError.message}“${runtimeError.source ? ` in ${runtimeError.source}${runtimeError.line ? ":" + runtimeError.line : ""}` : ""}`
+                    : `Detected runtime error: "${runtimeError.message}"${runtimeError.source ? ` in ${runtimeError.source}${runtimeError.line ? ":" + runtimeError.line : ""}` : ""}`);
+            }
+
+            if (bestScore === 0) {
+                analysisParts.push(de
+                    ? "Keine klaren Schlüsselwörter oder Fehlermeldungen erfasst – bitte mehr Details angeben."
+                    : "No clear keywords or error messages captured – please provide more details.");
+            } else if (!matchedConsoleError && !matchedServerError && !runtimeError) {
+                analysisParts.push(de
+                    ? `Erkannt anhand der Beschreibung (Treffer: ${bestScore}).`
+                    : `Detected from description (matches: ${bestScore}).`);
             }
 
             return {
                 errorCode,
                 area: best.area,
                 areaCode: best.code,
-                analysis,
-                confidence: bestScore
+                analysis: analysisParts.join(" "),
+                confidence: bestScore,
+                matchedConsoleError,
+                matchedServerError
             };
         }
+
+        function updateFeedbackDiagPreview() {
+            const summary = document.getElementById("feedback-diag-summary");
+            const details = document.getElementById("feedback-diag-details");
+            if (!summary) return;
+            const cList = window.__wopConsoleErrors || [];
+            const sList = window.__wopServerErrors || [];
+            const rList = window.__wopErrorLog || [];
+            const total = cList.length + sList.length + rList.length;
+
+            if (total === 0) {
+                summary.innerText = currentLang === "de"
+                    ? "🔍 Diagnose: Keine Fehler in Konsole/Netzwerk"
+                    : "🔍 Diagnostics: No errors in console/network";
+            } else {
+                summary.innerText = currentLang === "de"
+                    ? `⚠️ Diagnose: ${cList.length} Konsolenfehler, ${sList.length} Serverfehler`
+                    : `⚠️ Diagnostics: ${cList.length} console errors, ${sList.length} server errors`;
+            }
+
+            if (details) {
+                let lines = [];
+                if (cList.length) {
+                    lines.push(`--- Console Errors (${cList.length}) ---`);
+                    cList.slice(-4).forEach(e => {
+                        const time = e.at ? e.at.slice(11, 19) : "";
+                        lines.push(`[${time}] ${e.message}`);
+                    });
+                }
+                if (sList.length) {
+                    lines.push(`--- Server Errors (${sList.length}) ---`);
+                    sList.slice(-4).forEach(e => {
+                        const time = e.at ? e.at.slice(11, 19) : "";
+                        lines.push(`[${time}] ${e.status ? 'HTTP ' + e.status : 'Netzwerk'} ${e.url || ''}: ${e.error}`);
+                    });
+                }
+                if (rList.length) {
+                    lines.push(`--- Runtime Errors (${rList.length}) ---`);
+                    rList.slice(-3).forEach(e => {
+                        const time = e.at ? e.at.slice(11, 19) : "";
+                        lines.push(`[${time}] ${e.message}`);
+                    });
+                }
+                details.textContent = lines.join("\n") || (currentLang === "de" ? "Keine Fehlerdetails erfasst." : "No error details captured.");
+            }
+        }
+
+        function toggleFeedbackDiagDetails() {
+            const details = document.getElementById("feedback-diag-details");
+            const btn = document.getElementById("feedback-diag-toggle");
+            if (!details) return;
+            details.classList.toggle("hidden");
+            if (btn) {
+                btn.innerText = details.classList.contains("hidden")
+                    ? "Details"
+                    : (currentLang === "de" ? "▲ Schließen" : "▲ Close");
+            }
+        }
+        window.toggleFeedbackDiagDetails = toggleFeedbackDiagDetails;
 
         function openFeedbackModal() {
             document.getElementById("feedback-text-input").value = "";
             document.getElementById("feedback-modal").classList.remove("hidden");
+            updateFeedbackDiagPreview();
             saveActivePage({ page: "feedback" });
         }
 
@@ -4210,7 +4453,10 @@
             let meta = {};
             if (String(type).toLowerCase() === "bug") {
                 const runtimeError = window.__wopLastError || null;
-                const analyzed = analyzeBugReport(text, runtimeError);
+                const runtimeErrors = window.__wopErrorLog || [];
+                const consoleErrors = window.__wopConsoleErrors || [];
+                const serverErrors = window.__wopServerErrors || [];
+                const analyzed = analyzeBugReport(text, runtimeError, consoleErrors, serverErrors);
                 errorCode = analyzed.errorCode;
                 analysis = analyzed.analysis;
                 meta = {
@@ -4218,6 +4464,9 @@
                     areaCode: analyzed.areaCode,
                     confidence: analyzed.confidence,
                     runtimeError: runtimeError || null,
+                    runtimeErrors: runtimeErrors.slice(-10),
+                    consoleErrors: consoleErrors.slice(-15),
+                    serverErrors: serverErrors.slice(-15),
                     userAgent: navigator.userAgent || "",
                     url: location.href || "",
                     lang: currentLang,
@@ -4590,6 +4839,41 @@
                                 ${rt.stack ? `<pre style="white-space:pre-wrap;font-size:10px;margin:4px 0 0;color:#fda4af;max-height:120px;overflow:auto;">${String(rt.stack).replace(/</g, "&lt;")}</pre>` : ""}
                            </div>`
                         : "";
+
+                    const ceList = Array.isArray(metaObj.consoleErrors) ? metaObj.consoleErrors : [];
+                    const ceHtml = ceList.length
+                        ? `<div style="margin-top:6px;padding:6px;background:rgba(239,68,68,0.12);border-radius:6px;font-size:11px;color:#fca5a5;">
+                                <b>${currentLang === "de" ? "Konsolenfehler (Console Errors)" : "Console Errors"} (${ceList.length}):</b>
+                                <div style="margin-top:4px;display:flex;flex-direction:column;gap:4px;">
+                                    ${ceList.map(e => `
+                                        <div style="background:rgba(0,0,0,0.3);padding:4px 6px;border-radius:4px;">
+                                            <span style="opacity:0.75;font-size:10px;">[${String(e.at || '').slice(11,19)}]</span>
+                                            <span style="font-weight:600;color:#fecaca;"> ${String(e.message || '').replace(/</g, "&lt;")}</span>
+                                            ${e.stack ? `<pre style="white-space:pre-wrap;font-size:9px;margin:2px 0 0;color:#fda4af;max-height:80px;overflow:auto;">${String(e.stack).replace(/</g, "&lt;")}</pre>` : ""}
+                                        </div>
+                                    `).join('')}
+                                </div>
+                           </div>`
+                        : "";
+
+                    const seList = Array.isArray(metaObj.serverErrors) ? metaObj.serverErrors : [];
+                    const seHtml = seList.length
+                        ? `<div style="margin-top:6px;padding:6px;background:rgba(245,158,11,0.15);border-radius:6px;font-size:11px;color:#fde047;">
+                                <b>${currentLang === "de" ? "Serverfehler (Server Errors)" : "Server Errors"} (${seList.length}):</b>
+                                <div style="margin-top:4px;display:flex;flex-direction:column;gap:4px;">
+                                    ${seList.map(e => `
+                                        <div style="background:rgba(0,0,0,0.3);padding:4px 6px;border-radius:4px;">
+                                            <span style="opacity:0.75;font-size:10px;">[${String(e.at || '').slice(11,19)}]</span>
+                                            <span style="font-weight:700;color:#facc15;">${e.status ? 'HTTP ' + e.status : 'Netzwerk'}:</span>
+                                            <span style="color:#fef08a;"> ${String(e.url || '').replace(/</g, "&lt;")}</span>
+                                            <div style="color:#fed7aa;font-size:10px;margin-top:2px;">${String(e.error || '').replace(/</g, "&lt;")}</div>
+                                            ${e.stack ? `<pre style="white-space:pre-wrap;font-size:9px;margin:2px 0 0;color:#fed7aa;max-height:80px;overflow:auto;">${String(e.stack).replace(/</g, "&lt;")}</pre>` : ""}
+                                        </div>
+                                    `).join('')}
+                                </div>
+                           </div>`
+                        : "";
+
                     const metaHtml = isBug
                         ? `<div style="margin-top:6px;font-size:11px;color:#cbd5e1;line-height:1.45;">
                                 <div><b>${currentLang === "de" ? "Analyse" : "Analysis"}:</b> ${analysis || "—"}</div>
@@ -4598,6 +4882,8 @@
                                 ${metaObj.lobby ? `<div><b>Lobby:</b> ${String(metaObj.lobby).replace(/</g, "&lt;")}</div>` : ""}
                                 ${metaObj.userAgent ? `<div style="opacity:0.75;word-break:break-all;"><b>UA:</b> ${String(metaObj.userAgent).replace(/</g, "&lt;").slice(0, 120)}…</div>` : ""}
                                 ${rtHtml}
+                                ${ceHtml}
+                                ${seHtml}
                            </div>`
                         : "";
 
@@ -6623,7 +6909,28 @@
                 nextTurnVotedPlayers = data.nextTurnVotedPlayers;
             }
             if (Array.isArray(data.nextRoundVotedPlayers)) {
-                nextRoundVotedPlayers = data.nextRoundVotedPlayers;
+                const mergedVotes = [...data.nextRoundVotedPlayers];
+                (nextRoundVotedPlayers || []).forEach(v => {
+                    if (canControlPlayer(v) && !mergedVotes.some(m => namesEqual(m, v))) {
+                        mergedVotes.push(v);
+                    }
+                });
+                nextRoundVotedPlayers = mergedVotes;
+                const countEl = document.getElementById("round-votes-count");
+                const totalEl = document.getElementById("round-votes-total");
+                const activeCount = (players || []).filter(p => !p.eliminated && !p.isSpectator).length;
+                if (countEl) countEl.innerText = String(nextRoundVotedPlayers.length);
+                if (totalEl) totalEl.innerText = String(activeCount);
+                const nrb = document.getElementById("next-round-btn");
+                if (nrb && !isSpectator) {
+                    const hasUnvoted = getNextControllableUnvotedName(nextRoundVotedPlayers);
+                    nrb.disabled = !hasUnvoted;
+                    if (!hasUnvoted && nextRoundVotedPlayers.length > 0) {
+                        nrb.innerText = currentLang === 'de' ? "✅ Bestätigt (Warte auf Mitspieler…)" : "✅ Confirmed (Waiting for players…)";
+                    } else {
+                        nrb.innerText = currentLang === 'de' ? "➡️ Nächste Runde!" : "➡️ Next Round!";
+                    }
+                }
             }
 
             const phase = data.phase || "lobby";
@@ -7489,11 +7796,16 @@
                 const targetName = data.targetPlayer || "";
                 const byName = data.byPlayer || "";
                 taskCompleted = true;
+                const choiceText = data.choice || pendingChoice || "";
+                const fallbackTask = currentLang === "de"
+                    ? "Vor Aufgabenwahl mit Force-Skip ausgesetzt"
+                    : "Skipped with Force-Skip before task selection";
+                const taskText = data.taskText || currentTaskText || fallbackTask;
                 const resultData = {
                     type: "SHOW_RESULT",
                     targetPlayer: targetName,
-                    choice: data.choice || pendingChoice || "",
-                    taskText: data.taskText || currentTaskText || "",
+                    choice: choiceText,
+                    taskText: taskText,
                     resultText: currentLang === "de"
                         ? `🚫 Von ${byName} mit Force-Skip-Joker ausgesetzt!`
                         : `🚫 Force-skipped by ${byName}!`
@@ -8019,6 +8331,7 @@
                         : (canControlPlayer(currentPlayerName)
                             ? `Waiting for a task from ${currentTaskCreator || "another player"}…`
                             : `Waiting for a task to be created for ${currentPlayerName}…`));
+                updateForceJokerUI(currentPlayerName);
                 return;
             }
 
@@ -8028,13 +8341,16 @@
                 document.getElementById("waiting-info-text").innerText = (currentLang === 'de'
                     ? `[Zuschauer] Warte, bis ${currentPlayerName} wählt...`
                     : `[Spectating] Waiting for ${currentPlayerName} to choose...`);
+                updateForceJokerUI(currentPlayerName);
             } else if (canControlPlayer(currentPlayerName)) {
                 const selectBtn = document.getElementById("ui-select-btn");
                 if (selectBtn) selectBtn.disabled = false;
                 document.getElementById("wop-choice-area").classList.remove("hidden");
+                updateForceJokerUI(currentPlayerName);
             } else {
                 document.getElementById("waiting-for-player-box").classList.remove("hidden"); updateMinigameVisibility();
                 document.getElementById("waiting-info-text").innerText = (currentLang === 'de' ? `Warte, bis ${currentPlayerName} wählt...` : `Waiting for ${currentPlayerName} to choose...`);
+                updateForceJokerUI(currentPlayerName);
             }
         }
 
@@ -8219,6 +8535,7 @@
                     ? (isSpectator ? `[Zuschauer] Warte auf ${creatorName}...` : `Warte auf ${creatorName}...`)
                     : (isSpectator ? `[Spectating] Waiting for ${creatorName}...` : `Waiting for ${creatorName}...`));
             }
+            updateForceJokerUI(targetPlayer);
         }
 
         function sendCustomTask() {
@@ -8281,6 +8598,7 @@
                     }
                 }
                 document.getElementById("joker-force-box")?.classList.add("hidden");
+                document.getElementById("creator-joker-force-box")?.classList.add("hidden");
             } else {
                 document.getElementById("active-task-area").classList.add("hidden");
                 document.getElementById("waiting-for-player-box").classList.remove("hidden"); updateMinigameVisibility();
@@ -8290,17 +8608,7 @@
                     ? `${rolePrefix}${tp} führt aus: „${taskText}“`
                     : `${rolePrefix}${tp}'s task: "${taskText}"`;
 
-                // Force-Skip-Button für andere Spieler (nicht Zuschauer, Joker vorhanden)
-                const forceBox = document.getElementById("joker-force-box");
-                if (forceBox) {
-                    if (!isSpectator && jokerForceCount > 0 && !canControlPlayer(targetPlayer)) {
-                        forceBox.classList.remove("hidden");
-                        const cnt = document.getElementById("joker-force-btn-count");
-                        if (cnt) cnt.innerText = String(jokerForceCount);
-                    } else {
-                        forceBox.classList.add("hidden");
-                    }
-                }
+                updateForceJokerUI(targetPlayer);
                 document.getElementById("joker-skip-box")?.classList.add("hidden");
             }
         }
@@ -8411,6 +8719,7 @@
             document.getElementById("waiting-for-player-box").classList.add("hidden"); updateMinigameVisibility();
             document.getElementById("joker-skip-box")?.classList.add("hidden");
             document.getElementById("joker-force-box")?.classList.add("hidden");
+            document.getElementById("creator-joker-force-box")?.classList.add("hidden");
             document.getElementById("result-feedback-area").classList.remove("hidden");
 
             if (isNewResult) {
@@ -8432,8 +8741,8 @@
 
             document.getElementById("feedback-task-info").innerText =
                 currentLang === 'de'
-                    ? `Aufgabe: "${taskText}"`
-                    : `Task: "${taskText}"`;
+                    ? (taskText ? `Aufgabe: "${taskText}"` : "Vor Aufgabenwahl mit Force-Skip ausgesetzt")
+                    : (taskText ? `Task: "${taskText}"` : "Skipped with Force-Skip before task selection");
 
             document.getElementById("feedback-result-box").innerText = resultText;
 
@@ -8596,7 +8905,20 @@
                 document.getElementById("wheel-action-desc").innerText = selected.desc;
                 document.getElementById("wheel-result-box").classList.remove("hidden");
                 const nextRoundBtn = document.getElementById("next-round-btn");
-                if (nextRoundBtn) nextRoundBtn.disabled = isSpectator ? true : false;
+                if (nextRoundBtn) {
+                    const hasUnvoted = getNextControllableUnvotedName(nextRoundVotedPlayers);
+                    nextRoundBtn.disabled = isSpectator || !hasUnvoted;
+                    if (!hasUnvoted && nextRoundVotedPlayers.length > 0) {
+                        nextRoundBtn.innerText = currentLang === 'de' ? "✅ Bestätigt (Warte auf Mitspieler…)" : "✅ Confirmed (Waiting for players…)";
+                    } else {
+                        nextRoundBtn.innerText = currentLang === 'de' ? "➡️ Nächste Runde!" : "➡️ Next Round!";
+                    }
+                }
+                const countEl = document.getElementById("round-votes-count");
+                const totalEl = document.getElementById("round-votes-total");
+                const activeCount = players.filter(p => !p.eliminated && !p.isSpectator).length;
+                if (countEl) countEl.innerText = String(nextRoundVotedPlayers.length);
+                if (totalEl) totalEl.innerText = String(activeCount);
                 if (!isSpectator) {
                     // Nur XP fürs Rad – keine Coins mehr (Coins nur noch über Wahrheit/Pflicht)
                     userXP += 25;
@@ -8612,29 +8934,50 @@
             if (isSpectator) return;
             const voterName = getNextControllableUnvotedName(nextRoundVotedPlayers);
             if (!voterName) return;
-            document.getElementById("next-round-btn").disabled = true;
-            sendData({ type: 'VOTE_NEXT_ROUND', playerName: voterName });
+            const voteData = { type: 'VOTE_NEXT_ROUND', playerName: voterName };
+
+            // 1) Eigene Bestätigung SOFORT lokal registrieren (analog zu voteNextTurn)
+            handleIncomingData(voteData);
+
+            // 2) An Mitspieler / Host verteilen
+            if (!isHost) {
+                sendClientLobbyData(voteData);
+            } else {
+                broadcastLobbyData(voteData);
+            }
         }
 
         function handleNextRoundVote(pName) {
             const activePlayers = players.filter(p => !p.eliminated && !p.isSpectator);
             const activeNames = activePlayers.map(p => getUserDisplayName(p));
             if (!activeNames.some(n => namesEqual(n, pName))) return;
-            if (!nextRoundVotedPlayers.some(n => namesEqual(n, pName))) nextRoundVotedPlayers.push(pName);
+            const normalized = getUserDisplayName({ name: pName }, pName);
+            if (!nextRoundVotedPlayers.some(n => namesEqual(n, normalized))) {
+                nextRoundVotedPlayers.push(normalized);
+            }
             let activeCount = activePlayers.length;
             
             const countEl = document.getElementById("round-votes-count");
             const totalEl = document.getElementById("round-votes-total");
-            if (countEl) countEl.innerText = nextRoundVotedPlayers.length;
-            if (totalEl) totalEl.innerText = activeCount;
+            if (countEl) countEl.innerText = String(nextRoundVotedPlayers.length);
+            if (totalEl) totalEl.innerText = String(activeCount);
 
             const nrb = document.getElementById("next-round-btn");
             if (nrb && !isSpectator) {
-                nrb.disabled = !getNextControllableUnvotedName(nextRoundVotedPlayers);
+                const hasUnvoted = getNextControllableUnvotedName(nextRoundVotedPlayers);
+                nrb.disabled = !hasUnvoted;
+                if (!hasUnvoted) {
+                    nrb.innerText = currentLang === 'de' ? "✅ Bestätigt (Warte auf Mitspieler…)" : "✅ Confirmed (Waiting for players…)";
+                } else {
+                    nrb.innerText = currentLang === 'de' ? "➡️ Nächste Runde!" : "➡️ Next Round!";
+                }
             }
 
-            if (isHost && activeCount > 0 && nextRoundVotedPlayers.length >= activeCount) {
-                sendData({ type: 'NEXT_ROUND' });
+            if (isHost) {
+                scheduleSaveGameState();
+                if (activeCount > 0 && nextRoundVotedPlayers.length >= activeCount) {
+                    sendData({ type: 'NEXT_ROUND' });
+                }
             }
         }
 
@@ -8651,6 +8994,8 @@
             document.getElementById("wheel-result-box").classList.add("hidden");
             document.getElementById("wheel-phase").classList.add("hidden");
             document.getElementById("woP-phase").classList.remove("hidden");
+            document.getElementById("joker-force-box")?.classList.add("hidden");
+            document.getElementById("creator-joker-force-box")?.classList.add("hidden");
             const selectBtn = document.getElementById("ui-select-btn");
             if (selectBtn) selectBtn.disabled = false;
             updateWopTurn();

@@ -4,6 +4,33 @@ All notable changes to this project are documented in this file in a precise, te
 
 ---
 
+## [2.0.35] - 2026-11-06
+
+### Bug Fixes
+- **Wheel confirmation button no longer reverts to unconfirmed (`js/app.js`):**
+  - Root cause: `voteNextRound()` did not immediately register its own confirmation locally via `handleIncomingData` on non-host clients, but only sent it across the socket. Since room broadcasts exclude the sender, the user's name was missing from their local `nextRoundVotedPlayers` array. When another user confirmed, `handleNextRoundVote` re-evaluated pending votes and incorrectly re-enabled the button (`disabled = false`).
+  - Local vote confirmation is now processed immediately (`handleIncomingData`), matching `voteNextTurn()`.
+  - The confirmation button explicitly updates to `✅ Confirmed (Waiting for players…)` / `✅ Bestätigt (Warte auf Mitspieler…)`.
+  - `applyGameStateFromFirebase` now merges local confirmed votes with incoming server state to prevent race conditions during state syncs. `runWheelAnimation` and `updateLanguage` now preserve button and counter states accurately.
+
+### New Features / Improvements
+- **Enhanced Force-Skip Joker before task selection & in Creator screen (`js/app.js`, `index.html`):**
+  - The Force-Skip Joker can now be applied **before** the active player selects Truth or Dare or while the creator is drafting the task.
+  - Prevents creators from having to formulate and submit a task that gets skipped immediately afterwards in vain.
+  - Added dedicated Force-Skip button in the task creator screen (`#creator-joker-force-box`) and in the waiting panel for other non-controlling players.
+  - Dedicated system announcement and feedback screen message: `Skipped with Force-Skip before task selection`.
+- **Comprehensive Telemetry & Error Diagnostics for Feedback/Bugs (`js/app.js`, `server.js`, `index.html`, `js/wop-socket-client.js`):**
+  - Automatic collection of console errors (`console.error`), HTTP/network errors (Fetch/REST/WebSocket), and server errors in a 30-item circular buffer.
+  - Backend server error buffer in `server.js` (up to 50 server errors) correlates 4xx/5xx errors by user email and time window in `POST /api/feedback`.
+  - Enhanced heuristic in `analyzeBugReport`: Classifies area and error code (`WOP-ERR-*`) using description keywords, console errors, server errors, and runtime exceptions.
+  - Live diagnostics preview card in feedback modal (`#feedback-diagnostics-box`) with collapsible details before sending.
+  - Detailed rendering of all captured console and server errors with timestamps, HTTP status codes, endpoints, error messages, and stack traces in the Admin Panel feedback inspection view (`renderAdminFeedbackList`).
+
+### Misc
+- Version bumped to **2.0.35**; cache-busting updated to `?v=2.0.35`; service worker cache bumped to **`wop-party-v11`**.
+
+---
+
 ## [2.0.34] - 2026-11-06
 
 ### Bug Fixes

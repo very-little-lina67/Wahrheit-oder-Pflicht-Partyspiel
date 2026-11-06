@@ -118,6 +118,9 @@ Alle Tabellen werden beim Start per `CREATE TABLE IF NOT EXISTS` automatisch ini
 | `name` | TEXT | Nutzername |
 | `type` | TEXT NOT NULL | `bug` oder `improvement` |
 | `text` | TEXT NOT NULL | Feedback-Nachricht |
+| `errorCode` | TEXT DEFAULT '' | Generierter Fehlercode (z. B. `WOP-ERR-WHEEL-A1B2`) |
+| `analysis` | TEXT DEFAULT '' | Automatisierte Fehlerursachen-Analyse |
+| `meta` | TEXT DEFAULT '' | JSON mit Diagnose (Konsolenfehler, Serverfehler, Laufzeitfehler, UA, URL) |
 | `createdAt` | DATETIME DEFAULT CURRENT_TIMESTAMP | Zeitstempel |
 
 ### `lobbies`

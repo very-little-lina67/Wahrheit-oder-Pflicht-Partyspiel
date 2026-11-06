@@ -4,6 +4,33 @@ Alle wesentlichen Änderungen am Projekt werden in dieser Datei präzise und tec
 
 ---
 
+## [2.0.35] - 2026-11-06
+
+### Bug Fixes
+- **Glücksrad-Bestätigung springt nicht mehr auf unbestätigt zurück (`js/app.js`):**
+  - Ursache: `voteNextRound()` registrierte die eigene Bestätigung auf Nicht-Host-Clients nicht sofort lokal via `handleIncomingData`, sondern sendete sie nur über Socket an den Raum. Da Socket.io-Raumbroadcasts den Absender ausschließen, fehlte der eigene Name im lokalen Array `nextRoundVotedPlayers`. Sobald ein anderer Spieler bestätigte, prüfte `handleNextRoundVote` fälschlicherweise auf offene Sitze und setzte `disabled = false`.
+  - Eigene Bestätigung wird in `voteNextRound()` nun sofort lokal verarbeitet (`handleIncomingData`), analog zu `voteNextTurn()`.
+  - Button-Status zeigt nach Bestätigung explizit `✅ Bestätigt (Warte auf Mitspieler…)` bzw. `✅ Confirmed (Waiting for players…)`.
+  - In `applyGameStateFromFirebase` werden lokale Stimmen mit eingehenden Serverdaten gemergt, um Race-Conditions bei State-Syncs zu verhindern. Auch `runWheelAnimation` und `updateLanguage` synchronisieren Zähler und Buttonstatus korrekt.
+
+### New Features / Improvements
+- **Erweiterter Force-Skip-Joker vor Aufgabenwahl & im Creator-Screen (`js/app.js`, `index.html`):**
+  - Der Force-Skip-Joker kann nun vorab eingesetzt werden, **bevor** der aktive Spieler Wahrheit oder Pflicht wählt oder während der Aufgabensteller noch tippt.
+  - Verhindert, dass Mitspieler eine Frage oder Aufgabe formulieren und absenden müssen, die anschließend vergeblich übersprungen wird („umsonst gestellt“).
+  - Neuer Force-Skip-Button direkt im Creator-Screen (`#creator-joker-force-box`) sowie in der Wartebox für alle nicht-steuernden Mitspieler.
+  - Abgestimmte Systemmeldung und Feedback-Bildschirm mit Hinweis `Vor Aufgabenwahl mit Force-Skip ausgesetzt`.
+- **Umfassende Telemetrie & Fehlerdiagnose für Feedback/Bugs (`js/app.js`, `server.js`, `index.html`, `js/wop-socket-client.js`):**
+  - Automatische Erfassung von Konsolenfehlern (`console.error`), HTTP-/Netzwerkfehlern (Fetch/REST/WebSocket) und Server-Errors im 30-Elemente-Ringpuffer.
+  - Backend-Fehlerpuffer in `server.js` (bis zu 50 Serverfehler) korreliert serverseitig aufgetretene 4xx/5xx-Fehler anhand von Benutzer-E-Mail und Zeitfenster bei `POST /api/feedback`.
+  - Erweiterte Heuristik `analyzeBugReport`: Bestimmt den Fehlerbereich und Error-Code (`WOP-ERR-*`) nun kombiniert aus Beschreibung, Konsolenfehlern, Serverfehlern und Runtime-Exceptions.
+  - Live-Diagnosevorschau im Feedback-Modal (`#feedback-diagnostics-box`) mit einklappbaren Details vor dem Absenden.
+  - Vollständige Anzeige aller erfassten Konsolen- und Serverfehler mit Zeitstempel, HTTP-Status, URL, Meldung und Stacktrace in den Details der Feedback-Liste im Admin-Bereich (`renderAdminFeedbackList`).
+
+### Misc
+- Versionsnummer auf **2.0.35** angehoben; Cache-Busting `?v=2.0.35`; Service-Worker-Cache **`wop-party-v11`**.
+
+---
+
 ## [2.0.34] - 2026-11-06
 
 ### Bug Fixes

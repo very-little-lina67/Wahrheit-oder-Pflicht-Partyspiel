@@ -25,12 +25,12 @@
     
     <!-- Socket.io Client für latenzfreie WebSocket-Kommunikation -->
     <script src="/socket.io/socket.io.js"></script>
-    <script src="js/wop-socket-client.js?v=2.0.34"></script>
+    <script src="js/wop-socket-client.js?v=2.0.35"></script>
 
     <!-- Ausgelagertes Stylesheet für Themes, Layout & Komponenten -->
-    <link rel="stylesheet" href="css/style.css?v=2.0.34">
+    <link rel="stylesheet" href="css/style.css?v=2.0.35">
     <!-- Sileo Toast (React) Fluid Spring Notification Styles -->
-    <link rel="stylesheet" href="js/sileo-bundle.css?v=2.0.34">
+    <link rel="stylesheet" href="js/sileo-bundle.css?v=2.0.35">
     <style id="wop-early-auth-hide">
       /* Verhindert Login-Flash beim Reload wenn Session vorhanden */
       body.wop-authed #auth-modal { display: none !important; visibility: hidden !important; }
@@ -635,6 +635,15 @@
             <label id="ui-fb-msg-label" style="font-size:12px; color:#ccc; margin-top:6px; display:block;">Nachricht:</label>
             <textarea id="feedback-text-input" rows="3" placeholder="Beschreibe den Bug oder deine Idee..." style="font-size: 13px;"></textarea>
 
+            <!-- Automatisch erfasste Diagnose-Daten (Console- & Server-Errors) -->
+            <div id="feedback-diagnostics-box" style="margin-top: 8px; padding: 8px; background: rgba(0,0,0,0.35); border-radius: 6px; font-size: 11px; color: #aaa; border: 1px dashed rgba(255,255,255,0.15);">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span id="feedback-diag-summary">🔍 Diagnose: 0 Konsolenfehler, 0 Serverfehler</span>
+                    <button type="button" class="btn-blue" id="feedback-diag-toggle" style="padding: 2px 6px; font-size: 10px; width: auto; margin:0;" onclick="toggleFeedbackDiagDetails()">Details</button>
+                </div>
+                <div id="feedback-diag-details" class="hidden" style="margin-top:6px; max-height:120px; overflow-y:auto; font-family:monospace; font-size:10px; color:#cbd5e1; white-space:pre-wrap; border-top: 1px solid rgba(255,255,255,0.08); padding-top:4px;"></div>
+            </div>
+
             <div style="display: flex; gap: 8px; margin-top: 10px; justify-content: space-between;">
                 <button class="btn-green" onclick="submitFeedback()" id="ui-fb-send-btn" style="flex:1; padding: 8px; font-size: 13px;">Absenden</button>
                 <button class="btn-blue" onclick="closeFeedbackModal()" id="ui-fb-close-btn" style="flex:1; padding: 8px; font-size: 13px;">Schließen</button>
@@ -849,6 +858,11 @@
                 <p id="creator-target-info" style="font-size: 12px; color: #ccc;"></p>
                 <input type="text" id="custom-task-input" placeholder="Type your question or dare here..." style="font-size: 13px; padding: 8px;">
                 <button class="btn-blue" onclick="sendCustomTask()" id="ui-send-task-btn" style="font-size: 13px; padding: 8px;">Send to player 🚀</button>
+                <div id="creator-joker-force-box" class="hidden" style="margin-top: 10px; padding-top: 8px; border-top: 1px dashed rgba(255,121,94,0.4);">
+                    <button type="button" class="btn-joker-force" onclick="useForceSkipJoker()" id="ui-creator-joker-force-btn" style="width:100%; font-size: 12px; padding: 8px;">
+                        🚫 <span id="ui-creator-joker-force-text">Spieler vorab aussetzen</span> (<span id="creator-joker-force-count">0</span>)
+                    </button>
+                </div>
             </div>
 
             <div class="box-section hidden" id="active-task-area" style="border-left-color: var(--accent-color);">
@@ -1017,9 +1031,9 @@
     </div>
 
     <!-- Sileo Toast (React-basierte flüssige In-App Benachrichtigungskomponente) -->
-    <script src="js/sileo-bundle.js?v=2.0.34"></script>
+    <script src="js/sileo-bundle.js?v=2.0.35"></script>
     <!-- Ausgelagerte Spiellogik, Socket-Sync & Client-Interaktionen -->
-    <script src="js/app.js?v=2.0.34"></script>
+    <script src="js/app.js?v=2.0.35"></script>
     <script>
       // Service Worker registrieren → Chrome zeigt „App installieren“ statt nur Verknüpfung
       if ("serviceWorker" in navigator) {

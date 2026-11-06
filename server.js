@@ -308,6 +308,43 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+// Serverfehler-Ringpuffer für Diagnostik & Feedback (max. 50 Einträge)
+const recentServerErrors = [];
+function recordServerError(entry) {
+    try {
+        const item = {
+            timestamp: new Date().toISOString(),
+            at: Date.now(),
+            path: entry.path || '',
+            method: entry.method || '',
+            status: entry.status || 500,
+            error: String(entry.error || entry.message || 'Unbekannter Serverfehler').slice(0, 500),
+            stack: entry.stack ? String(entry.stack).slice(0, 800) : '',
+            email: entry.email ? String(entry.email).trim().toLowerCase() : null
+        };
+        recentServerErrors.unshift(item);
+        if (recentServerErrors.length > 50) recentServerErrors.pop();
+    } catch (_) {}
+}
+
+// Response-Hook: Erfasst automatisch HTTP 4xx/5xx API-Fehler für Feedback-Diagnose
+app.use((req, res, next) => {
+    const origJson = res.json;
+    res.json = function(data) {
+        if (res.statusCode >= 400 && data && data.error) {
+            recordServerError({
+                path: req.originalUrl || req.url,
+                method: req.method,
+                status: res.statusCode,
+                error: data.error,
+                email: req.body?.email || req.query?.email || req.query?.requester || null
+            });
+        }
+        return origJson.apply(this, arguments);
+    };
+    next();
+});
+
 // Sicherheits- & Cache-Header für Frontend & PWA
 app.use((req, res, next) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -1102,15 +1139,61 @@ app.post('/api/feedback', async (req, res) => {
     try {
         const { email, name, type, text, errorCode, analysis, meta, author } = req.body;
         if (!email || !text) return res.status(400).json({ error: 'E-Mail und Text erforderlich.' });
+
+        let metaObj = {};
+        if (typeof meta === 'string') {
+            try { metaObj = JSON.parse(meta); } catch (_) {}
+        } else if (meta && typeof meta === 'object') {
+            metaObj = { ...meta };
+        }
+
+        // Kürzliche Serverfehler (letzte 15 Min bzw. passend zur E-Mail) korrelieren und anhängen
+        const userClean = String(email).trim().toLowerCase();
+        const now = Date.now();
+        const correlatedServerErrors = recentServerErrors.filter(e => {
+            const isRecent = (now - e.at) < 15 * 60 * 1000;
+            const matchesUser = e.email && e.email === userClean;
+            return isRecent && (matchesUser || !e.email || (now - e.at) < 3 * 60 * 1000);
+        }).slice(0, 10);
+
+        if (correlatedServerErrors.length > 0) {
+            const existing = Array.isArray(metaObj.serverErrors) ? metaObj.serverErrors : [];
+            const seen = new Set(existing.map(s => `${s.status}_${s.url || s.path}_${s.error}`));
+            correlatedServerErrors.forEach(ce => {
+                const key = `${ce.status}_${ce.path}_${ce.error}`;
+                if (!seen.has(key)) {
+                    seen.add(key);
+                    existing.push({
+                        url: ce.path,
+                        method: ce.method,
+                        status: ce.status,
+                        error: ce.error,
+                        stack: ce.stack || "",
+                        at: ce.timestamp,
+                        origin: "server"
+                    });
+                }
+            });
+            metaObj.serverErrors = existing;
+        }
+
         const result = await saveFeedback(
             email,
             name || author || '',
             type,
             text,
-            { errorCode, analysis, meta }
+            { errorCode, analysis, meta: metaObj }
         );
         res.json(result);
     } catch (err) {
+        recordServerError({
+            path: '/api/feedback',
+            method: 'POST',
+            status: 500,
+            error: err.message,
+            stack: err.stack,
+            email: req.body?.email
+        });
         res.status(500).json({ error: err.message });
     }
 });
