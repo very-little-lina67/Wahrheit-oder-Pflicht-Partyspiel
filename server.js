@@ -644,22 +644,57 @@ app.post('/api/user/offline', async (req, res) => {
         }
         if (email) {
             const clean = String(email).trim().toLowerCase();
-            const sockets = userSockets.get(clean);
-            if (sockets) {
-                for (const sId of sockets) {
-                    socketUsers.delete(sId);
-                    const s = io.sockets.sockets.get(sId);
-                    if (s) s.disconnect(true);
+
+            // Prüfen, ob der Nutzer Mitglied einer aktiven Spielrunde/Lobby ist
+            let inActiveLobby = false;
+            let currentLobbyCode = '';
+            for (const [code, l] of activeLobbies.entries()) {
+                if (
+                    (l.hostEmail && l.hostEmail.toLowerCase() === clean) ||
+                    (l.players && l.players.some(p => p.email && p.email.toLowerCase() === clean)) ||
+                    (l.spectators && l.spectators.some(s => s.email && s.email.toLowerCase() === clean))
+                ) {
+                    inActiveLobby = true;
+                    currentLobbyCode = code;
+                    break;
                 }
-                userSockets.delete(clean);
             }
-            await setOnlineStatus(clean, false);
-            io.emit('social:presence', {
-                email: clean,
-                isOnline: false,
-                presenceStatus: 'offline',
-                currentLobby: ''
-            });
+
+            if (!inActiveLobby) {
+                const userRow = await dbGet('SELECT currentLobby FROM users WHERE email = ?', [clean]).catch(() => null);
+                if (userRow && userRow.currentLobby) {
+                    inActiveLobby = true;
+                    currentLobbyCode = userRow.currentLobby;
+                }
+            }
+
+            if (inActiveLobby) {
+                // Nutzer ist in einer aktiven Spielrunde – Socket NICHT killen und Lobby NICHT löschen!
+                await setOnlineStatus(clean, false, currentLobbyCode);
+                io.emit('social:presence', {
+                    email: clean,
+                    isOnline: false,
+                    presenceStatus: 'offline',
+                    currentLobby: currentLobbyCode
+                });
+            } else {
+                const sockets = userSockets.get(clean);
+                if (sockets) {
+                    for (const sId of sockets) {
+                        socketUsers.delete(sId);
+                        const s = io.sockets.sockets.get(sId);
+                        if (s) s.disconnect(false);
+                    }
+                    userSockets.delete(clean);
+                }
+                await setOnlineStatus(clean, false, '');
+                io.emit('social:presence', {
+                    email: clean,
+                    isOnline: false,
+                    presenceStatus: 'offline',
+                    currentLobby: ''
+                });
+            }
         }
         res.json({ success: true });
     } catch (_) {
@@ -1550,15 +1585,28 @@ io.on('connection', (socket) => {
                 if (sockets.size === 0) {
                     userSockets.delete(email);
 
-                    // Sofort offline anzeigen – presenceStatus in SQLite nicht überschreiben, damit der User beim Wiederöffnen online geht
+                    // Aktuelle Lobby des Nutzers ermitteln, damit diese bei temporärem Disconnect nicht verloren geht
+                    let currentLobbyCode = '';
+                    for (const [code, l] of activeLobbies.entries()) {
+                        if (
+                            (l.hostEmail && l.hostEmail.toLowerCase() === email) ||
+                            (l.players && l.players.some(p => p.email && p.email.toLowerCase() === email)) ||
+                            (l.spectators && l.spectators.some(s => s.email && s.email.toLowerCase() === email))
+                        ) {
+                            currentLobbyCode = code;
+                            break;
+                        }
+                    }
+
+                    // Sofort offline anzeigen – presenceStatus in SQLite nicht überschreiben; currentLobby beibehalten
                     try {
-                        await setOnlineStatus(email, false);
+                        await setOnlineStatus(email, false, currentLobbyCode || null);
                     } catch (_) { /* ignore */ }
                     io.emit('social:presence', {
                         email,
                         isOnline: false,
                         presenceStatus: 'offline',
-                        currentLobby: ''
+                        currentLobby: currentLobbyCode || ''
                     });
                 }
             }

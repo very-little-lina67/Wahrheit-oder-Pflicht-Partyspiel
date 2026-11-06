@@ -56,18 +56,36 @@
 
             // Sichtbarkeitsstatus an Server übermitteln (unterdrückt System-Push wenn App im Vordergrund ist)
             const reportVisibility = () => {
-                if (socket && socket.connected) {
-                    socket.emit("user:visibility", {
-                        isVisible: document.visibilityState === "visible"
-                    });
+                if (socket) {
+                    if (!socket.connected) {
+                        socket.connect();
+                    } else {
+                        socket.emit("user:visibility", {
+                            isVisible: document.visibilityState === "visible"
+                        });
+                    }
                 }
             };
-            document.addEventListener("visibilitychange", reportVisibility);
+            document.addEventListener("visibilitychange", () => {
+                if (!document.hidden) {
+                    reportVisibility();
+                    if (window.activeLobbyCode && typeof window.scheduleLobbyReconnect === "function") {
+                        window.scheduleLobbyReconnect();
+                    }
+                } else {
+                    reportVisibility();
+                }
+            });
             window.addEventListener("focus", reportVisibility);
             window.addEventListener("pageshow", reportVisibility);
 
-            // Bei Schließen / Taskwechsel Offline-Beacon senden
+            // Bei Schließen / Taskwechsel Offline-Beacon senden (NUR wenn nicht in einer aktiven Lobby)
             window.addEventListener("pagehide", () => {
+                const currentLobby = window.activeLobbyCode || "";
+                if (currentLobby) {
+                    // Spieler ist in einer aktiven Spielrunde! Kein hartes Offline-Signal senden
+                    return;
+                }
                 const email = (typeof window !== "undefined" && window.myEmail) || localStorage.getItem("wop_user_email_v6");
                 if (email && navigator.sendBeacon) {
                     try {
@@ -85,6 +103,13 @@
 
             socket.on("disconnect", (reason) => {
                 console.warn("⚠️ WebSocket getrennt:", reason);
+                if (reason === "io server disconnect" || reason === "transport close") {
+                    setTimeout(() => {
+                        if (socket && !socket.connected) {
+                            socket.connect();
+                        }
+                    }, 500);
+                }
             });
 
             socket.on("connect_error", (err) => {

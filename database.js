@@ -372,23 +372,40 @@ export async function updateUserProfile(email, data) {
  * @param {string} email
  * @param {boolean} isOnline
  * @param {string} [currentLobby='']
+ * @param {string|null} [currentLobby=null] – wenn angegeben, wird die Lobby gesetzt; wenn null, bleibt currentLobby unverändert
  * @param {string|null} [presenceStatus=null] – wenn gesetzt, wird der Status mitgeschrieben
  */
-export async function setOnlineStatus(email, isOnline, currentLobby = '', presenceStatus = null) {
+export async function setOnlineStatus(email, isOnline, currentLobby = null, presenceStatus = null) {
     if (!email) return;
     const cleanEmail = String(email).trim().toLowerCase();
     const now = new Date().toISOString();
+    const updateLobby = (currentLobby !== null && currentLobby !== undefined);
+
     if (presenceStatus !== null && presenceStatus !== undefined) {
         const status = normalizePresenceStatus(presenceStatus);
-        await dbRun(
-            `UPDATE users SET isOnline = ?, currentLobby = ?, lastActive = ?, presenceStatus = ? WHERE email = ?`,
-            [isOnline ? 1 : 0, currentLobby, now, status, cleanEmail]
-        );
+        if (updateLobby) {
+            await dbRun(
+                `UPDATE users SET isOnline = ?, currentLobby = ?, lastActive = ?, presenceStatus = ? WHERE email = ?`,
+                [isOnline ? 1 : 0, currentLobby, now, status, cleanEmail]
+            );
+        } else {
+            await dbRun(
+                `UPDATE users SET isOnline = ?, lastActive = ?, presenceStatus = ? WHERE email = ?`,
+                [isOnline ? 1 : 0, now, status, cleanEmail]
+            );
+        }
     } else {
-        await dbRun(
-            `UPDATE users SET isOnline = ?, currentLobby = ?, lastActive = ? WHERE email = ?`,
-            [isOnline ? 1 : 0, currentLobby, now, cleanEmail]
-        );
+        if (updateLobby) {
+            await dbRun(
+                `UPDATE users SET isOnline = ?, currentLobby = ?, lastActive = ? WHERE email = ?`,
+                [isOnline ? 1 : 0, currentLobby, now, cleanEmail]
+            );
+        } else {
+            await dbRun(
+                `UPDATE users SET isOnline = ?, lastActive = ? WHERE email = ?`,
+                [isOnline ? 1 : 0, now, cleanEmail]
+            );
+        }
     }
 }
 

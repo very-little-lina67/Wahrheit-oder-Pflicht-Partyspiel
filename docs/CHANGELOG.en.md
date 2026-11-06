@@ -4,6 +4,41 @@ All notable changes to this project are documented in this file in a precise, te
 
 ---
 
+## [2.0.28] - 2026-11-06
+
+### New Features
+- **Autonomous Wheel Spinning & Re-spin Lock (`js/app.js`):**
+  - Upon transitioning to the `wheel` phase, the host automatically triggers the wheel spin after a short delay (500 ms) for all participants.
+  - The spin button (`#spin-btn`) remains permanently disabled and displays an autonomous status (`"🎡 Glücksrad dreht sich automatisch..."`), preventing any player from manually triggering additional spins.
+
+### Bug Fixes
+- **Balanced Creator Selection Algorithm for > 3 Players (`js/app.js`):**
+  - Resolved an issue where the same player was repeatedly assigned truth questions or dare tasks.
+  - Introduced weighted, historical creator tracking:
+    - Excludes the immediate previous creator for the same target player (`lastCreatorForTarget`) and for the same choice (`lastCreatorByTargetAndChoice`).
+    - Excludes the immediate previous global creator (`recentTaskCreators`).
+    - Even workload distribution via `creatorCounts`: prioritizes eligible candidates with the fewest assigned tasks.
+    - Synchronizes creator history and frequency counts within the lobby state payload across all clients.
+- **Lobby Retention & Reconnect Stability During App Switching / Background (`server.js`, `database.js`, `js/wop-socket-client.js`, `js/app.js`):**
+  - Fixed a critical issue where players were removed from active lobbies and unable to rejoin when backgrounding the app, switching apps, or locking their mobile screen.
+  - `pagehide` beacon suppressed for users in active lobbies (`window.activeLobbyCode`).
+  - `/api/user/offline` on the backend preserves active sockets and lobby membership for players currently in a room.
+  - `database.js`: `setOnlineStatus` no longer resets `currentLobby` to empty string when not explicitly requested.
+  - Automatic Socket.io reconnection on server-disconnect and reconnect triggers on `visibilitychange`, `pageshow`, and `focus`.
+- **Reliable Chat History Restoration on Reload (`js/app.js`):**
+  - `applyGameStateFromFirebase` now immediately restores the chat history (`restoreLobbyChat`) during active gameplay (`wop` and `wheel`) and mid-game joins.
+  - Initial restoration hook on `DOMContentLoaded` and within `joinGame`.
+- **Fixed Button Shifting & Missing Task/Status on Orientation and Scroll (`js/app.js`, `css/style.css`, `index.html`):**
+  - Resolved layout collapse where rotating the screen or scrolling caused the active question, dare, or status to vanish, pulling buttons into the middle of the screen.
+  - `applyGameStateFromFirebase` now consistently re-renders the current turn state in `wop` phase.
+  - Prevented unconditional clearing of `custom-task-input.value` in `setupCreatorUI`.
+  - Added `min-height: 100dvh` and `viewport-fit=cover` for mobile viewport consistency.
+
+### Misc
+- Version bumped to **2.0.28** with updated cache-busting query strings.
+
+---
+
 ## [2.0.27] - 2026-11-05
 
 ### Bug Fixes

@@ -3625,9 +3625,11 @@
                 const savedLobby = getSavedLobbySession();
                 if (savedLobby && savedLobby.code) {
                     activeLobbyCode = String(savedLobby.code).toLowerCase();
+                    window.activeLobbyCode = activeLobbyCode;
                     isHost = savedLobby.role === "host";
                     isSpectator = !!savedLobby.isSpectator || savedLobby.role === "spectator";
                     restoringLobby = true;
+                    try { restoreLobbyChat(activeLobbyCode); } catch (_) {}
                     setTimeout(() => reconnectLobby(), 250);
                 }
             }
@@ -5888,6 +5890,8 @@
         let playerStatuses = {};
         let recentTaskCreators = [];
         let lastCreatorForTarget = {};
+        let lastCreatorByTargetAndChoice = {};
+        let creatorCounts = {};
 
         let taskCompleted = false;
         let activeLobbyCode = "";
@@ -6305,6 +6309,8 @@
                 playerStatuses: playerStatuses || {},
                 recentTaskCreators: Array.isArray(recentTaskCreators) ? recentTaskCreators : [],
                 lastCreatorForTarget: (lastCreatorForTarget && typeof lastCreatorForTarget === 'object') ? lastCreatorForTarget : {},
+                lastCreatorByTargetAndChoice: (lastCreatorByTargetAndChoice && typeof lastCreatorByTargetAndChoice === 'object') ? lastCreatorByTargetAndChoice : {},
+                creatorCounts: (creatorCounts && typeof creatorCounts === 'object') ? creatorCounts : {},
                 updatedAt: Date.now()
             };
         }
@@ -6398,6 +6404,15 @@
             if (data.lastCreatorForTarget && typeof data.lastCreatorForTarget === 'object') {
                 lastCreatorForTarget = data.lastCreatorForTarget;
             }
+            if (data.lastCreatorByTargetAndChoice && typeof data.lastCreatorByTargetAndChoice === 'object') {
+                lastCreatorByTargetAndChoice = data.lastCreatorByTargetAndChoice;
+            }
+            if (data.creatorCounts && typeof data.creatorCounts === 'object') {
+                creatorCounts = data.creatorCounts;
+            }
+            if (Array.isArray(data.chatMessages) && data.chatMessages.length) {
+                data.chatMessages.forEach(msg => saveLobbyChatMessage(activeLobbyCode, msg));
+            }
             if (Array.isArray(data.nextTurnVotedPlayers)) {
                 nextTurnVotedPlayers = data.nextTurnVotedPlayers;
             }
@@ -6449,18 +6464,30 @@
                 document.getElementById("player-status-panel")?.classList.remove("hidden");
                 // Timer nur starten, wenn noch keiner läuft (Reload / Mid-Join)
                 if (!roundTimerInterval && !roundTimerStart) startRoundTimer();
+                try { restoreLobbyChat(activeLobbyCode); } catch (_) {}
 
                 if (phase === "wop") {
                     document.getElementById("woP-phase")?.classList.remove("hidden");
                     document.getElementById("wheel-phase")?.classList.add("hidden");
-                    if (turnStateChanged) {
+                    // Prüfen, ob eine Unter-Sektion sichtbar ist; falls nicht (z.B. nach Reload oder Orientierungswechsel), immer updateWopTurn aufrufen
+                    const choiceHidden = document.getElementById("wop-choice-area")?.classList.contains("hidden");
+                    const creatorHidden = document.getElementById("creator-input-area")?.classList.contains("hidden");
+                    const activeTaskHidden = document.getElementById("active-task-area")?.classList.contains("hidden");
+                    const resultHidden = document.getElementById("result-feedback-area")?.classList.contains("hidden");
+                    const waitHidden = document.getElementById("waiting-for-player-box")?.classList.contains("hidden");
+                    const allSubAreasHidden = choiceHidden && creatorHidden && activeTaskHidden && resultHidden && waitHidden;
+
+                    if (turnStateChanged || allSubAreasHidden) {
                         updateWopTurn();
                     }
                 } else if (phase === "wheel") {
                     document.getElementById("woP-phase")?.classList.add("hidden");
                     document.getElementById("wheel-phase")?.classList.remove("hidden");
                     const spinBtn = document.getElementById("spin-btn");
-                    if (spinBtn) spinBtn.disabled = isSpectator ? true : false;
+                    if (spinBtn) {
+                        spinBtn.disabled = true;
+                        spinBtn.innerText = currentLang === 'de' ? "🎡 Glücksrad dreht sich automatisch..." : "🎡 Wheel spinning automatically...";
+                    }
                 }
             } else if (!started) {
                 // Noch Lobby-Wartezustand
@@ -6704,6 +6731,7 @@
             stopReconnectTimer();
             activeLobbyCode = code;
             window.activeLobbyCode = code;
+            try { restoreLobbyChat(code); } catch (_) {}
             if (window.wopSocket && window.wopSocket.connected) {
                 window.wopSocket.emit("lobby:join", {
                     code: code,
@@ -7040,6 +7068,10 @@
             playerStatuses = {};
             recentTaskCreators = [];
             lastCreatorForTarget = {};
+            lastCreatorByTargetAndChoice = {};
+            creatorCounts = {};
+            lastCreatorByTargetAndChoice = {};
+            creatorCounts = {};
             lastSavedStateHash = "";
 
             if (manual) {
@@ -7207,10 +7239,18 @@
                 document.getElementById("woP-phase").classList.add("hidden");
                 document.getElementById("wheel-phase").classList.remove("hidden");
                 const spinBtn = document.getElementById("spin-btn");
-                if (spinBtn) spinBtn.disabled = isSpectator ? true : false;
+                if (spinBtn) {
+                    spinBtn.disabled = true;
+                    spinBtn.innerText = currentLang === 'de' ? "🎡 Glücksrad dreht sich automatisch..." : "🎡 Wheel spinning automatically...";
+                }
                 const wheelResult = document.getElementById("wheel-result-box");
                 if (wheelResult) wheelResult.classList.add("hidden");
-                if (isHost) scheduleSaveGameState();
+                if (isHost) {
+                    scheduleSaveGameState();
+                    setTimeout(() => {
+                        spinWheel();
+                    }, 500);
+                }
             } else if (data.type === 'SPIN_WHEEL') {
                 runWheelAnimation(data.sector, data.rotation);
             } else if (data.type === 'VOTE_NEXT_ROUND') {
@@ -7446,6 +7486,8 @@
             nextRoundVotedPlayers = [];
             recentTaskCreators = [];
             lastCreatorForTarget = {};
+            lastCreatorByTargetAndChoice = {};
+            creatorCounts = {};
             saveLobbyPlayers();
             sendData({ type: 'START_GAME', players: serializePlayersForSync() });
             startGameUI();
@@ -7646,7 +7688,15 @@
                     sendData({ type: 'START_WHEEL' });
                     document.getElementById("woP-phase").classList.add("hidden");
                     document.getElementById("wheel-phase").classList.remove("hidden");
+                    const spinBtn = document.getElementById("spin-btn");
+                    if (spinBtn) {
+                        spinBtn.disabled = true;
+                        spinBtn.innerText = currentLang === 'de' ? "🎡 Glücksrad dreht sich automatisch..." : "🎡 Wheel spinning automatically...";
+                    }
                     scheduleSaveGameState();
+                    setTimeout(() => {
+                        spinWheel();
+                    }, 500);
                 }
                 return;
             }
@@ -7758,13 +7808,11 @@
                     chosenPlayer = p1;
                 } else {
                     // Erstes Mal für diesen Zielspieler in der Partie:
-                    // Wenn einer der beiden gerade im unmittelbar vorherigen Zug gestellt hat, den anderen wählen
                     if (lastGlobal && namesEqual(lastGlobal, n1)) {
                         chosenPlayer = p2;
                     } else if (lastGlobal && namesEqual(lastGlobal, n2)) {
                         chosenPlayer = p1;
                     } else {
-                        // Im Uhrzeigersinn den nachfolgenden aktiven Spieler wählen
                         const activeList = players.filter(p => !p.eliminated && !p.isSpectator);
                         const targetIdx = activeList.findIndex(p => namesEqual(p, targetDisplayName));
                         const nextActive = (targetIdx >= 0 && activeList.length > 1)
@@ -7778,15 +7826,58 @@
                     }
                 }
             } else if (activeOthers.length >= 3) {
-                // Bei 4 oder mehr aktiven Spielern:
-                // Letzten Ersteller ausschließen, damit niemand 2x hintereinander drankommt
-                let eligible = activeOthers;
-                if (recentTaskCreators.length > 0) {
-                    const lastCreator = recentTaskCreators[recentTaskCreators.length - 1];
-                    eligible = activeOthers.filter(p => !namesEqual(p, lastCreator));
-                    if (!eligible.length) eligible = activeOthers;
+                // Bei mehr als 3 Spielern in der Lobby (> 2 Mitspieler):
+                // Ausgewogene, abwechslungsreiche Zufallslogik ohne Wiederholungen
+                const targetKey = targetDisplayName + "_" + (choice || "any");
+                const lastSameChoiceCreator = lastCreatorByTargetAndChoice[targetKey];
+                const lastTargetCreator = lastCreatorForTarget[targetDisplayName];
+                const lastGlobal = recentTaskCreators.length > 0 ? recentTaskCreators[recentTaskCreators.length - 1] : null;
+
+                // 1. Strikter Filter: Weder derselbe wie beim letzten Mal für diesen Spieler,
+                // noch derselbe für diese Wahl (Truth vs Dare), noch der unmittelbar vorherige globale Ersteller
+                let eligible = activeOthers.filter(p => {
+                    const n = getUserDisplayName(p);
+                    if (lastSameChoiceCreator && namesEqual(n, lastSameChoiceCreator)) return false;
+                    if (lastTargetCreator && namesEqual(n, lastTargetCreator)) return false;
+                    if (lastGlobal && namesEqual(n, lastGlobal)) return false;
+                    return true;
+                });
+
+                // 2. Falls keine übrig (z.B. bei schnellen Runden): globalen Ersteller lockern
+                if (eligible.length === 0) {
+                    eligible = activeOthers.filter(p => {
+                        const n = getUserDisplayName(p);
+                        if (lastSameChoiceCreator && namesEqual(n, lastSameChoiceCreator)) return false;
+                        if (lastTargetCreator && namesEqual(n, lastTargetCreator)) return false;
+                        return true;
+                    });
                 }
-                chosenPlayer = eligible[Math.floor(Math.random() * eligible.length)];
+
+                // 3. Falls noch immer keine: nur dieselbe Wahl ausschließen
+                if (eligible.length === 0) {
+                    eligible = activeOthers.filter(p => {
+                        const n = getUserDisplayName(p);
+                        if (lastSameChoiceCreator && namesEqual(n, lastSameChoiceCreator)) return false;
+                        return true;
+                    });
+                }
+
+                // 4. Fallback: alle verbleibenden aktiven Mitspieler
+                if (eligible.length === 0) {
+                    eligible = activeOthers;
+                }
+
+                // Balancierung nach bisheriger Aufgabenhäufigkeit:
+                // Spieler mit den bisher wenigsten gestellten Aufgaben bevorzugen
+                let minCount = Infinity;
+                eligible.forEach(p => {
+                    const n = getUserDisplayName(p);
+                    const cnt = creatorCounts[n] || 0;
+                    if (cnt < minCount) minCount = cnt;
+                });
+                const bestCandidates = eligible.filter(p => (creatorCounts[getUserDisplayName(p)] || 0) <= minCount);
+
+                chosenPlayer = bestCandidates[Math.floor(Math.random() * bestCandidates.length)];
             } else if (activeOthers.length === 1) {
                 // Bei 2 aktiven Spielern: Immer der einzige andere Spieler
                 chosenPlayer = activeOthers[0];
@@ -7799,8 +7890,11 @@
             currentTaskCreator = creatorName;
             pendingChoice = choice;
 
-            // Tracking für Wechsel & Historie aktualisieren
+            // Tracking für Wechsel, Historie & Balancierung aktualisieren
             lastCreatorForTarget[targetDisplayName] = creatorName;
+            lastCreatorByTargetAndChoice[targetDisplayName + "_" + (choice || "any")] = creatorName;
+            creatorCounts[creatorName] = (creatorCounts[creatorName] || 0) + 1;
+
             if (activeOthers.length > 1) {
                 recentTaskCreators.push(creatorName);
                 if (recentTaskCreators.length > 10) recentTaskCreators.shift();
@@ -7830,9 +7924,17 @@
 
             if (canControlPlayer(creatorName) && !isSpectator) {
                 document.getElementById("creator-input-area").classList.remove("hidden");
-                document.getElementById("custom-task-input").placeholder = currentLang === 'de'
-                    ? (isTruth ? `Wahrheitsfrage für ${targetPlayer} eingeben...` : `Pflicht-Aufgabe für ${targetPlayer} eingeben...`)
-                    : (isTruth ? `Enter a truth question for ${targetPlayer}...` : `Enter a dare for ${targetPlayer}...`);
+                const customInp = document.getElementById("custom-task-input");
+                if (customInp) {
+                    if (!customInp.dataset.activeTarget || customInp.dataset.activeTarget !== targetPlayer || customInp.dataset.activeChoice !== choice) {
+                        customInp.value = "";
+                        customInp.dataset.activeTarget = targetPlayer;
+                        customInp.dataset.activeChoice = choice;
+                    }
+                    customInp.placeholder = currentLang === 'de'
+                        ? (isTruth ? `Wahrheitsfrage für ${targetPlayer} eingeben...` : `Pflicht-Aufgabe für ${targetPlayer} eingeben...`)
+                        : (isTruth ? `Enter a truth question for ${targetPlayer}...` : `Enter a dare for ${targetPlayer}...`);
+                }
             } else {
                 document.getElementById("waiting-for-player-box").classList.remove("hidden"); updateMinigameVisibility();
                 document.getElementById("waiting-info-text").innerText = (currentLang === 'de'
@@ -8186,21 +8288,30 @@
         function spinWheel() {
             if (isSpectator) return;
             const button = document.getElementById("spin-btn");
-            if (button.disabled) return;
+            if (button) {
+                button.disabled = true;
+                button.innerText = currentLang === 'de' ? "🎡 Glücksrad dreht sich automatisch..." : "🎡 Wheel spinning automatically...";
+            }
 
             let sectors = translations[currentLang].wheelSectors;
             let idx = Math.floor(Math.random() * sectors.length);
             currentRotation += 1800 + (idx * (360 / sectors.length));
-            button.disabled = true;
             sendData({ type: 'SPIN_WHEEL', sector: idx, rotation: currentRotation });
         }
 
         function runWheelAnimation(sectorIndex, rotationVal) {
-            document.getElementById("spin-btn").disabled = true;
+            const spinBtn = document.getElementById("spin-btn");
+            if (spinBtn) {
+                spinBtn.disabled = true;
+                spinBtn.innerText = currentLang === 'de' ? "🎡 Glücksrad dreht sich automatisch..." : "🎡 Wheel spinning automatically...";
+            }
             let wheel = document.getElementById("wheel-container");
             wheel.style.transform = `rotate(-${rotationVal}deg)`;
             setTimeout(() => {
-                document.getElementById("spin-btn").disabled = isSpectator ? true : false;
+                if (spinBtn) {
+                    spinBtn.disabled = true;
+                    spinBtn.innerText = currentLang === 'de' ? "🎡 Runde beendet" : "🎡 Round finished";
+                }
                 let selected = translations[currentLang].wheelSectors[sectorIndex];
                 wheel.innerText = (currentLang === 'de' ? "ERGEBNIS!" : "RESULT!");
                 document.getElementById("wheel-action-title").innerText = selected.title;

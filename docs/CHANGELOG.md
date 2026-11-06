@@ -4,6 +4,42 @@ Alle wesentlichen Änderungen am Projekt werden in dieser Datei präzise und tec
 
 ---
 
+## [2.0.28] - 2026-11-06
+
+### New Features
+- **Autonomes Drehen des Glücksrads & Re-Spin-Sperre (`js/app.js`):**
+  - Beim Phasenwechsel zu `wheel` dreht der Host das Glücksrad nach kurzer Übergangsverzögerung (500 ms) automatisch für alle Spieler.
+  - Der Drehen-Button (`#spin-btn`) wird dauerhaft deaktiviert und signalisiert den automatischen Drehstatus (`"🎡 Glücksrad dreht sich automatisch..."`), sodass kein Spieler das Rad manuell oder mehrfach hintereinander auslösen kann.
+
+### Bug Fixes
+- **Balancierte Aufgabensteller-Zufallslogik bei mehr als 3 Spielern (`js/app.js`):**
+  - Problem behoben, bei dem für Wahrheit und Pflicht häufig immer dieselben Spieler als Aufgabensteller zugewiesen wurden.
+  - Einführung eines gewichteten, historienbasierten Zuweisungsverfahrens:
+    - Ausschluss des vorherigen Erstellers für denselben Zielspieler (`lastCreatorForTarget`) und für dieselbe Aufgabenart (`lastCreatorByTargetAndChoice`).
+    - Ausschluss des unmittelbar vorherigen globalen Erstellers (`recentTaskCreators`).
+    - Gleichmäßige Aufgabenverteilung über `creatorCounts`: Bei mehreren wählbaren Spielern werden stets die Mitspieler mit den bisher wenigsten zugewiesenen Aufgaben bevorzugt (bei Gleichstand Zufallsauswahl).
+    - Synchronisation des Creator-Zustands (`creatorCounts`, `lastCreatorByTargetAndChoice`) im Lobby-State-Payload.
+- **Lobby-Verbleib & Reconnect-Stabilität bei App-Wechsel / Hintergrundmodus (`server.js`, `database.js`, `js/wop-socket-client.js`, `js/app.js`):**
+  - Kritisches Problem behoben, bei dem Spieler beim Minimieren der App, Sperren des Bildschirms oder Wechsel zu einer anderen App aus der Lobby flogen und nicht mehr beitreten konnten.
+  - `pagehide`-Beacon unterdrückt: Wenn ein Spieler sich in einer aktiven Lobby befindet (`window.activeLobbyCode`), sendet `pagehide` keinen hart trennenden `/api/user/offline`-Request.
+  - `/api/user/offline` im Backend sichert aktive Lobby-Mitglieder ab: Keine Trennung via `s.disconnect(true)` und kein Zurücksetzen von `currentLobby`, wenn der Nutzer sich in einer aktiven Lobby befindet.
+  - `database.js`: `setOnlineStatus` überschreibt `currentLobby` nicht mehr mit einem leeren String, wenn kein expliziter Lobby-Parameter übergeben wurde.
+  - Automatischer Socket-Reconnect bei `io server disconnect` und Reconnect-Trigger bei `visibilitychange`, `pageshow` und `focus`.
+- **Zuverlässige Chat-Wiederherstellung bei Neuladen (`js/app.js`):**
+  - `applyGameStateFromFirebase` stellt den Chat-Verlauf (`restoreLobbyChat`) nun auch bei laufenden Runden (`wop` und `wheel`) und Mid-Game-Joins unmittelbar wieder her.
+  - Initialer Restore beim Laden der Seite (`DOMContentLoaded`) und bei `joinGame`.
+- **Behebung von Button-Verschiebungen & verschwindenden Aufgaben/Status bei Orientierungswechsel und Scrollen (`js/app.js`, `css/style.css`, `index.html`):**
+  - Problem behoben, bei dem beim Drehen des Smartphones (Portrait <-> Landscape) oder beim Scrollen der Status oder die aktuelle Frage/Pflicht verschwand und die Aktionsbuttons in die Mitte des Bildschirms rutschten.
+  - Ursache: `applyGameStateFromFirebase` rief `updateWopTurn()` bisher nur auf, wenn `turnStateChanged` wahr war. Nach Reconnects oder State-Updates blieb der Aufgabenbereich daher unsichtbar (Höhe 0px), wodurch der Container kollabierte und Buttons nach oben in die Bildschirmmitte zogen.
+  - `applyGameStateFromFirebase` ruft `updateWopTurn()` in der `wop`-Phase nun verlässlich auf und stellt die Sichtbarkeit des aktiven Tasks (`#active-task-area`), Eingabebereichs oder Wartebereichs sicher.
+  - `setupCreatorUI`: Kein unbegründetes Leeren von `custom-task-input.value` bei Re-Renders.
+  - CSS & Viewport: `min-height: 100dvh` auf `body`, Viewport-Meta mit `viewport-fit=cover` ergänzt.
+
+### Misc
+- Versionsnummer auf **2.0.28** angehoben und alle Cache-Busting-Parameter aktualisiert.
+
+---
+
 ## [2.0.27] - 2026-11-05
 
 ### Bug Fixes
