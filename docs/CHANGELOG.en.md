@@ -4,6 +4,18 @@ All notable changes to this project are documented in this file in a precise, te
 
 ---
 
+## [2.0.36] - 2026-11-06
+
+### New Features / Improvements
+- **Streamlined Diagnostics Notice in Feedback Modal (`index.html`, `js/app.js`):**
+  - In the user-facing feedback submission modal, technical log dumps and counter badges have been replaced with a clean, unobtrusive note informing users that error and system reports are automatically attached in the background.
+  - The actual diagnostics (console errors, server errors, stack traces, and runtime exceptions) are exclusively presented to administrators inside the Admin Panel feedback inspection view.
+
+### Misc
+- Version bumped to **2.0.36**; cache-busting updated to `?v=2.0.36`; service worker cache bumped to **`wop-party-v12`**.
+
+---
+
 ## [2.0.35] - 2026-11-06
 
 ### Bug Fixes

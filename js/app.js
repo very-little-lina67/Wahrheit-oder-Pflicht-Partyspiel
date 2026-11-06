@@ -419,6 +419,7 @@
                 fbOptImp: "💡 Vorschlag / Verbesserung",
                 fbMsgLabel: "Deine Nachricht:",
                 fbPlaceholder: "Beschreibe den Bug oder deine Idee...",
+                fbDiagHint: "Fehler- und Systemberichte werden zur schnellen Analyse automatisch mitgesendet.",
                 fbSendBtn: "Feedback absenden",
                 fbCloseBtn: "Schließen",
                 inviteTitle: "📬 Spiel-Einladung!",
@@ -766,6 +767,7 @@
                 fbOptImp: "💡 Suggestion / Improvement",
                 fbMsgLabel: "Your Message:",
                 fbPlaceholder: "Describe the bug or your idea...",
+                fbDiagHint: "Error and system reports are automatically attached for fast analysis.",
                 fbSendBtn: "Send Feedback",
                 fbCloseBtn: "Close",
                 inviteTitle: "📬 Game Invite!",
@@ -1124,6 +1126,7 @@
             const fbOptImp = document.getElementById("ui-fb-opt-imp"); if (fbOptImp) fbOptImp.innerText = t.fbOptImp;
             const fbMsgLabel = document.getElementById("ui-fb-msg-label"); if (fbMsgLabel) fbMsgLabel.innerText = t.fbMsgLabel;
             const fbTextInp = document.getElementById("feedback-text-input"); if (fbTextInp) fbTextInp.placeholder = t.fbPlaceholder;
+            const fbDiagHint = document.getElementById("ui-fb-diag-hint-text"); if (fbDiagHint) fbDiagHint.innerText = t.fbDiagHint || (currentLang === "de" ? "Fehler- und Systemberichte werden zur schnellen Analyse automatisch mitgesendet." : "Error and system reports are automatically attached for fast analysis.");
             const fbSendBtn = document.getElementById("ui-fb-send-btn"); if (fbSendBtn) fbSendBtn.innerText = t.fbSendBtn;
             const fbCloseBtn = document.getElementById("ui-fb-close-btn"); if (fbCloseBtn) fbCloseBtn.innerText = t.fbCloseBtn;
 
@@ -4367,69 +4370,9 @@
             };
         }
 
-        function updateFeedbackDiagPreview() {
-            const summary = document.getElementById("feedback-diag-summary");
-            const details = document.getElementById("feedback-diag-details");
-            if (!summary) return;
-            const cList = window.__wopConsoleErrors || [];
-            const sList = window.__wopServerErrors || [];
-            const rList = window.__wopErrorLog || [];
-            const total = cList.length + sList.length + rList.length;
-
-            if (total === 0) {
-                summary.innerText = currentLang === "de"
-                    ? "🔍 Diagnose: Keine Fehler in Konsole/Netzwerk"
-                    : "🔍 Diagnostics: No errors in console/network";
-            } else {
-                summary.innerText = currentLang === "de"
-                    ? `⚠️ Diagnose: ${cList.length} Konsolenfehler, ${sList.length} Serverfehler`
-                    : `⚠️ Diagnostics: ${cList.length} console errors, ${sList.length} server errors`;
-            }
-
-            if (details) {
-                let lines = [];
-                if (cList.length) {
-                    lines.push(`--- Console Errors (${cList.length}) ---`);
-                    cList.slice(-4).forEach(e => {
-                        const time = e.at ? e.at.slice(11, 19) : "";
-                        lines.push(`[${time}] ${e.message}`);
-                    });
-                }
-                if (sList.length) {
-                    lines.push(`--- Server Errors (${sList.length}) ---`);
-                    sList.slice(-4).forEach(e => {
-                        const time = e.at ? e.at.slice(11, 19) : "";
-                        lines.push(`[${time}] ${e.status ? 'HTTP ' + e.status : 'Netzwerk'} ${e.url || ''}: ${e.error}`);
-                    });
-                }
-                if (rList.length) {
-                    lines.push(`--- Runtime Errors (${rList.length}) ---`);
-                    rList.slice(-3).forEach(e => {
-                        const time = e.at ? e.at.slice(11, 19) : "";
-                        lines.push(`[${time}] ${e.message}`);
-                    });
-                }
-                details.textContent = lines.join("\n") || (currentLang === "de" ? "Keine Fehlerdetails erfasst." : "No error details captured.");
-            }
-        }
-
-        function toggleFeedbackDiagDetails() {
-            const details = document.getElementById("feedback-diag-details");
-            const btn = document.getElementById("feedback-diag-toggle");
-            if (!details) return;
-            details.classList.toggle("hidden");
-            if (btn) {
-                btn.innerText = details.classList.contains("hidden")
-                    ? "Details"
-                    : (currentLang === "de" ? "▲ Schließen" : "▲ Close");
-            }
-        }
-        window.toggleFeedbackDiagDetails = toggleFeedbackDiagDetails;
-
         function openFeedbackModal() {
             document.getElementById("feedback-text-input").value = "";
             document.getElementById("feedback-modal").classList.remove("hidden");
-            updateFeedbackDiagPreview();
             saveActivePage({ page: "feedback" });
         }
 

@@ -4,6 +4,18 @@ Alle wesentlichen Änderungen am Projekt werden in dieser Datei präzise und tec
 
 ---
 
+## [2.0.36] - 2026-11-06
+
+### New Features / Improvements
+- **Kompakter Diagnose-Hinweis im Feedback-Popup (`index.html`, `js/app.js`):**
+  - Im Feedback-Eingabe-Popup für Spieler wird anstelle technischer Log-Dumps und Zähler nur noch ein dezenter Hinweis angezeigt, dass Fehler- und Systemberichte zur Fehleranalyse automatisch im Hintergrund mitgesendet werden.
+  - Die konkreten Diagnosedaten (Konsolenfehler, HTTP-/Serverfehler, Stacktraces und Laufzeitfehler) werden wie gewünscht erst und ausschließlich dem Admin im Feedback-Inspektionsbereich des Admin-Panels aufgeschlüsselt dargestellt.
+
+### Misc
+- Version **2.0.36**; Cache-Busting `?v=2.0.36`; Service-Worker-Cache **`wop-party-v12`**.
+
+---
+
 ## [2.0.35] - 2026-11-06
 
 ### Bug Fixes
