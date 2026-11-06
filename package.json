@@ -1,6 +1,6 @@
 {
   "name": "wahrheit-oder-pflicht-partyspiel",
-  "version": "2.0.30",
+  "version": "2.0.33",
   "description": "Wahrheit oder Pflicht Partyspiel mit Themes und Echtzeit-Multiplayer",
   "main": "server.js",
   "type": "module",
