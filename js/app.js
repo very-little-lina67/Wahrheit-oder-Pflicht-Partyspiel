@@ -6929,13 +6929,7 @@
             activeLobbyCode = code;
             window.activeLobbyCode = code;
             try { restoreLobbyChat(code); } catch (_) {}
-            if (window.wopSocket && window.wopSocket.connected) {
-                window.wopSocket.emit("lobby:join", {
-                    code: code,
-                    player: { name: myName, email: myEmail, accessory: equippedAccessory },
-                    isSpectator: !!isSpectator
-                });
-            }
+            // lobby:join folgt weiter unten mit Callback (wichtig für Admin/Master-Zuschauer bei laufender Runde)
             isHost = false;
             clearLobbyJoinTimeout();
             destroyPeerOnly();
@@ -6943,39 +6937,106 @@
 
             try {
                 let hostEmail = "";
+                let lobbyFoundOnServer = false;
                 try {
                     const lRes = await fetch(`/api/lobby/${encodeURIComponent(code)}`);
                     if (lRes.ok) {
                         const lData = await lRes.json();
                         if (lData && lData.lobby) {
-                            hostEmail = lData.lobby.hostEmail || "";
+                            lobbyFoundOnServer = true;
+                            hostEmail = lData.lobby.hostEmail || lData.lobby.host || "";
                         }
                     }
                 } catch (_) {}
 
-                if (!hostEmail) {
-                    const snap = await db.collection("users")
-                        .where("currentLobby", "==", code)
-                        .get();
+                // Socket-Join mit Callback: bestätigt Lobby auch bei laufender Runde
+                let socketJoinOk = false;
+                if (window.wopSocket && window.wopSocket.connected) {
+                    try {
+                        socketJoinOk = await new Promise((resolve) => {
+                            const t = setTimeout(() => resolve(false), 4000);
+                            window.wopSocket.emit("lobby:join", {
+                                code: code,
+                                player: { name: myName, email: myEmail, accessory: equippedAccessory },
+                                isSpectator: !!isSpectator
+                            }, (cb) => {
+                                clearTimeout(t);
+                                if (cb && cb.success && cb.lobby) {
+                                    lobbyFoundOnServer = true;
+                                    if (!hostEmail) hostEmail = cb.lobby.hostEmail || cb.lobby.host || "";
+                                    resolve(true);
+                                } else {
+                                    resolve(false);
+                                }
+                            });
+                        });
+                    } catch (_) {}
+                }
 
-                    snap.forEach(doc => {
-                        const d = doc.data() || {};
-                        if (!hostEmail && (d.lobbyRole === "host" || doc.id === d.lobbyHostEmail)) {
-                            hostEmail = doc.id;
+                if (!hostEmail) {
+                    try {
+                        const snap = await db.collection("users")
+                            .where("currentLobby", "==", code)
+                            .get();
+
+                        snap.forEach(doc => {
+                            const d = doc.data() || {};
+                            if (!hostEmail && (d.lobbyRole === "host" || doc.id === d.lobbyHostEmail)) {
+                                hostEmail = doc.id;
+                            }
+                        });
+                    } catch (_) {}
+                }
+
+                // Fallback: Host-E-Mail aus Lobby-Dokument (wichtig für Admin/Master-Zuschauer
+                // bei bereits laufender Runde, wenn Presence/API den Host nicht liefert)
+                if (!hostEmail) {
+                    try {
+                        const lobbyDocEarly = await db.collection("lobbies").doc(code).get();
+                        if (lobbyDocEarly.exists) {
+                            const ld = lobbyDocEarly.data() || {};
+                            hostEmail = String(ld.hostEmail || ld.host || "").trim();
+                            lobbyFoundOnServer = true;
                         }
-                    });
+                    } catch (_) {}
+                }
+
+                // Zuschauer (Admin/Master): Lobby existiert, auch ohne sofortige Host-Mail beitreten
+                if (!hostEmail && asSpectator) {
+                    try {
+                        const lobbyDocSpec = await db.collection("lobbies").doc(code).get();
+                        if (lobbyDocSpec.exists) {
+                            const ld = lobbyDocSpec.data() || {};
+                            hostEmail = String(ld.hostEmail || ld.host || "").trim();
+                            lobbyFoundOnServer = true;
+                            // Auch ohne hostEmail: Zuschauer darf State laden und beobachten
+                            if (!hostEmail) {
+                                hostEmail = myEmail; // Platzhalter – State kommt über lobbies/{code}
+                            }
+                        }
+                    } catch (_) {}
+                }
+
+                // Admin/Master-Zuschauer: wenn API oder Socket die Lobby kennt, trotzdem beitreten
+                if (!hostEmail && asSpectator && (lobbyFoundOnServer || socketJoinOk)) {
+                    hostEmail = myEmail;
                 }
 
                 if (!hostEmail) {
                     if (!restoring) {
                         alert(currentLang === "de"
-                            ? "Lobby nicht gefunden. Prüfe den Lobby-Code."
-                            : "Lobby not found. Check the lobby code.");
+                            ? (asSpectator
+                                ? "Lobby für Zuschauer nicht erreichbar. Code prüfen – die Runde muss auf dem Server aktiv sein (Host online)."
+                                : "Lobby nicht gefunden. Prüfe den Lobby-Code.")
+                            : (asSpectator
+                                ? "Lobby not reachable for spectators. Check the code – the round must be active on the server (host online)."
+                                : "Lobby not found. Check the lobby code."));
                     }
                     return;
                 }
 
-                // Lobby-Beitritt auch während laufender Runde erlaubt (Mid-Game-Join).
+                // Lobby-Beitritt auch während laufender Runde erlaubt (Mid-Game-Join),
+                // inkl. unsichtbarer Admin/Master-Zuschauer-Modus.
                 // Der Spielstand wird aus Firebase (lobbies/{code}) wiederhergestellt.
                 lobbyHostEmail = hostEmail;
 
@@ -7112,7 +7173,14 @@
             const reasonEl = document.getElementById("ui-round-stats-reason");
             if (title) title.innerText = de ? "📊 Runden-Statistik" : "📊 Round Stats";
             if (reasonEl) {
-                if (reason === "leak") {
+                if (reason === "kick") {
+                    const roleLbl = (String(window._lastEliminationByRole || "").toLowerCase() === "master")
+                        ? (de ? "Master" : "Master")
+                        : (de ? "Admin" : "Admin");
+                    reasonEl.innerText = de
+                        ? `🛡️ ${roleLbl}/Moderation hat dich wegen eines Regelverstoßes aus der Runde entfernt. Das ist kein Leak-Ausscheiden – bitte halte dich an Fairplay und die Spielregeln.`
+                        : `🛡️ ${roleLbl}/moderation removed you from the round for a rule violation. This is not a leak elimination – please stick to fair play and the rules.`;
+                } else if (reason === "leak") {
                     reasonEl.innerText = de
                         ? "Du bist ausgeschieden (Leak / musste pinkeln)."
                         : "You were eliminated (leak / had to pee).";
@@ -7464,7 +7532,10 @@
                     });
                 }
                 updatePlayerList();
-                applyEliminationSideEffects(data.eliminatedName || null);
+                applyEliminationSideEffects(data.eliminatedName || null, {
+                    reason: data.eliminationReason || "leak",
+                    byRole: data.byRole || "admin"
+                });
                 if (isHost) scheduleSaveGameState();
             } else if (data.type === 'PLAYER_STATUS') {
                 if (data.playerName && data.playerName !== 'undefined') {
@@ -8615,8 +8686,15 @@
         let lastEliminatedChatKey = "";
         let lastEliminatedAt = 0;
 
-        function applyEliminationSideEffects(eliminatedName) {
+        function applyEliminationSideEffects(eliminatedName, options = {}) {
             const name = eliminatedName || null;
+            const elimReason = (options && options.reason) || "leak";
+            const byRole = (options && options.byRole) || "admin";
+            // Merken für Setup-Hinweis nach Kick (nicht „ausgeschieden durch Leak“)
+            if (name && namesEqual(name, myName)) {
+                window._lastEliminationReason = elimReason;
+                window._lastEliminationByRole = byRole;
+            }
             // Schutz vor Doppel-Anwendung (Host sendData + Broadcast / Race)
             if (name) {
                 const chatKey = String(name) + "|" + (currentPlayerIndex || 0);
@@ -8626,12 +8704,24 @@
                 }
                 lastEliminatedChatKey = chatKey;
                 lastEliminatedAt = now;
-                appendChat(
-                    "System",
-                    currentLang === "de"
-                        ? `${name} ist raus (Leak / aufgegeben). ❌`
-                        : `${name} is out (leaked / gave up). ❌`
-                );
+                if (elimReason === "kick") {
+                    const roleLbl = String(byRole || "").toLowerCase() === "master"
+                        ? (currentLang === "de" ? "Master" : "Master")
+                        : (currentLang === "de" ? "Admin" : "Admin");
+                    appendChat(
+                        "System",
+                        currentLang === "de"
+                            ? `🛡️ ${name} wurde von ${roleLbl}/Moderation wegen eines Regelverstoßes aus der Runde entfernt (kein Leak).`
+                            : `🛡️ ${name} was removed by ${roleLbl}/moderation for a rule violation (not a leak).`
+                    );
+                } else {
+                    appendChat(
+                        "System",
+                        currentLang === "de"
+                            ? `${name} ist raus (Leak / aufgegeben). ❌`
+                            : `${name} is out (leaked / gave up). ❌`
+                    );
+                }
             }
 
             // Votes des Ausgeschiedenen entfernen, damit die Runde nicht blockiert
@@ -8683,8 +8773,9 @@
                 if ((Number(gameStreak) || 0) > sessionPeakStreak) {
                     sessionPeakStreak = Number(gameStreak) || 0;
                 }
-                if (showRoundStatsModal("leak")) {
-                    _roundStatsPendingAction = "leak";
+                const statsReason = elimReason === "kick" ? "kick" : "leak";
+                if (showRoundStatsModal(statsReason)) {
+                    _roundStatsPendingAction = statsReason;
                 } else {
                     setTimeout(() => kickEliminatedPlayerToSetup(), 300);
                 }
@@ -8757,11 +8848,20 @@
 
                 updateOnlineStatus(true);
 
+                const wasKick = String(window._lastEliminationReason || "") === "kick";
+                const roleLabel = (String(window._lastEliminationByRole || "").toLowerCase() === "master")
+                    ? (currentLang === "de" ? "Master" : "Master")
+                    : (currentLang === "de" ? "Admin" : "Admin");
                 alert(
-                    currentLang === "de"
-                        ? "Du bist ausgeschieden (Leak / Klo) und wurdest aus der Runde entfernt.\nDu kannst eine neue Lobby erstellen oder einem Code beitreten."
-                        : "You are eliminated (leak / restroom) and were removed from the round.\nYou can create a new lobby or join with a code."
+                    wasKick
+                        ? (currentLang === "de"
+                            ? `🛡️ Entfernung durch ${roleLabel}/Moderation\n\nDu wurdest wegen eines Regelverstoßes aus der laufenden Runde entfernt.\nDas zählt nicht als Leak-Ausscheiden – deine Tages-Streak bleibt erhalten.\nBitte halte dich an Fairplay und die Spielregeln.\n\nDu kannst eine neue Lobby erstellen oder mit einem Code erneut beitreten.`
+                            : `🛡️ Removed by ${roleLabel}/moderation\n\nYou were removed from the ongoing round for a rule violation.\nThis does not count as a leak elimination – your daily streak stays.\nPlease stick to fair play and the game rules.\n\nYou can create a new lobby or join again with a code.`)
+                        : (currentLang === "de"
+                            ? "Du bist ausgeschieden (Leak / Klo) und wurdest aus der Runde entfernt.\nDu kannst eine neue Lobby erstellen oder einem Code beitreten."
+                            : "You are eliminated (leak / restroom) and were removed from the round.\nYou can create a new lobby or join with a code.")
                 );
+                try { window._lastEliminationReason = ""; window._lastEliminationByRole = ""; } catch (_) {}
 
                 // Kurzer Moment, dann wieder normale Leave-Logik erlauben
                 setTimeout(() => {
@@ -8875,11 +8975,13 @@
                         localOwner: p.localOwner || "",
                         localOwnerEmail: p.localOwnerEmail || ""
                     })),
-                    eliminatedName: eliminatedName
+                    eliminatedName: eliminatedName,
+                    eliminationReason: reason,
+                    byRole: myRole || "admin"
                 });
                 scheduleSaveGameState();
             } else {
-                applyEliminationSideEffects(eliminatedName);
+                applyEliminationSideEffects(eliminatedName, { reason: reason, byRole: myRole || "admin" });
                 sendData({
                     type: "ELIMINATE",
                     players: players.map(p => ({
@@ -8891,7 +8993,9 @@
                         localOwner: p.localOwner || "",
                         localOwnerEmail: p.localOwnerEmail || ""
                     })),
-                    eliminatedName: eliminatedName
+                    eliminatedName: eliminatedName,
+                    eliminationReason: reason,
+                    byRole: myRole || "admin"
                 });
             }
         }
