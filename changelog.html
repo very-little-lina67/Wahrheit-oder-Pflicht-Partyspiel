@@ -133,10 +133,12 @@
         <header>
             <h1 id="page-title">Changelog</h1>
             <p id="page-subtitle">Alle wesentlichen Änderungen am Projekt</p>
-            <span class="version-badge" id="version-badge">Aktuell: v2.0.36</span>
+            <span class="version-badge" id="version-badge">Aktuell: v2.0.37</span>
             <div class="lang-switch">
                 <button type="button" id="btn-de" class="active" onclick="setChangelogLang('de')">🇩🇪 Deutsch</button>
                 <button type="button" id="btn-en" onclick="setChangelogLang('en')">🇬🇧 English</button>
+                <button type="button" id="btn-fr" onclick="setChangelogLang('fr')">🇫🇷 Français</button>
+                <button type="button" id="btn-nl" onclick="setChangelogLang('nl')">🇳🇱 Nederlands</button>
             </div>
         </header>
 
@@ -159,14 +161,14 @@
     (function () {
         var container = document.getElementById("changelog-content");
         var currentLang = "de";
-        var cachedMd = { de: null, en: null };
+        var cachedMd = { de: null, en: null, fr: null, nl: null };
 
         var i18n = {
             de: {
                 title: "Changelog",
                 docTitle: "Changelog – Wahrheit oder Pflicht Partyspiel",
                 subtitle: "Alle wesentlichen Änderungen am Projekt",
-                badge: "Aktuell: v2.0.36",
+                badge: "Aktuell: v2.0.37",
                 back: "← Zurück zum Spiel",
                 loading: "Changelog wird geladen …",
                 game: "Spiel",
@@ -180,7 +182,7 @@
                 title: "Changelog",
                 docTitle: "Changelog – Truth or Dare Party Game",
                 subtitle: "All notable changes to this project",
-                badge: "Current: v2.0.36",
+                badge: "Current: v2.0.37",
                 back: "← Back to game",
                 loading: "Loading changelog …",
                 game: "Game",
@@ -189,6 +191,34 @@
                 privacy: "Privacy",
                 fallbackTitle: "Could not load the full changelog.",
                 fallbackHint: "Please check docs/CHANGELOG.en.md."
+            },
+            fr: {
+                title: "Journal des modifications",
+                docTitle: "Changelog – Vérité ou Action",
+                subtitle: "Toutes les modifications notables du projet",
+                badge: "Actuel : v2.0.37",
+                back: "← Retour au jeu",
+                loading: "Chargement du changelog …",
+                game: "Jeu",
+                rules: "Règles",
+                imprint: "Mentions légales",
+                privacy: "Confidentialité",
+                fallbackTitle: "Impossible de charger le changelog complet.",
+                fallbackHint: "Veuillez vérifier docs/CHANGELOG.fr.md."
+            },
+            nl: {
+                title: "Changelog",
+                docTitle: "Changelog – Waarheid of Durven",
+                subtitle: "Alle belangrijke wijzigingen aan dit project",
+                badge: "Huidig: v2.0.37",
+                back: "← Terug naar het spel",
+                loading: "Changelog wordt geladen …",
+                game: "Spel",
+                rules: "Regels",
+                imprint: "Colofon",
+                privacy: "Privacy",
+                fallbackTitle: "Volledige changelog kon niet worden geladen.",
+                fallbackHint: "Controleer docs/CHANGELOG.nl.md."
             }
         };
 
@@ -214,6 +244,8 @@
             document.getElementById("ft-privacy").textContent = t.privacy;
             document.getElementById("btn-de").classList.toggle("active", lang === "de");
             document.getElementById("btn-en").classList.toggle("active", lang === "en");
+            var btnFr = document.getElementById("btn-fr"); if (btnFr) btnFr.classList.toggle("active", lang === "fr");
+            var btnNl = document.getElementById("btn-nl"); if (btnNl) btnNl.classList.toggle("active", lang === "nl");
         }
 
         function renderMarkdown(md) {
@@ -342,7 +374,13 @@
             if (lang === "en") {
                 return ["docs/CHANGELOG.en.md", "CHANGELOG.en.md", "docs/CHANGELOG.md", "CHANGELOG.md"];
             }
-            return ["docs/CHANGELOG.md", "CHANGELOG.md"];
+            if (lang === "fr") {
+                return ["docs/CHANGELOG.fr.md", "CHANGELOG.fr.md", "docs/CHANGELOG.en.md", "CHANGELOG.en.md"];
+            }
+            if (lang === "nl") {
+                return ["docs/CHANGELOG.nl.md", "CHANGELOG.nl.md", "docs/CHANGELOG.en.md", "CHANGELOG.en.md"];
+            }
+            return ["docs/CHANGELOG.md", "CHANGELOG.md", "docs/CHANGELOG.de.md", "CHANGELOG.de.md"];
         }
 
         function tryFetch(lang, urls, idx) {
@@ -376,8 +414,11 @@
             tryFetch(lang, urlsFor(lang), 0);
         }
 
+        var SUPPORTED = ["de", "en", "fr", "nl"];
+
         window.setChangelogLang = function (lang) {
-            currentLang = lang === "en" ? "en" : "de";
+            if (SUPPORTED.indexOf(lang) < 0) lang = "de";
+            currentLang = lang;
             try { localStorage.setItem("wop_changelog_lang", currentLang); } catch (e) {}
             applyChrome(currentLang);
             loadLang(currentLang);
@@ -388,19 +429,24 @@
         if (!pref) {
             try {
                 var appLang = localStorage.getItem("wop_lang") || localStorage.getItem("lang");
-                if (appLang === "en") pref = "en";
+                if (SUPPORTED.indexOf(appLang) >= 0) pref = appLang;
             } catch (e2) {}
         }
-        if (!pref && typeof navigator !== "undefined" && navigator.language && navigator.language.toLowerCase().indexOf("en") === 0) {
-            pref = "en";
+        if (!pref && typeof navigator !== "undefined" && navigator.language) {
+            var nav = navigator.language.toLowerCase();
+            if (nav.indexOf("fr") === 0) pref = "fr";
+            else if (nav.indexOf("nl") === 0) pref = "nl";
+            else if (nav.indexOf("en") === 0) pref = "en";
         }
-        currentLang = pref === "en" ? "en" : "de";
+        if (SUPPORTED.indexOf(pref) < 0) pref = "de";
+        currentLang = pref;
         applyChrome(currentLang);
         loadLang(currentLang);
-        // Prefetch other language in background
+        // Prefetch other languages in background
         setTimeout(function () {
-            var other = currentLang === "en" ? "de" : "en";
-            loadLang(other);
+            SUPPORTED.forEach(function (l) {
+                if (l !== currentLang) loadLang(l);
+            });
         }, 300);
     })();
     </script>
