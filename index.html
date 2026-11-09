@@ -1147,5 +1147,33 @@
     })();
     </script>
 
+
+    <script>
+    // Safety: Setup sichtbar machen wenn eingeloggt aber keine Lobby/Spiel aktiv
+    (function () {
+      function ensureSetupVisible() {
+        try {
+          var email = localStorage.getItem("wop_user_email_v6");
+          if (!email) return;
+          var setup = document.getElementById("setup");
+          var lobbyWait = document.getElementById("lobby-wait-box");
+          var wop = document.getElementById("woP-phase");
+          var wheel = document.getElementById("wheel-phase");
+          if (!setup) return;
+          var inLobby = lobbyWait && !lobbyWait.classList.contains("hidden");
+          var inGame = (wop && !wop.classList.contains("hidden")) || (wheel && !wheel.classList.contains("hidden"));
+          if (!inLobby && !inGame && setup.classList.contains("hidden")) {
+            setup.classList.remove("hidden");
+          }
+        } catch (e) {}
+      }
+      document.addEventListener("DOMContentLoaded", function () {
+        setTimeout(ensureSetupVisible, 100);
+        setTimeout(ensureSetupVisible, 600);
+        setTimeout(ensureSetupVisible, 1500);
+      });
+    })();
+    </script>
+
 </body>
 </html>
