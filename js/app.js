@@ -4511,11 +4511,12 @@
             if (typeof registerPushSubscription === "function" && typeof Notification !== "undefined" && Notification.permission === "granted") {
                 registerPushSubscription();
             }
-            document.getElementById("auth-modal").classList.add("hidden");
+            document.getElementById("auth-modal")?.classList.add("hidden");
             document.getElementById("account-modal")?.classList.add("hidden");
             document.getElementById("profile-modal")?.classList.add("hidden");
-            // Bei Lobby-Restore bleibt Setup versteckt (applyGameState steuert die UI)
-            if (!restoringLobby && !gameStarted && !activeLobbyCode) {
+            // Setup zeigen, wenn kein aktives Spiel / keine aktive Lobby-UI
+            const inActiveGame = !!(gameStarted || (activeLobbyCode && document.getElementById("lobby-wait-box") && !document.getElementById("lobby-wait-box").classList.contains("hidden")));
+            if (!restoringLobby && !inActiveGame) {
                 document.getElementById("setup")?.classList.remove("hidden");
             }
             try {
@@ -9955,3 +9956,16 @@
             input.value = "";
         }
 
+
+// --- Globale Exports für onclick-Handler (Fallback falls Scope-Probleme) ---
+try {
+    window.hostGame = typeof hostGame === "function" ? hostGame : window.hostGame;
+    window.joinGame = typeof joinGame === "function" ? joinGame : window.joinGame;
+    window.startOnlineGame = typeof startOnlineGame === "function" ? startOnlineGame : window.startOnlineGame;
+    window.changeLanguage = typeof changeLanguage === "function" ? changeLanguage : window.changeLanguage;
+    window.changeLanguageFromApp = typeof changeLanguageFromApp === "function" ? changeLanguageFromApp : window.changeLanguageFromApp;
+    window.loginUser = typeof loginUser === "function" ? loginUser : window.loginUser;
+    window.registerUser = typeof registerUser === "function" ? registerUser : window.registerUser;
+    window.logoutUser = typeof logoutUser === "function" ? logoutUser : window.logoutUser;
+    window.showLoggedInState = typeof showLoggedInState === "function" ? showLoggedInState : window.showLoggedInState;
+} catch (e) { console.warn("WOP global export:", e); }
