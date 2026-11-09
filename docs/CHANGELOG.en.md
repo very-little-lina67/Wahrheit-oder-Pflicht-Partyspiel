@@ -4,6 +4,20 @@ All notable changes to this project are documented in this file in a precise, te
 
 ---
 
+## [2.0.37] - 2026-11-09
+
+### New Features / Improvements
+- **French (fr) and Dutch (nl) as additional languages:**
+  - New translation objects `fr` and `nl` in `js/app.js` (UI, lobby, game flow, shop, profile, chat, feedback, wheel).
+  - Language selectors in auth modal and in-app: 🇩🇪 Deutsch, 🇬🇧 English, 🇫🇷 Français, 🇳🇱 Nederlands.
+  - Persistence via `localStorage` (`lang` / `wop_lang`); `SUPPORTED_LANGS` includes `de`, `en`, `fr`, `nl`.
+- **No game-logic changes** – language strings and switchers only.
+
+### Misc
+- Version **2.0.37**; cache-busting `?v=2.0.37`.
+
+---
+
 ## [2.0.36] - 2026-11-06
 
 ### New Features / Improvements
