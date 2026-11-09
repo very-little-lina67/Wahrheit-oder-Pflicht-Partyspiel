@@ -37,9 +37,20 @@
             font-weight: 600;
         }
         .nav-back:hover { text-decoration: underline; }
-        header { text-align: center; margin-bottom: 28px; }
-        header h1 { margin: 0 0 8px; font-size: 1.55rem; color: var(--accent); }
-        header p { margin: 0; color: var(--muted); font-size: 0.95rem; }
+        header {
+            text-align: center;
+            margin-bottom: 28px;
+        }
+        header h1 {
+            margin: 0 0 8px;
+            font-size: 1.55rem;
+            color: var(--accent);
+        }
+        header p {
+            margin: 0;
+            color: var(--muted);
+            font-size: 0.95rem;
+        }
         .lang-switch {
             margin-top: 14px;
             display: flex;
@@ -71,12 +82,30 @@
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
         }
-        .card h2 { margin: 0 0 10px; font-size: 1.1rem; color: var(--primary); }
-        .card h3 { margin: 14px 0 6px; font-size: 0.98rem; color: var(--accent); }
-        .card p, .card li { font-size: 0.92rem; color: var(--text); margin: 0.45em 0; }
-        .card ul { margin: 6px 0 0; padding-left: 1.25rem; }
+        .card h2 {
+            margin: 0 0 10px;
+            font-size: 1.1rem;
+            color: var(--primary);
+        }
+        .card h3 {
+            margin: 14px 0 6px;
+            font-size: 0.98rem;
+            color: var(--accent);
+        }
+        .card p, .card li {
+            font-size: 0.92rem;
+            color: var(--text);
+            margin: 0.45em 0;
+        }
+        .card ul {
+            margin: 6px 0 0;
+            padding-left: 1.25rem;
+        }
         .card li { margin-bottom: 6px; }
-        .card a { color: var(--link); text-underline-offset: 3px; }
+        .card a {
+            color: var(--link);
+            text-underline-offset: 3px;
+        }
         .card a:hover { color: #9ae8ff; }
         .card strong { color: #ffd166; }
         .lang-block { display: none; }
@@ -87,7 +116,11 @@
             font-size: 12px;
             color: var(--muted);
         }
-        footer a { color: #00bfff; text-decoration: none; margin: 0 6px; }
+        footer a {
+            color: #00bfff;
+            text-decoration: none;
+            margin: 0 6px;
+        }
         footer a:hover { text-decoration: underline; }
         @media (max-width: 520px) {
             body { padding: 16px 12px 36px; }
@@ -97,7 +130,7 @@
 </head>
 <body>
     <div class="wrap">
-        <a class="nav-back" href="index.html" id="nav-back">← Zurück zum Spiel</a>
+        <a class="nav-back" href="index.html" id="nav-back">← Zurück zum Spiel / Back to game</a>
 
         <header>
             <h1 id="page-title">🔒 Datenschutzerklärung</h1>
@@ -105,23 +138,28 @@
             <div class="lang-switch">
                 <button type="button" id="btn-de" class="active" onclick="setLang('de')">🇩🇪 Deutsch</button>
                 <button type="button" id="btn-en" onclick="setLang('en')">🇬🇧 English</button>
-                <button type="button" id="btn-fr" onclick="setLang('fr')">🇫🇷 Français</button>
-                <button type="button" id="btn-nl" onclick="setLang('nl')">🇳🇱 Nederlands</button>
             </div>
         </header>
 
-        <!-- ========== DE ========== -->
         <div id="content-de" class="lang-block visible">
             <div class="card">
                 <h2>1. Verantwortlicher</h2>
                 <p>Verantwortlich für die Datenverarbeitung auf dieser Website gemäß Art. 4 Nr. 7 DSGVO ist:</p>
-                <p><strong>Christian Heinrich</strong><br>Robert-Koch-Str. 7<br>26133 Oldenburg<br>Deutschland<br>
-                   E-Mail: <a href="mailto:info@omoflow.de">info@omoflow.de</a><br>
-                   Telefon: <a href="tel:+4915565338830">+49 155 65338830</a></p>
+                <p>
+                    <strong>Christian Heinrich</strong><br>
+                    Robert-Koch-Str. 7<br>
+                    26133 Oldenburg<br>
+                    Deutschland<br>
+                    E-Mail: <a href="mailto:info@omoflow.de">info@omoflow.de</a><br>
+                    Telefon: <a href="tel:+4915565338830">+49 155 65338830</a>
+                </p>
             </div>
+
             <div class="card">
                 <h2>2. Überblick & Verarbeitete Daten</h2>
-                <p>Diese Webanwendung ist ein Online-Partyspiel („Wahrheit oder Pflicht“). Zur Bereitstellung von Benutzerkonten, Multiplayer-Lobbys, Chat, Freundeslisten und Ranglisten verarbeiten wir:</p>
+                <p>
+                    Diese Webanwendung ist ein Online-Partyspiel („Wahrheit oder Pflicht“). Zur Bereitstellung von Benutzerkonten, Multiplayer-Lobbys, Chat, Freundeslisten und Ranglisten verarbeiten wir:
+                </p>
                 <ul>
                     <li><strong>Kontodaten:</strong> E-Mail-Adresse, Benutzername, Passwort-Hash (ausschließlich SHA-256 gehasht, niemals im Klartext), Benutzerrolle.</li>
                     <li><strong>Spielstatistiken:</strong> Level, Erfahrungspunkte (XP), Coins, Login-Streak, Spiel-Streak, Errungenschaften (Badges), freigeschaltete Items/Themes/Emotes, Zähler für Wahrheiten und Pflichten.</li>
@@ -130,25 +168,35 @@
                     <li><strong>Server-Logdaten:</strong> Beim Aufruf der Website erfasst der Webserver (Nginx) technisch notwendige Zugriffsdaten (IP-Adresse, Datum/Uhrzeit, Browser-User-Agent, aufgerufene URL) zur Fehleranalyse und Gewährleistung der Serversicherheit.</li>
                 </ul>
             </div>
+
             <div class="card">
                 <h2>3. Rechtsgrundlagen</h2>
                 <ul>
                     <li><strong>Art. 6 Abs. 1 lit. b DSGVO (Vertragserfüllung):</strong> Zur Bereitstellung des Spiels, deines Benutzerkontos, der Lobbys und Spielfunktionen.</li>
-                    <li><strong>Art. 6 Abs. 1 lit. f DSGVO (Berechtigtes Interesse):</strong> Zur Abwehr von Missbrauch, Gewährleistung der Serverstabilität und Bereitstellung verschlüsselter Kommunikation.</li>
+                    <li><strong>Art. 6 Abs. 1 lit. f DSGVO (Berechtigtes Interesse):</strong> Zur Abwehr von Missbrauch, Gewährleistung der Serverstabilität und Bereitstellung verschlüsselter Datenübertragung.</li>
+                    <li><strong>Art. 6 Abs. 1 lit. a DSGVO (Einwilligung):</strong> Bei freiwilligem Absenden von Feedback oder Supportanfragen.</li>
                 </ul>
             </div>
+
             <div class="card">
-                <h2>4. Speicherdauer & Löschung</h2>
+                <h2>4. Hosting & Datenhaltung auf eigenem Server (Kein US-Cloud-Transfer)</h2>
+                <p>
+                    Die gesamte Anwendung (Frontend, Backend, WebSockets und Datenbank) wird auf einem <strong>eigenen Server in Deutschland</strong> betrieben.
+                </p>
+                <p>
+                    Die Persistierung erfolgt in einer lokalen, verschlüsselten <strong>SQLite-Datenbank</strong> auf dem Server. Es findet <strong>keine Übertragung von Spieldaten an Drittanbieter-Cloud-Datenbanken (wie Google Firebase oder AWS)</strong> statt. Sämtliche Daten verbleiben unter unserer direkten Kontrolle in der Europäischen Union.
+                </p>
+            </div>
+
+            <div class="card">
+                <h2>5. Speicherdauer & Kontolöschung</h2>
                 <ul>
                     <li><strong>Kontodaten:</strong> Bleiben gespeichert, solange dein Account aktiv ist. Du kannst dein Konto jederzeit in den Kontoeinstellungen dauerhaft löschen lassen.</li>
                     <li><strong>Lobby- & Spieldaten:</strong> Lobbys und flüchtige Spielzüge sind temporär und werden nach Verlassen bzw. Abschluss der Runde aus dem Arbeitsspeicher entfernt.</li>
                     <li><strong>Logdaten:</strong> Werden rollierend nach maximal 14 Tagen gelöscht oder anonymisiert.</li>
                 </ul>
             </div>
-            <div class="card">
-                <h2>5. Empfänger & Drittländer</h2>
-                <p>Die Datenverarbeitung findet auf Servern in der Europäischen Union statt. Eine Übermittlung in Drittländer findet nicht statt.</p>
-            </div>
+
             <div class="card">
                 <h2>6. Deine Rechte</h2>
                 <p>Du hast nach der DSGVO jederzeit folgende Rechte gegenüber dem Verantwortlichen:</p>
@@ -164,205 +212,113 @@
             </div>
         </div>
 
-        <!-- ========== EN ========== -->
         <div id="content-en" class="lang-block">
             <div class="card">
                 <h2>1. Controller</h2>
-                <p>The controller responsible for data processing on this website pursuant to Art. 4 No. 7 GDPR is:</p>
-                <p><strong>Christian Heinrich</strong><br>Robert-Koch-Str. 7<br>26133 Oldenburg<br>Germany<br>
-                   Email: <a href="mailto:info@omoflow.de">info@omoflow.de</a><br>
-                   Phone: <a href="tel:+4915565338830">+49 155 65338830</a></p>
+                <p>The controller responsible for data processing on this website pursuant to Art. 4 (7) GDPR is:</p>
+                <p>
+                    <strong>Christian Heinrich</strong><br>
+                    Robert-Koch-Str. 7<br>
+                    26133 Oldenburg<br>
+                    Germany<br>
+                    Email: <a href="mailto:info@omoflow.de">info@omoflow.de</a><br>
+                    Phone: <a href="tel:+4915565338830">+49 155 65338830</a>
+                </p>
             </div>
+
             <div class="card">
                 <h2>2. Overview & Processed Data</h2>
-                <p>This web application is an online party game (“Truth or Dare”). To provide user accounts, multiplayer lobbies, chat, friend lists and leaderboards we process:</p>
+                <p>
+                    This web application is an online party game ("Truth or Dare"). In order to provide user accounts, multiplayer lobbies, chat, friends lists, and leaderboards, we process:
+                </p>
                 <ul>
-                    <li><strong>Account data:</strong> Email address, username, password hash (SHA-256 only, never in plain text), user role.</li>
-                    <li><strong>Game statistics:</strong> Level, experience points (XP), coins, login streak, game streak, achievements (badges), unlocked items/themes/emotes, truth and dare counters.</li>
-                    <li><strong>Realtime & session data:</strong> Online presence (via WebSocket), current lobby ID, temporary actions and messages during a game round.</li>
-                    <li><strong>Friend list & DMs:</strong> Links between friends, chat history between two users and open friend requests.</li>
-                    <li><strong>Server logs:</strong> When the website is accessed the web server (Nginx) collects technically necessary access data (IP address, date/time, browser user-agent, requested URL) for error analysis and server security.</li>
+                    <li><strong>Account data:</strong> Email address, username, password hash (strictly SHA-256 hashed, never in plain text), role.</li>
+                    <li><strong>Game statistics:</strong> Level, experience points (XP), coins, login streaks, game streaks, badges, unlocked items/themes/emotes, truth and dare counters.</li>
+                    <li><strong>Real-time & session data:</strong> Online presence (connected via WebSocket), active lobby ID, temporary in-game actions and round messages.</li>
+                    <li><strong>Friends list & direct messages:</strong> Friend connections, 1-on-1 chats, and pending friend requests.</li>
+                    <li><strong>Server log data:</strong> Standard web server logs (IP address, timestamp, browser user-agent, requested URL) collected by Nginx for security and troubleshooting purposes.</li>
                 </ul>
             </div>
+
             <div class="card">
                 <h2>3. Legal Bases</h2>
                 <ul>
-                    <li><strong>Art. 6 (1) lit. b GDPR (contract performance):</strong> To provide the game, your user account, lobbies and game features.</li>
-                    <li><strong>Art. 6 (1) lit. f GDPR (legitimate interest):</strong> To prevent abuse, ensure server stability and provide encrypted communication.</li>
+                    <li><strong>Art. 6 (1) lit. b GDPR (Contract Performance):</strong> To operate the game, your profile, lobbies, and game sessions.</li>
+                    <li><strong>Art. 6 (1) lit. f GDPR (Legitimate Interest):</strong> To ensure server security, prevent abuse, and maintain stability.</li>
+                    <li><strong>Art. 6 (1) lit. a GDPR (Consent):</strong> For voluntary feedback submissions or support inquiries.</li>
                 </ul>
             </div>
+
             <div class="card">
-                <h2>4. Storage Period & Deletion</h2>
+                <h2>4. Self-Hosted Server Infrastructure (No US Cloud Transfer)</h2>
+                <p>
+                    The entire service (frontend, backend, WebSockets, and SQLite database) is self-hosted on a <strong>dedicated server in Germany</strong>.
+                </p>
+                <p>
+                    Data is stored locally in an encrypted SQLite database on the server. <strong>No game or user data is transferred to external US third-party cloud databases (such as Google Firebase or AWS)</strong>. All data remains within the European Union under our direct control.
+                </p>
+            </div>
+
+            <div class="card">
+                <h2>5. Retention Period & Account Deletion</h2>
                 <ul>
-                    <li><strong>Account data:</strong> Stored as long as your account is active. You can permanently delete your account at any time in the account settings.</li>
-                    <li><strong>Lobby & game data:</strong> Lobbies and transient game moves are temporary and are removed from memory after leaving or completing the round.</li>
-                    <li><strong>Log data:</strong> Deleted or anonymised on a rolling basis after a maximum of 14 days.</li>
+                    <li><strong>Account data:</strong> Retained as long as your account exists. You may delete your account at any time in the profile settings.</li>
+                    <li><strong>Lobby data:</strong> Transient in-game session data is cleared upon leaving or concluding a lobby.</li>
+                    <li><strong>Log files:</strong> Automatically rotated and purged within 14 days.</li>
                 </ul>
             </div>
-            <div class="card">
-                <h2>5. Recipients & Third Countries</h2>
-                <p>Data processing takes place on servers in the European Union. There is no transfer to third countries.</p>
-            </div>
+
             <div class="card">
                 <h2>6. Your Rights</h2>
-                <p>Under the GDPR you have the following rights vis-à-vis the controller at any time:</p>
-                <ul>
-                    <li>Right of access to your processed data (Art. 15 GDPR)</li>
-                    <li>Right to rectification of inaccurate data (Art. 16 GDPR)</li>
-                    <li>Right to erasure (“right to be forgotten”, Art. 17 GDPR)</li>
-                    <li>Right to restriction of processing (Art. 18 GDPR)</li>
-                    <li>Right to data portability (Art. 20 GDPR)</li>
-                    <li>Right to object to processing (Art. 21 GDPR)</li>
-                </ul>
-                <p>Please contact us informally by email at <a href="mailto:info@omoflow.de">info@omoflow.de</a>.</p>
-            </div>
-        </div>
-
-        <!-- ========== FR ========== -->
-        <div id="content-fr" class="lang-block">
-            <div class="card">
-                <h2>1. Responsable du traitement</h2>
-                <p>Le responsable du traitement des données sur ce site conformément à l'art. 4 n° 7 du RGPD est :</p>
-                <p><strong>Christian Heinrich</strong><br>Robert-Koch-Str. 7<br>26133 Oldenburg<br>Allemagne<br>
-                   E-mail : <a href="mailto:info@omoflow.de">info@omoflow.de</a><br>
-                   Téléphone : <a href="tel:+4915565338830">+49 155 65338830</a></p>
-            </div>
-            <div class="card">
-                <h2>2. Aperçu & Données traitées</h2>
-                <p>Cette application web est un jeu de société en ligne (« Vérité ou Action »). Pour fournir les comptes utilisateurs, lobbys multijoueurs, chat, listes d'amis et classements, nous traitons :</p>
-                <ul>
-                    <li><strong>Données de compte :</strong> Adresse e-mail, nom d'utilisateur, hash du mot de passe (uniquement SHA-256, jamais en clair), rôle utilisateur.</li>
-                    <li><strong>Statistiques de jeu :</strong> Niveau, points d'expérience (XP), pièces, série de connexion, série de jeu, succès (badges), objets/thèmes/emotes débloqués, compteurs de vérités et d'actions.</li>
-                    <li><strong>Données temps réel & session :</strong> Présence en ligne (via WebSocket), ID de lobby actuel, actions et messages temporaires pendant une partie.</li>
-                    <li><strong>Liste d'amis & messages privés :</strong> Liens entre amis, historique de chat entre deux utilisateurs et demandes d'amis en attente.</li>
-                    <li><strong>Journaux serveur :</strong> Lors de l'accès au site, le serveur web (Nginx) collecte les données d'accès techniquement nécessaires (adresse IP, date/heure, user-agent du navigateur, URL demandée) pour l'analyse des erreurs et la sécurité du serveur.</li>
-                </ul>
-            </div>
-            <div class="card">
-                <h2>3. Bases juridiques</h2>
-                <ul>
-                    <li><strong>Art. 6 (1) lit. b RGPD (exécution du contrat) :</strong> Pour fournir le jeu, ton compte utilisateur, les lobbys et les fonctionnalités de jeu.</li>
-                    <li><strong>Art. 6 (1) lit. f RGPD (intérêt légitime) :</strong> Pour prévenir les abus, assurer la stabilité du serveur et fournir une communication chiffrée.</li>
-                </ul>
-            </div>
-            <div class="card">
-                <h2>4. Durée de conservation & Suppression</h2>
-                <ul>
-                    <li><strong>Données de compte :</strong> Conservées tant que ton compte est actif. Tu peux supprimer définitivement ton compte à tout moment dans les paramètres du compte.</li>
-                    <li><strong>Données de lobby & de jeu :</strong> Les lobbys et les coups de jeu éphémères sont temporaires et sont retirés de la mémoire après avoir quitté ou terminé la partie.</li>
-                    <li><strong>Journaux :</strong> Supprimés ou anonymisés de façon roulante après un maximum de 14 jours.</li>
-                </ul>
-            </div>
-            <div class="card">
-                <h2>5. Destinataires & Pays tiers</h2>
-                <p>Le traitement des données a lieu sur des serveurs situés dans l'Union européenne. Aucun transfert vers des pays tiers n'a lieu.</p>
-            </div>
-            <div class="card">
-                <h2>6. Tes droits</h2>
-                <p>Conformément au RGPD, tu disposes à tout moment des droits suivants envers le responsable du traitement :</p>
-                <ul>
-                    <li>Droit d'accès à tes données traitées (art. 15 RGPD)</li>
-                    <li>Droit de rectification des données inexactes (art. 16 RGPD)</li>
-                    <li>Droit à l'effacement (« droit à l'oubli », art. 17 RGPD)</li>
-                    <li>Droit à la limitation du traitement (art. 18 RGPD)</li>
-                    <li>Droit à la portabilité des données (art. 20 RGPD)</li>
-                    <li>Droit d'opposition au traitement (art. 21 RGPD)</li>
-                </ul>
-                <p>Contacte-nous de manière informelle par e-mail à <a href="mailto:info@omoflow.de">info@omoflow.de</a>.</p>
-            </div>
-        </div>
-
-        <!-- ========== NL ========== -->
-        <div id="content-nl" class="lang-block">
-            <div class="card">
-                <h2>1. Verantwoordelijke</h2>
-                <p>De verantwoordelijke voor de gegevensverwerking op deze website overeenkomstig art. 4 nr. 7 AVG is:</p>
-                <p><strong>Christian Heinrich</strong><br>Robert-Koch-Str. 7<br>26133 Oldenburg<br>Duitsland<br>
-                   E-mail: <a href="mailto:info@omoflow.de">info@omoflow.de</a><br>
-                   Telefoon: <a href="tel:+4915565338830">+49 155 65338830</a></p>
-            </div>
-            <div class="card">
-                <h2>2. Overzicht & Verwerkte gegevens</h2>
-                <p>Deze webapplicatie is een online partyspel („Waarheid of Durven“). Voor het leveren van gebruikersaccounts, multiplayer-lobby's, chat, vriendenlijsten en ranglijsten verwerken wij:</p>
-                <ul>
-                    <li><strong>Accountgegevens:</strong> E-mailadres, gebruikersnaam, wachtwoord-hash (uitsluitend SHA-256, nooit in platte tekst), gebruikersrol.</li>
-                    <li><strong>Spelstatistieken:</strong> Level, ervaringspunten (XP), munten, login-reeks, spelreeks, prestaties (badges), ontgrendelde items/thema's/emotes, tellers voor waarheden en durven.</li>
-                    <li><strong>Realtime- & sessiegegevens:</strong> Online-aanwezigheid (via WebSocket), huidige lobby-ID, tijdelijke acties en berichten tijdens een speelronde.</li>
-                    <li><strong>Vriendenlijst & privéberichten:</strong> Koppelingen tussen vrienden, chatgeschiedenis tussen twee gebruikers en openstaande vriendschapsverzoeken.</li>
-                    <li><strong>Serverlogs:</strong> Bij toegang tot de website verzamelt de webserver (Nginx) technisch noodzakelijke toegangsgegevens (IP-adres, datum/tijd, browser-user-agent, opgevraagde URL) voor foutanalyse en serverbeveiliging.</li>
-                </ul>
-            </div>
-            <div class="card">
-                <h2>3. Rechtsgrondslagen</h2>
-                <ul>
-                    <li><strong>Art. 6 (1) lit. b AVG (uitvoering van de overeenkomst):</strong> Voor het leveren van het spel, jouw gebruikersaccount, lobby's en spelfuncties.</li>
-                    <li><strong>Art. 6 (1) lit. f AVG (gerechtvaardigd belang):</strong> Voor het voorkomen van misbruik, het waarborgen van serverstabiliteit en het bieden van versleutelde communicatie.</li>
-                </ul>
-            </div>
-            <div class="card">
-                <h2>4. Bewaartermijn & Verwijdering</h2>
-                <ul>
-                    <li><strong>Accountgegevens:</strong> Worden bewaard zolang jouw account actief is. Je kunt je account op elk moment permanent verwijderen in de accountinstellingen.</li>
-                    <li><strong>Lobby- & spelgegevens:</strong> Lobby's en tijdelijke zetten zijn tijdelijk en worden na het verlaten of afronden van de ronde uit het geheugen verwijderd.</li>
-                    <li><strong>Loggegevens:</strong> Worden roulerend na maximaal 14 dagen verwijderd of geanonimiseerd.</li>
-                </ul>
-            </div>
-            <div class="card">
-                <h2>5. Ontvangers & Derde landen</h2>
-                <p>De gegevensverwerking vindt plaats op servers in de Europese Unie. Er is geen doorgifte naar derde landen.</p>
-            </div>
-            <div class="card">
-                <h2>6. Jouw rechten</h2>
-                <p>Op grond van de AVG heb je te allen tijde de volgende rechten tegenover de verantwoordelijke:</p>
-                <ul>
-                    <li>Recht op inzage in je verwerkte gegevens (art. 15 AVG)</li>
-                    <li>Recht op rectificatie van onjuiste gegevens (art. 16 AVG)</li>
-                    <li>Recht op wissing („recht om vergeten te worden“, art. 17 AVG)</li>
-                    <li>Recht op beperking van de verwerking (art. 18 AVG)</li>
-                    <li>Recht op gegevensoverdraagbaarheid (art. 20 AVG)</li>
-                    <li>Recht van bezwaar tegen de verwerking (art. 21 AVG)</li>
-                </ul>
-                <p>Neem hiervoor informeel contact op per e-mail via <a href="mailto:info@omoflow.de">info@omoflow.de</a>.</p>
+                <p>Under the GDPR, you have the right to access, rectify, delete, restrict processing, data portability, and object to processing. To exercise your rights, please email us at <a href="mailto:info@omoflow.de">info@omoflow.de</a>.</p>
             </div>
         </div>
 
         <footer>
-            <a href="index.html" id="ft-game">Spiel</a> ·
-            <a href="regelwerk.html" id="ft-rules">Regelwerk</a> ·
-            <a href="impressum.html" id="ft-imprint">Impressum</a>
+            <a href="index.html">Spiel</a> ·
+            <a href="regelwerk.html">Regelwerk</a> ·
+            <a href="impressum.html">Impressum</a>
         </footer>
     </div>
 
     <script>
-        var labels = {
-            de: { nav: "← Zurück zum Spiel", title: "🔒 Datenschutzerklärung", sub: "Wahrheit oder Pflicht – Multiplayer-Partyspiel", game: "Spiel", rules: "Regelwerk", imprint: "Impressum" },
-            en: { nav: "← Back to game", title: "🔒 Privacy Policy", sub: "Truth or Dare – Multiplayer Party Game", game: "Game", rules: "Rules", imprint: "Legal notice" },
-            fr: { nav: "← Retour au jeu", title: "🔒 Politique de confidentialité", sub: "Vérité ou Action – Jeu de société multijoueur", game: "Jeu", rules: "Règles", imprint: "Mentions légales" },
-            nl: { nav: "← Terug naar het spel", title: "🔒 Privacybeleid", sub: "Waarheid of Durven – Multiplayer-partyspel", game: "Spel", rules: "Regels", imprint: "Colofon" }
-        };
         function setLang(lang) {
-            if (!labels[lang]) lang = "de";
-            ["de","en","fr","nl"].forEach(function(l) {
-                var el = document.getElementById("content-" + l);
-                var btn = document.getElementById("btn-" + l);
-                if (el) el.classList.toggle("visible", l === lang);
-                if (btn) btn.classList.toggle("active", l === lang);
-            });
-            var t = labels[lang];
-            document.documentElement.lang = lang;
-            var nav = document.getElementById("nav-back"); if (nav) nav.textContent = t.nav;
-            var title = document.getElementById("page-title"); if (title) title.textContent = t.title;
-            var sub = document.getElementById("page-sub"); if (sub) sub.textContent = t.sub;
-            var fg = document.getElementById("ft-game"); if (fg) fg.textContent = t.game;
-            var fr = document.getElementById("ft-rules"); if (fr) fr.textContent = t.rules;
-            var fi = document.getElementById("ft-imprint"); if (fi) fi.textContent = t.imprint;
-            try { localStorage.setItem("wop_legal_lang", lang); } catch (e) {}
+            const de = document.getElementById('content-de');
+            const en = document.getElementById('content-en');
+            const bDe = document.getElementById('btn-de');
+            const bEn = document.getElementById('btn-en');
+            const nav = document.getElementById('nav-back');
+            const title = document.getElementById('page-title');
+            const sub = document.getElementById('page-sub');
+
+            if (lang === 'en') {
+                de.classList.remove('visible');
+                en.classList.add('visible');
+                bDe.classList.remove('active');
+                bEn.classList.add('active');
+                document.documentElement.lang = 'en';
+                if (nav) nav.textContent = '← Back to game';
+                if (title) title.textContent = '🔒 Privacy Policy';
+                if (sub) sub.textContent = 'Truth or Dare – Multiplayer Party Game';
+                try { localStorage.setItem('wop_legal_lang', 'en'); } catch (e) {}
+            } else {
+                en.classList.remove('visible');
+                de.classList.add('visible');
+                bEn.classList.remove('active');
+                bDe.classList.add('active');
+                document.documentElement.lang = 'de';
+                if (nav) nav.textContent = '← Zurück zum Spiel';
+                if (title) title.textContent = '🔒 Datenschutzerklärung';
+                if (sub) sub.textContent = 'Wahrheit oder Pflicht – Multiplayer-Partyspiel';
+                try { localStorage.setItem('wop_legal_lang', 'de'); } catch (e) {}
+            }
         }
         (function init() {
-            var pref = "de";
-            try { pref = localStorage.getItem("wop_legal_lang") || localStorage.getItem("lang") || localStorage.getItem("wop_lang") || "de"; } catch (e) {}
-            if (!labels[pref]) pref = "de";
-            setLang(pref);
+            let pref = 'de';
+            try {
+                pref = localStorage.getItem('wop_legal_lang') || localStorage.getItem('lang') || 'de';
+            } catch (e) {}
+            setLang(pref === 'en' ? 'en' : 'de');
         })();
     </script>
 </body>

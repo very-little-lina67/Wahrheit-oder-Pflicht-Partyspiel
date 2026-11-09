@@ -1,6 +1,6 @@
 {
   "name": "wahrheit-oder-pflicht-partyspiel",
-  "version": "2.0.37",
+  "version": "2.0.36",
   "description": "Wahrheit oder Pflicht Partyspiel mit Themes und Echtzeit-Multiplayer",
   "main": "server.js",
   "type": "module",
@@ -28,15 +28,5 @@
     "socket.io": "^4.8.1",
     "sqlite3": "^6.0.1",
     "web-push": "^3.6.7"
-  },
-  "devDependencies": {
-    "esbuild": "^0.28.2",
-    "react": "^19.3.1",
-    "react-dom": "^19.3.1",
-    "sileo": "^0.1.6",
-    "socket.io-client": "^4.8.4"
-  },
-  "allowScripts": {
-    "sqlite3": true
   }
 }
