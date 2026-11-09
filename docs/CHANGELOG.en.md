@@ -4,6 +4,21 @@ All notable changes to this project are documented in this file in a precise, te
 
 ---
 
+## [2.0.37] - 2026-11-09
+
+### New Features / Improvements
+- **Full French (fr) and Dutch (nl) language support:**
+  - Added complete `fr` and `nl` translation objects in `js/app.js` covering UI strings, shop, profile, lobby, game flow, chat, feedback and wheel sectors.
+  - Language selectors (auth modal + in-app) now offer 🇩🇪 Deutsch, 🇬🇧 English, 🇫🇷 Français, 🇳🇱 Nederlands.
+  - Language detection / persistence accepts `fr` and `nl`; `SUPPORTED_LANGS` array introduced.
+  - Title, helpers (`msg`, `getUserDisplayName`) and fallbacks updated for four languages so that switching language translates the entire interface, not only half of the strings.
+- **Changelog & rules pages** prepared for the additional languages (language switch buttons extended).
+
+### Misc
+- Version bumped to **2.0.37**; cache-busting query parameters updated to `?v=2.0.37`.
+
+---
+
 ## [2.0.36] - 2026-11-06
 
 ### New Features / Improvements
