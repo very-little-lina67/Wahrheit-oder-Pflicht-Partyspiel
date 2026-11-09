@@ -22,10 +22,9 @@
         window.activeLobbyCode = "";
 
         let currentLang = "de";
-        const SUPPORTED_LANGS = ["de", "en", "fr", "nl"];
         try {
             const storedLang = localStorage.getItem("lang") || localStorage.getItem("wop_lang");
-            if (SUPPORTED_LANGS.includes(storedLang)) {
+            if (storedLang === "en" || storedLang === "de") {
                 currentLang = storedLang;
             }
         } catch (e) {}
@@ -36,11 +35,7 @@
 // 2. KRYPTO-, SICHERHEITS- & DATENSCHUTZ-HELFER
 // ==============================================================================
         // --- HELFER: BENUTZERNAME SICHER LESEN ---
-        function getUserDisplayName(user, fallback = null) {
-            if (fallback == null) {
-                const names = { de: "Spieler", en: "Player", fr: "Joueur", nl: "Speler" };
-                fallback = names[currentLang] || "Player";
-            }
+        function getUserDisplayName(user, fallback = (currentLang === "de" ? "Spieler" : "Player")) {
             if (!user) return fallback;
             if (typeof user === "string") return user.trim() || fallback;
             if (typeof user === "object") {
@@ -841,435 +836,7 @@
                     { title: "🔄 Swap seats", desc: "Everyone stands up briefly and switches to a different seat/position." },
                     { title: "🎯 Finger-to-forehead 15 sec", desc: "Hold your index finger to your forehead for 15 seconds without laughing – if you laugh: 1 sip (DRINK)." }
                 ]
-            },
-
-            fr: {
-                authTitle: "Compte utilisateur & Vibe",
-                authDesc: "Connecte-toi pour utiliser XP, pièces et la boutique !",
-                labelEmail: "Adresse e-mail :",
-                labelUsername: "Nom d'utilisateur :",
-                labelPass: "Mot de passe :",
-                authUsernamePlaceholder: "Ton nom de joueur",
-                authPasswordPlaceholder: "Ton mot de passe sécurisé",
-                btnRegister: "S'inscrire",
-                btnLogin: "Se connecter",
-                shopHead: "🛒 Boutique Vibe",
-                shopTabEmotes: "Emojis de profil",
-                shopTabAccessories: "Accessoires",
-                shopTabJokers: "Jokers",
-                shopTabThemes: "Thèmes",
-                coinsText: "Pièces",
-                badgesHead: "🏆 Tes badges & trophées",
-                statsHead: "📊 Tes statistiques",
-                statLevel: "Niveau",
-                statXp: "XP",
-                statCoins: "Pièces",
-                statMonthly: "Ce mois-ci",
-                statStreak: "Série quotidienne",
-                statTruth: "Vérités",
-                statDare: "Actions",
-                statTotal: "Tâches totales",
-                statJokersUsed: "Jokers utilisés",
-                statJokersSkipUsed: "Jokers Skip utilisés",
-                statJokersForceUsed: "Jokers Force utilisés",
-                statBadges: "Badges",
-                statItems: "Objets",
-                statThemes: "Thèmes",
-                btnProfile: "👤 Profil",
-                profileTitle: "👤 Profil & Statistiques",
-                profileStatsHead: "📊 Statistiques",
-                profileBadgesHead: "🏆 Badges & Trophées",
-                profileClose: "Fermer",
-                accessoriesHead: "🛍 Accessoires d'avatar",
-                itemCrown: "Couronne",
-                itemGlasses: "Lunettes de soleil",
-                itemHat: "Chapeau de fête",
-                itemBeard: "Moustache",
-                itemSparkles: "Paillettes",
-                itemHeadphones: "Casque",
-                itemUnicorn: "Licorne",
-                itemCap: "Casquette",
-                itemButterfly: "Papillon",
-                itemDiamond: "Diamant",
-                itemRainbow: "Arc-en-ciel",
-                itemStar: "Étoile",
-                itemMask: "Masque",
-                itemFlower: "Fleur",
-                itemFlame: "Flamme",
-                itemCool: "Lunettes",
-                itemTarget: "Cible",
-                itemPizza: "Pizza",
-                itemGamepad: "Manette",
-                itemRocket: "Fusée",
-                itemDragon: "Dragon",
-                itemIcecream: "Glace",
-                itemTrophy: "Trophée",
-                profileEmotesHead: "🙂 Emojis de profil",
-                profileEmotesDesc: "Achète des emojis et choisis-les dans le profil comme emoji d'avatar – pas comme décoration !",
-                jokersHead: "🃏 Jokers",
-                jokersDesc: "Achète des jokers pour passer des tâches ou faire passer d'autres joueurs. Consommable – disparu après usage !",
-                jokerSkipName: "Joker Skip",
-                jokerSkipDesc: "Passer sa propre tâche",
-                jokerForceName: "Joker Force-Skip",
-                jokerForceDesc: "Faire passer le joueur actuel",
-                jokerSkipPackName: "Pack Skip",
-                jokerSkipPackDesc: "3 Jokers Skip (meilleur prix)",
-                jokerForcePackName: "Pack Force",
-                jokerForcePackDesc: "2 Jokers Force-Skip",
-                jokerSkipBtnText: "Passer la tâche",
-                jokerForceBtnText: "Faire passer le joueur",
-                themeCyberpunk: "Cyberpunk",
-                themeRetro: "Rétro-Pixel",
-                themeParty: "Party Néon",
-                themeOcean: "Vague océan",
-                themeSunset: "Coucher de soleil",
-                themeForest: "Vert forêt",
-                themeGalaxy: "Galaxie",
-                themeCandy: "Candy Pop",
-                themeMidnight: "Minuit",
-                themeGold: "Heure dorée",
-                themePikachuWarm: "Pikachu & Ash (Chaud)",
-                themePikachuRain: "Pikachu & Ash (Pluie)",
-                avatarEmoteLabel: "🙂 Choisir son propre emote / avatar",
-                avatarEmotePick: "Choisir un emoji",
-                emoteHappy: "Joyeux", emoteCool: "Cool", emoteExcited: "Excité", emoteParty: "Fête", emoteCheeky: "Coquin", emoteRobot: "Robot", emoteGhost: "Fantôme", emoteCat: "Chat", emoteFox: "Renard", emoteFrog: "Grenouille", emoteSkull: "Crâne", emoteFire: "Feu",
-                buyEquipBtn: "Acheter / Équiper",
-                themesHead: "🎨 Thèmes de couleurs",
-                unlockBtn: "Débloquer",
-                lbTitle: "🏆 Classement",
-                lbDesc: "Les joueurs avec le plus de pièces :",
-                lbGlobalTitle: "🌍 Classement global – toutes les pièces",
-                lbMonthlyTitle: "📅 Classement mensuel – pièces ce mois-ci",
-                lbMetricTotal: "💰 Total",
-                lbMetricMonthly: "📅 Mois",
-                lbMetricLevel: "⭐ Niveau",
-                friendsTitle: "👥 Amis",
-                friendsListTab: "Amis",
-                friendsOnlineTab: "En ligne",
-                friendsRequestsTab: "Demandes",
-                friendsAddPlaceholder: "Nom d'utilisateur à ajouter…",
-                friendsAddBtn: "Ajouter",
-                friendsEmpty: "Pas encore d'amis.",
-                friendsOnlineEmpty: "Personne en ligne pour le moment.",
-                friendsRequestsEmpty: "Aucune demande en attente.",
-                acceptBtn: "Accepter",
-                declineBtn: "Refuser",
-                removeFriendBtn: "Retirer",
-                inviteToLobby: "Inviter dans le lobby",
-                lastOnline: "Dernière connexion",
-                onlineNow: "En ligne maintenant",
-                neverOnline: "Jamais en ligne",
-                justNow: "À l'instant",
-                statusPanelTitle: "Statut",
-                statusSettingsBtn: "Paramètres de statut",
-                statusSettingsTitle: "Paramètres de statut",
-                statusSettingsDesc: "Choisis comment les autres te voient.",
-                statusSettingsClose: "Fermer",
-                toiletLabel: "Toilettes",
-                hornyLabel: "Excité",
-                alcoholLabel: "Alcool",
-                thirstLabel: "Soif",
-                energyLabel: "Énergie",
-                toiletShort: "WC",
-                hornyShort: "Excité",
-                alcoholShort: "Alcool",
-                thirstShort: "Soif",
-                energyShort: "Énergie",
-                title: "Jeu de Société Vérité ou Action 🍻🚻",
-                subtitle: "Jouez à tour de rôle à Vérité ou Action. Après chaque tour, la roue tourne !",
-                setupHead: "Lobby en ligne",
-                hostBtn: "🏠 Créer un lobby (Hôte)",
-                hostLookingBtn: "🏠 Créer un lobby & chercher des joueurs",
-                findPlayersBtn: "🔍 Cherche des joueurs – parties ouvertes",
-                findTitle: "🔍 Cherche des joueurs",
-                findDesc: "Lobbys ouverts qui ont encore besoin de joueurs – appuie sur Rejoindre !",
-                findRefresh: "🔄 Actualiser",
-                findCreate: "🏠 Héberger toi-même",
-                lobbyCodeInputPlaceholder: "Entrer le code du lobby…",
-                joinBtn: "🚀 Rejoindre le lobby",
-                lobbyCodeTitle: "Code du lobby : ",
-                shareCode: "Partage ce code avec tes amis !",
-                startBtn: "Lancer le jeu ! 🔥",
-                clientWaitMsg: "Connecté au lobby ! En attente de l'hôte…",
-                leaveBtn: "🚪 Quitter le lobby",
-                turnTitle: "Tour actuel : ",
-                choiceLabel: "Que choisis-tu ?",
-                optTruth: "Vérité (+XP / +4 Pièces)",
-                optDare: "Action (+XP / +8 Pièces)",
-                selectBtn: "Choisir 🎲",
-                sendTaskBtn: "Envoyer au joueur 🚀",
-                taskInputPlaceholder: "Tape ta question ou ton défi ici…",
-                answerLabel: "Ta réponse :",
-                answerPlaceholder: "Tape ta réponse ici…",
-                submitAnswerBtn: "✅ Envoyer la réponse",
-                dareDoneBtn: "✅ Action accomplie & confirmer !",
-                doneHead: "🎉 Terminé !",
-                nextTurnBtn: "✅ Je confirme",
-                waitingOther: "En attente des confirmations des autres joueurs…",
-                waitingOtherRound: "En attente des confirmations des autres joueurs…",
-                wheelHead: "🎡 MODE ROUE : Tout le monde agit !",
-                wheelDesc: "Tout le monde a joué vérité ou action. Maintenant la roue tourne pour tout le monde !",
-                wheelReady: "Roue prête !",
-                spinBtn: "Tourner la roue maintenant 🎡",
-                nextRoundBtn: "➡️ Tour suivant !",
-                chatPlaceholder: "Écrire un message…",
-                chatSend: "Envoyer",
-                chatToLabel: "À :",
-                chatToAll: "🌐 Tout le monde (public)",
-                chatPrivateTo: "🔒 Privé à",
-                chatPrivateFrom: "🔒 Privé de",
-                chatPrivateSelf: "🔒 Toi →",
-                emergencyDesc: "Quiconque cède ou fuit perd immédiatement !",
-                leakBtn: "🚨 J'ai fuit / dû aller aux toilettes (Perdu !)",
-                adminKickBtn: "🛡️ Expulser le joueur (Admin)",
-                fbTitle: "📝 Signaler un bug & Feedback",
-                fbDesc: "Tu as trouvé un bug ou as une suggestion ? Envoie un feedback – ou écris-moi sur Discord !",
-                footerDiscord: "Ouvrir le profil",
-                discordCardTitle: "Support Discord",
-                discordCardSub: "Des questions sur le jeu ? Écris-moi sur Discord.",
-                discordCardHint: "Le statut en ligne / absent / DND / hors ligne s'affiche si disponible.",
-                fbDiagHint: "Les rapports d'erreurs et système sont automatiquement joints pour une analyse rapide.",
-                btnClose: "Fermer",
-                deleteAccountWarning: "Attention : la suppression du compte est définitive et irréversible.",
-                buyJokerBtn: "Acheter",
-                buyJokerBtnPlus: "Acheter (+{n})",
-                avatarEmotePick: "Choisir un emoji",
-                // wheelSectors abbreviated for length - full would be similar
-                wheelSectors: [
-                    { title: "🍻 [BOIRE] 500 ml d'un coup", desc: "BOIRE : Tout le monde boit immédiatement environ 500 ml (un demi-litre) de sa boisson – si possible d'un trait." },
-                    { title: "🍻 [BOIRE] Grande gorgée", desc: "BOIRE : Tout le monde prend immédiatement une grande gorgée (au moins 3 secondes sur le verre)." },
-                    { title: "🍻 [BOIRE] Distribuer 2 gorgées", desc: "BOIRE : Chacun choisit une autre personne et lui donne 2 gorgées – cette personne doit boire." },
-                    { title: "💧 [BOIRE] Verre d'eau d'un coup", desc: "BOIRE : Tout le monde finit un plein verre d'eau (ou boisson non alcoolisée) avec le moins de pause possible." },
-                    { title: "💧 [BOIRE] Substitut eau", desc: "BOIRE : Quiconque n'a pas de boisson alcoolisée doit finir un verre d'eau à la place." },
-                    { title: "🍻 [BOIRE] Round de santé", desc: "BOIRE : Tout le monde trinque et prend une gorgée normale ensemble." },
-                    { title: "🍻 [BOIRE] Gorgée main faible", desc: "BOIRE : Tout le monde prend une gorgée uniquement avec la main non dominante." },
-                    { title: "🚫 Interdiction toilettes 3 tours", desc: "Pas de toilettes pour les 3 prochains tours de roue / tours. (Restez justes – utilisez le bouton fuite en cas de vraie urgence.)" },
-                    { title: "🤫 Silence pendant 2 tours", desc: "Personne ne peut parler pendant les 2 prochains tours de joueur. Seulement hochements/gestes." },
-                    { title: "🤫 Calme pendant 2 tours", desc: "Pas de bruits forts, pas de rires bruyants – restez aussi silencieux que possible pendant 2 tours." },
-                    { title: "⚡ Pression vessie 30 sec", desc: "Tout le monde place une main plate sur le bas-ventre et appuie légèrement pendant 30 secondes – restez debout ou assis." },
-                    { title: "⚡ Pression vessie 45 sec", desc: "Comme pression vessie, mais 45 secondes. Si tu arrêtes tôt : prends une gorgée (BOIRE)." },
-                    { title: "⏱️ Sauter 30 secondes", desc: "Tout le monde saute sur place pendant 30 secondes (petits sauts suffisent)." },
-                    { title: "🏋️ 15 squats", desc: "Tout le monde fait immédiatement 15 squats lents et corrects." },
-                    { title: "⏱️ 30 sec planche", desc: "Tout le monde tient une planche avant-bras pendant 30 secondes. Arrêt anticipé : 1 gorgée (BOIRE)." },
-                    { title: "🦵 Équilibre une jambe 20 sec", desc: "Tout le monde se tient sur une jambe pendant 20 secondes (côté au choix). Perte d'équilibre : 1 gorgée (BOIRE)." },
-                    { title: "🔄 Changer de place", desc: "Tout le monde se lève brièvement et change de siège/position." },
-                    { title: "🎯 Doigt-front 15 sec", desc: "Tiens ton index sur le front pendant 15 secondes sans rire – si tu ris : 1 gorgée (BOIRE)." }
-                ]
-            },
-
-            nl: {
-                authTitle: "Gebruikersaccount & Vibe",
-                authDesc: "Log in om XP, munten en de shop te gebruiken!",
-                labelEmail: "E-mailadres:",
-                labelUsername: "Gebruikersnaam:",
-                labelPass: "Wachtwoord:",
-                authUsernamePlaceholder: "Jouw spelersnaam",
-                authPasswordPlaceholder: "Jouw veilige wachtwoord",
-                btnRegister: "Registreren",
-                btnLogin: "Inloggen",
-                shopHead: "🛒 Vibe-Shop",
-                shopTabEmotes: "Profiel-emoji's",
-                shopTabAccessories: "Accessoires",
-                shopTabJokers: "Jokers",
-                shopTabThemes: "Thema's",
-                coinsText: "Munten",
-                badgesHead: "🏆 Jouw badges & trofeeën",
-                statsHead: "📊 Jouw statistieken",
-                statLevel: "Level",
-                statXp: "XP",
-                statCoins: "Munten",
-                statMonthly: "Deze maand",
-                statStreak: "Dagelijkse reeks",
-                statTruth: "Waarheden",
-                statDare: "Durven",
-                statTotal: "Taken totaal",
-                statJokersUsed: "Jokers gebruikt",
-                statJokersSkipUsed: "Skip-jokers gebruikt",
-                statJokersForceUsed: "Force-jokers gebruikt",
-                statBadges: "Badges",
-                statItems: "Items",
-                statThemes: "Thema's",
-                btnProfile: "👤 Profiel",
-                profileTitle: "👤 Profiel & Statistieken",
-                profileStatsHead: "📊 Statistieken",
-                profileBadgesHead: "🏆 Badges & Trofeeën",
-                profileClose: "Sluiten",
-                accessoriesHead: "🛍 Avatar-accessoires",
-                itemCrown: "Kroon",
-                itemGlasses: "Zonnebril",
-                itemHat: "Feestmuts",
-                itemBeard: "Snor",
-                itemSparkles: "Glitter",
-                itemHeadphones: "Koptelefoon",
-                itemUnicorn: "Eenhoorn",
-                itemCap: "Pet",
-                itemButterfly: "Vlinder",
-                itemDiamond: "Diamant",
-                itemRainbow: "Regenboog",
-                itemStar: "Ster",
-                itemMask: "Masker",
-                itemFlower: "Bloem",
-                itemFlame: "Vlam",
-                itemCool: "Bril",
-                itemTarget: "Doelwit",
-                itemPizza: "Pizza",
-                itemGamepad: "Controller",
-                itemRocket: "Raket",
-                itemDragon: "Draak",
-                itemIcecream: "IJs",
-                itemTrophy: "Beker",
-                profileEmotesHead: "🙂 Profiel-emoji's",
-                profileEmotesDesc: "Koop emoji's en kies ze in het profiel als je avatar-emoji – niet als decoratie!",
-                jokersHead: "🃏 Jokers",
-                jokersDesc: "Koop jokers om taken over te slaan of andere spelers over te slaan. Verbruiksartikel – na gebruik weg!",
-                jokerSkipName: "Skip-Joker",
-                jokerSkipDesc: "Eigen taak overslaan",
-                jokerForceName: "Force-Skip-Joker",
-                jokerForceDesc: "Huidige speler overslaan",
-                jokerSkipPackName: "Skip-Pack",
-                jokerSkipPackDesc: "3 Skip-Jokers (voordeliger)",
-                jokerForcePackName: "Force-Pack",
-                jokerForcePackDesc: "2 Force-Skip-Jokers",
-                jokerSkipBtnText: "Taak overslaan",
-                jokerForceBtnText: "Speler overslaan",
-                themeCyberpunk: "Cyberpunk",
-                themeRetro: "Retro-Pixel",
-                themeParty: "Party Neon",
-                themeOcean: "Oceaan Golf",
-                themeSunset: "Zonsondergang",
-                themeForest: "Bosgroen",
-                themeGalaxy: "Melkweg",
-                themeCandy: "Candy Pop",
-                themeMidnight: "Middernacht",
-                themeGold: "Gouden Uur",
-                themePikachuWarm: "Pikachu & Ash (Warm)",
-                themePikachuRain: "Pikachu & Ash (Regen)",
-                avatarEmoteLabel: "🙂 Eigen emote / avatar kiezen",
-                avatarEmotePick: "Emoji kiezen",
-                emoteHappy: "Blij", emoteCool: "Cool", emoteExcited: "Opgewonden", emoteParty: "Feest", emoteCheeky: "Stout", emoteRobot: "Robot", emoteGhost: "Geest", emoteCat: "Kat", emoteFox: "Vos", emoteFrog: "Kikker", emoteSkull: "Schedel", emoteFire: "Vuur",
-                buyEquipBtn: "Kopen / Uitrusten",
-                themesHead: "🎨 Kleurenthema's",
-                unlockBtn: "Ontgrendelen",
-                lbTitle: "🏆 Ranglijst",
-                lbDesc: "De spelers met de meeste munten:",
-                lbGlobalTitle: "🌍 Totaalstand – alle munten",
-                lbMonthlyTitle: "📅 Maandstand – munten deze maand",
-                lbMetricTotal: "💰 Totaal",
-                lbMetricMonthly: "📅 Maand",
-                lbMetricLevel: "⭐ Level",
-                friendsTitle: "👥 Vrienden",
-                friendsListTab: "Vrienden",
-                friendsOnlineTab: "Online",
-                friendsRequestsTab: "Verzoeken",
-                friendsAddPlaceholder: "Gebruikersnaam om toe te voegen…",
-                friendsAddBtn: "Toevoegen",
-                friendsEmpty: "Nog geen vrienden.",
-                friendsOnlineEmpty: "Momenteel niemand online.",
-                friendsRequestsEmpty: "Geen openstaande verzoeken.",
-                acceptBtn: "Accepteren",
-                declineBtn: "Weigeren",
-                removeFriendBtn: "Verwijderen",
-                inviteToLobby: "Uitnodigen in lobby",
-                lastOnline: "Laatst online",
-                onlineNow: "Nu online",
-                neverOnline: "Nooit online",
-                justNow: "Zojuist",
-                statusPanelTitle: "Status",
-                statusSettingsBtn: "Statusinstellingen",
-                statusSettingsTitle: "Statusinstellingen",
-                statusSettingsDesc: "Kies hoe anderen je zien.",
-                statusSettingsClose: "Sluiten",
-                toiletLabel: "Toilet",
-                hornyLabel: "Geil",
-                alcoholLabel: "Alcohol",
-                thirstLabel: "Dorst",
-                energyLabel: "Energie",
-                toiletShort: "WC",
-                hornyShort: "Geil",
-                alcoholShort: "Alcohol",
-                thirstShort: "Dorst",
-                energyShort: "Energie",
-                title: "Waarheid of Durven Partyspel 🍻🚻",
-                subtitle: "Speel om de beurt Waarheid of Durven. Na elke ronde draait het rad!",
-                setupHead: "Online Lobby",
-                hostBtn: "🏠 Lobby aanmaken (Host)",
-                hostLookingBtn: "🏠 Lobby aanmaken & spelers zoeken",
-                findPlayersBtn: "🔍 Zoekt spelers – open rondes",
-                findTitle: "🔍 Zoekt spelers",
-                findDesc: "Open lobby's die nog spelers zoeken – tik op Meedoen!",
-                findRefresh: "🔄 Vernieuwen",
-                findCreate: "🏠 Zelf hosten",
-                lobbyCodeInputPlaceholder: "Voer lobbycode in…",
-                joinBtn: "🚀 Deelnemen aan lobby",
-                lobbyCodeTitle: "Lobbycode: ",
-                shareCode: "Deel deze code met je vrienden!",
-                startBtn: "Spel starten! 🔥",
-                clientWaitMsg: "Verbonden met lobby! Wachten op host…",
-                leaveBtn: "🚪 Lobby verlaten",
-                turnTitle: "Huidige beurt: ",
-                choiceLabel: "Wat kies je?",
-                optTruth: "Waarheid (+XP / +4 Munten)",
-                optDare: "Durven (+XP / +8 Munten)",
-                selectBtn: "Kiezen 🎲",
-                sendTaskBtn: "Naar speler sturen 🚀",
-                taskInputPlaceholder: "Typ hier je vraag of opdracht…",
-                answerLabel: "Jouw antwoord:",
-                answerPlaceholder: "Typ hier je antwoord…",
-                submitAnswerBtn: "✅ Antwoord versturen",
-                dareDoneBtn: "✅ Durf voltooid & bevestigen!",
-                doneHead: "🎉 Klaar!",
-                nextTurnBtn: "✅ Ik bevestig",
-                waitingOther: "Wachten op bevestigingen van andere spelers…",
-                waitingOtherRound: "Wachten op bevestigingen van andere spelers…",
-                wheelHead: "🎡 RAD-MODUS: Iedereen moet handelen!",
-                wheelDesc: "Iedereen heeft waarheid of durven gespeeld. Nu draait het rad voor iedereen!",
-                wheelReady: "Rad klaar!",
-                spinBtn: "Draai het rad nu 🎡",
-                nextRoundBtn: "➡️ Volgende ronde!",
-                chatPlaceholder: "Typ een bericht…",
-                chatSend: "Versturen",
-                chatToLabel: "Aan:",
-                chatToAll: "🌐 Iedereen (openbaar)",
-                chatPrivateTo: "🔒 Privé aan",
-                chatPrivateFrom: "🔒 Privé van",
-                chatPrivateSelf: "🔒 Jij →",
-                emergencyDesc: "Wie toegeeft of lekt verliest meteen!",
-                leakBtn: "🚨 Ik heb gelekt / moest plassen (Verloren!)",
-                adminKickBtn: "🛡️ Speler kicken (Admin)",
-                fbTitle: "📝 Bug melden & Feedback",
-                fbDesc: "Bug gevonden of een suggestie? Stuur feedback – of bericht me op Discord!",
-                footerDiscord: "Profiel openen",
-                discordCardTitle: "Discord Support",
-                discordCardSub: "Vragen over het spel? Bericht me op Discord.",
-                discordCardHint: "Online / afwezig / DND / offline status wordt getoond indien beschikbaar.",
-                fbDiagHint: "Fout- en systeemrapporten worden automatisch meegestuurd voor snelle analyse.",
-                btnClose: "Sluiten",
-                deleteAccountWarning: "Let op: account verwijderen is permanent en onomkeerbaar.",
-                buyJokerBtn: "Kopen",
-                buyJokerBtnPlus: "Kopen (+{n})",
-                avatarEmotePick: "Emoji kiezen",
-                wheelSectors: [
-                    { title: "🍻 [DRINKEN] 500 ml in één keer", desc: "DRINKEN: Iedereen drinkt meteen ongeveer 500 ml (een halve liter) van zijn drankje – bij voorkeur in één teug." },
-                    { title: "🍻 [DRINKEN] Grote slok", desc: "DRINKEN: Iedereen neemt meteen een duidelijk grote slok (minstens 3 seconden aan het glas)." },
-                    { title: "🍻 [DRINKEN] 2 slokken uitdelen", desc: "DRINKEN: Iedereen kiest een andere persoon en geeft 2 slokken – die persoon moet drinken." },
-                    { title: "💧 [DRINKEN] Waterglas leeg", desc: "DRINKEN: Iedereen drinkt een vol glas water (of non-alcoholisch) met zo min mogelijk pauze leeg." },
-                    { title: "💧 [DRINKEN] Watervervanger", desc: "DRINKEN: Wie geen alcoholisch drankje heeft, drinkt in plaats daarvan een glas water leeg." },
-                    { title: "🍻 [DRINKEN] Proost-ronde", desc: "DRINKEN: Iedereen proost en neemt samen een normale slok." },
-                    { title: "🍻 [DRINKEN] Zwakke-hand-slok", desc: "DRINKEN: Iedereen neemt een slok alleen met de niet-dominante hand." },
-                    { title: "🚫 Plasverbod 3 rondes", desc: "Niemand mag de volgende 3 rad-rondes / beurten naar het toilet. (Blijf eerlijk – gebruik de lek-knop bij echte nood.)" },
-                    { title: "🤫 2 beurten stilte", desc: "Niemand mag de volgende 2 spelersbeurten praten. Alleen knikken/gebaren." },
-                    { title: "🤫 2 beurten stil", desc: "Geen harde geluiden, geen hard lachen – blijf zo stil mogelijk gedurende 2 beurten." },
-                    { title: "⚡ Blaasdruk 30 sec", desc: "Iedereen legt 30 seconden een platte hand op de onderbuik en drukt licht – blijf stil staan of zitten." },
-                    { title: "⚡ Blaasdruk 45 sec", desc: "Zelfde als blaasdruk, maar 45 seconden. Wie stopt: 1 slok (DRINKEN)." },
-                    { title: "⏱️ 30 seconden huppelen", desc: "Iedereen huppelt 30 seconden op de plaats (kleine huppels zijn prima)." },
-                    { title: "🏋️ 15 squats", desc: "Iedereen doet meteen 15 langzame, nette squats." },
-                    { title: "⏱️ 30 sec plank", desc: "Iedereen houdt 30 seconden een onderarmplank. Vroeg stoppen: 1 slok (DRINKEN)." },
-                    { title: "🦵 Eenbeenstand 20 sec", desc: "Iedereen staat 20 seconden op één been (kant naar keuze). Evenwicht verliezen: 1 slok (DRINKEN)." },
-                    { title: "🔄 Stoelen wisselen", desc: "Iedereen staat kort op en wisselt van stoel/positie." },
-                    { title: "🎯 Vinger-op-voorhoofd 15 sec", desc: "Houd je wijsvinger 15 seconden op je voorhoofd zonder te lachen – wie lacht: 1 slok (DRINKEN)." }
-                ]
             }
-
         };
 
 
@@ -1333,28 +900,24 @@
         }
 
 
-        /** Einheitliche Kurz-Meldungen (DE/EN/FR/NL) */
-        function msg(key, fallbackDe, fallbackEn, fallbackFr, fallbackNl) {
+        /** Einheitliche Kurz-Meldungen (DE/EN) */
+        function msg(key, fallbackDe, fallbackEn) {
             const t = translations[currentLang] || {};
             if (key && t[key]) return t[key];
-            if (currentLang === "de") return fallbackDe || key || "";
-            if (currentLang === "fr") return fallbackFr || fallbackEn || fallbackDe || key || "";
-            if (currentLang === "nl") return fallbackNl || fallbackEn || fallbackDe || key || "";
-            return fallbackEn || fallbackDe || key || "";
+            return currentLang === "de" ? (fallbackDe || key || "") : (fallbackEn || fallbackDe || key || "");
         }
 
         function changeLanguage(forcedLang) {
             const authSelect = document.getElementById("auth-lang-select");
             const appSelect = document.getElementById("lang-select");
             
-            if (forcedLang && SUPPORTED_LANGS.includes(forcedLang)) {
+            if (forcedLang === "de" || forcedLang === "en") {
                 currentLang = forcedLang;
             } else if (authSelect && document.activeElement === authSelect) {
                 currentLang = authSelect.value;
             } else if (appSelect && document.activeElement === appSelect) {
                 currentLang = appSelect.value;
             }
-            if (!SUPPORTED_LANGS.includes(currentLang)) currentLang = "de";
 
             if (authSelect) authSelect.value = currentLang;
             if (appSelect) appSelect.value = currentLang;
@@ -1365,13 +928,9 @@
             } catch (e) {}
 
             document.documentElement.lang = currentLang;
-            const pageTitles = {
-                de: "Wahrheit oder Pflicht Partyspiel 🍻🚻",
-                en: "Truth or Dare Party Game 🍻🚻",
-                fr: "Jeu de Société Vérité ou Action 🍻🚻",
-                nl: "Waarheid of Durven Partyspel 🍻🚻"
-            };
-            document.title = pageTitles[currentLang] || pageTitles.de;
+            document.title = currentLang === "de"
+                ? "Wahrheit oder Pflicht Partyspiel 🍻🚻"
+                : "Truth or Dare Party Game 🍻🚻";
             const t = translations[currentLang] || translations.de;
             
             // Auth Modal
@@ -4511,12 +4070,11 @@
             if (typeof registerPushSubscription === "function" && typeof Notification !== "undefined" && Notification.permission === "granted") {
                 registerPushSubscription();
             }
-            document.getElementById("auth-modal")?.classList.add("hidden");
+            document.getElementById("auth-modal").classList.add("hidden");
             document.getElementById("account-modal")?.classList.add("hidden");
             document.getElementById("profile-modal")?.classList.add("hidden");
-            // Setup zeigen, wenn kein aktives Spiel / keine aktive Lobby-UI
-            const inActiveGame = !!(gameStarted || (activeLobbyCode && document.getElementById("lobby-wait-box") && !document.getElementById("lobby-wait-box").classList.contains("hidden")));
-            if (!restoringLobby && !inActiveGame) {
+            // Bei Lobby-Restore bleibt Setup versteckt (applyGameState steuert die UI)
+            if (!restoringLobby && !gameStarted && !activeLobbyCode) {
                 document.getElementById("setup")?.classList.remove("hidden");
             }
             try {
@@ -9956,16 +9514,3 @@
             input.value = "";
         }
 
-
-// --- Globale Exports für onclick-Handler (Fallback falls Scope-Probleme) ---
-try {
-    window.hostGame = typeof hostGame === "function" ? hostGame : window.hostGame;
-    window.joinGame = typeof joinGame === "function" ? joinGame : window.joinGame;
-    window.startOnlineGame = typeof startOnlineGame === "function" ? startOnlineGame : window.startOnlineGame;
-    window.changeLanguage = typeof changeLanguage === "function" ? changeLanguage : window.changeLanguage;
-    window.changeLanguageFromApp = typeof changeLanguageFromApp === "function" ? changeLanguageFromApp : window.changeLanguageFromApp;
-    window.loginUser = typeof loginUser === "function" ? loginUser : window.loginUser;
-    window.registerUser = typeof registerUser === "function" ? registerUser : window.registerUser;
-    window.logoutUser = typeof logoutUser === "function" ? logoutUser : window.logoutUser;
-    window.showLoggedInState = typeof showLoggedInState === "function" ? showLoggedInState : window.showLoggedInState;
-} catch (e) { console.warn("WOP global export:", e); }
